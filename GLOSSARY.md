@@ -31,6 +31,15 @@ Every timber has **6 faces = 2 ends + 4 sides**.
 
 Everyday orientation of a beam in place: **top**, **bottom**, and two **sides**.
 
+**Floor-system members** (a floor system = one LEVEL of the frame: carriers + joists + the deck over them):
+
+| Term | Meaning |
+|---|---|
+| **Sill** | timber at grade on the foundation; posts tenon down into it; first-floor joists frame into it |
+| **Summer beam** (summer) | the major mid-span joist carrier in a bay, girt-to-girt / bent-to-bent; halves the joist span |
+| **Carrier** | any timber a joist frames into: girt, summer, or sill |
+| **Sleeper** | a ground-bearing joist laid on grade |
+
 ---
 
 ## B. Joint types (by how the two timbers meet)
@@ -41,7 +50,10 @@ Everyday orientation of a beam in place: **top**, **bottom**, and two **sides**.
 - **Gain** — a shallow housing (loosely, any shallow let-in).
 - **Shoulder** — a bearing notch the member seats against (rafter foot/head, girt shoulder).
 - **Dovetail** — a flared (wedge-shaped) end + matching socket that resists withdrawal; a **dovetailed
-  housing** drops a member in and locks it from pulling back out (purlin → rafter).
+  (dropped-in / soffit) housing** drops a member in from above and locks it from pulling back out
+  (purlin → rafter, joist → carrier) — joist and carrier tops finish flush.
+- **Tusk tenon** — a deep or through tenon with a soffit shoulder bearing beneath it; the classic
+  summer-to-girt joint.
 
 **End → end:**
 - **Scarf** — a lengthwise splice. Parts: *blade, abutment, table, key, undersquint*.
