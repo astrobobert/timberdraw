@@ -36,6 +36,34 @@ namespace TimberDraw
             RunExport(doc, t => picked.Contains(t.Id), clearFolder: false);
         }
 
+        // Diagnostic: pick one managed timber -> print every Brep face with its per-RS label
+        // verdict (front/back/buried/pocket, bevel/depth, thin/full-length gates). For chasing
+        // missing or extra scribe labels with facts instead of guesses.
+        [CommandMethod("TScribeProbe")]
+        public static void ScribeProbe()
+        {
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            Editor ed = doc.Editor;
+            Database db = doc.Database;
+
+            PromptEntityOptions peo = new PromptEntityOptions("\nPick a managed timber to probe");
+            peo.SetRejectMessage("\nMust be a 3D solid.");
+            peo.AddAllowedClass(typeof(Solid3d), true);
+            PromptEntityResult per = ed.GetEntity(peo);
+            if (per.Status != PromptStatus.OK) return;
+
+            List<ManagedTimber.ShopInfo> all = ManagedTimber.EnumerateForShop(db);
+            ManagedTimber.ShopInfo t = all.FirstOrDefault(s => s.Id == per.ObjectId);
+            if (t == null) { ed.WriteMessage("\nNot a managed timber."); return; }
+
+            ScribeFaces.Sheet sheet = ScribeFaces.Frames(db, t, ScribeFaces.FrameCenter(all),
+                                                         out ScribeFaces.FaceFrame[] ffs);
+            if (sheet == null) { ed.WriteMessage("\nSolid geometry unavailable."); return; }
+            ed.WriteMessage($"\nProbe {Label(t)} -- L={ffs[0].Overall:0.0}, faces RS1..RS4:");
+            ScribeAnnotate.DebugProbe(ed, db, t.Id, ffs);
+        }
+
         [CommandMethod("TScribeAll")]
         public static void ScribeExportAll()
         {
@@ -121,9 +149,9 @@ namespace TimberDraw
                     }
 
                     // The solid's real faces, once per timber (before SOLPROF), drive the surface-model
-                    // depth/angle labels; visibility is judged per RS face, so pass the 4 RS normals.
-                    var solidFaces = ScribeAnnotate.BuildSolidFaces(
-                        db, t.Id, ffs.Select(fr => fr.N).ToArray());
+                    // depth/angle labels; labelability (the cut opens at that face) is judged per RS
+                    // face, so pass the 4 FaceFrames (the probe needs each face's plane).
+                    var solidFaces = ScribeAnnotate.BuildSolidFaces(db, t.Id, ffs);
 
                     foreach (ScribeFaces.FaceFrame ff in ffs)
                     {
@@ -133,8 +161,11 @@ namespace TimberDraw
                             WidthIn = ff.FaceW, ThickIn = 2.0 * ff.HalfN
                         };
                         face.Marks = ScribeSolprof.ProfileFace(doc, t.Id, ff, st);
+                        // cut-to-length: explicit full-width end lines on every face, both ends
+                        ScribeFaces.AddEndCutLines(ff, face.Marks);
                         face.VisibleCount = face.Marks.Count(m => m.Visible);
                         face.DimCount = ScribeAnnotate.Emit(ff, face.Marks, solidFaces);
+                        face.DimCount += ScribeAnnotate.EmitBlindPegMarks(t.F, ff, face.Marks);
                         face.VisibleCount += face.DimCount;
                         sheet.Faces[ff.Number - 1] = face;
                     }

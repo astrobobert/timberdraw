@@ -181,6 +181,32 @@ namespace TimberDraw
             return new Point3d(x / all.Count, y / all.Count, z / all.Count);
         }
 
+        // CUT-TO-LENGTH lines: EVERY face gets a full-width burned line at BOTH end stations
+        // (x = 0 and x = Overall) so the framer can square the stock to length before laying out
+        // joinery. SOLPROF only yields an end line incidentally -- a tenoned end shows just the
+        // tip's width, and side views can miss the end entirely -- so these are emitted
+        // EXPLICITLY, never trusted to the profile. Any existing burned line already sitting on
+        // an end station is removed first (the full-width line supersedes it -- keeps the burn
+        // single-pass instead of re-burning the tenon tip under the new line).
+        internal const double EndStationTol = 0.05;   // "sits on the end station" (in)
+
+        internal static void AddEndCutLines(FaceFrame ff, List<Mark> marks)
+        {
+            foreach (double x in new[] { 0.0, ff.Overall })
+            {
+                marks.RemoveAll(m =>
+                    m.Visible && m.Kind == MarkKind.Line && m.Pts != null && m.Pts.Count == 2 &&
+                    Math.Abs(m.Pts[0].X - x) < EndStationTol &&
+                    Math.Abs(m.Pts[1].X - x) < EndStationTol);
+                marks.Add(new Mark
+                {
+                    Kind = MarkKind.Line,
+                    Visible = true,
+                    Pts = new List<Point2d> { new Point2d(x, 0.0), new Point2d(x, ff.FaceW) }
+                });
+            }
+        }
+
         // A straight visible line is a LONG ARRIS of the stock -- the timber's own long edge, running
         // the length along the datum/near edge (y ~ 0 or y ~ faceW). Those are existing faces of the
         // stick, not cuts, so they are dropped from the burn. Everything else is KEPT, including the
