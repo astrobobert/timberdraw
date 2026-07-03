@@ -30,7 +30,7 @@ namespace TimberDraw
         public const string KeyRafterHead  = "Rafter head";
         public const string KeyCommonRidge = "Common -> ridge";
         public const string KeyBirdsmouth  = "Birdsmouth";
-        public const string KeyPurlin      = "Purlin dovetail";
+        public const string KeyPurlin      = "Housed dovetail";   // host-neutral (purlin->rafter, joist->carrier)
         public const string KeyQPRafter    = "QP rafter apex";
 
         // Saved-or-factory getters -- the single source every consumer (ConnectionType factories, Spec*

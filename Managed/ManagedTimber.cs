@@ -33,11 +33,12 @@ namespace TimberDraw
 
         // The per-group layer a timber belongs to -- a bent member -> its bent's layer, a longitudinal /
         // wall member -> its wall's layer. Used for tree-checkbox isolation (toggle the layer on/off).
-        public static string GroupLayer(string frameTag, string bentTag, string wallTag)
+        public static string GroupLayer(string frameTag, string bentTag, string wallTag, string floorTag = "")
         {
             string f = string.IsNullOrWhiteSpace(frameTag) ? "A" : frameTag.Trim();
             if (!string.IsNullOrEmpty(bentTag)) return GroupPrefix + f + "_Bent" + bentTag;
             if (!string.IsNullOrEmpty(wallTag)) return GroupPrefix + f + "_Wall" + wallTag;
+            if (!string.IsNullOrEmpty(floorTag)) return GroupPrefix + f + "_Floor" + floorTag;
             return GroupPrefix + f;
         }
 
@@ -1414,7 +1415,7 @@ namespace TimberDraw
             double band = System.Math.Min(System.Math.Max(spec.Depth, 0.0), purlin.D);   // tongue band into the depth
             double tipHalf = baseHalf + len * System.Math.Tan(spec.Angle * System.Math.PI / 180.0);
             if (!spec.On || (seat <= 1e-6 && len <= 1e-6) || baseHalf <= 1e-6 || band <= 1e-6)
-            { diag = "purlin dovetail disabled or a zero dimension"; return false; }
+            { diag = "housed dovetail disabled or a zero dimension"; return false; }
 
             double halfW = purlin.W / 2.0, halfD = purlin.D / 2.0;
 
@@ -1476,7 +1477,7 @@ namespace TimberDraw
                 prisms.Add((Local(purlin, part.poly), LocalVec(purlin, part.ext), false));   // purlin UNION
                 prisms.Add((Local(rafter, part.poly), LocalVec(rafter, part.ext), true));    // rafter SUBTRACT
             }
-            diag = "purlin dovetail: housing " + seat.ToString("0.0") + " deep + tongue " + spec.Width.ToString("0.0") +
+            diag = "housed dovetail: housing " + seat.ToString("0.0") + " deep + tongue " + spec.Width.ToString("0.0") +
                    "->" + (2.0 * tipHalf).ToString("0.0") + " wide x " + band.ToString("0.0") + " band x " +
                    len.ToString("0.0") + " long (" + (nearEnd ? "near" : "far") + " end, top " +
                    (topSign > 0 ? "+Y" : "-Y") + ")";
@@ -2381,6 +2382,7 @@ namespace TimberDraw
             public string BentTag;     // XData "BentNumber" (Arabic; blank on free timbers)
             public string WallTag;     // XData "WallTag" (letter; blank on cross members)
             public string BayTag;      // XData "BayTag" (Roman)
+            public string FloorTag;    // XData "FloorTag" (digits, floor level bottom-up; joists/summers)
             public string Designation; // generic role designation (fallback label)
             public string Layer;       // the solid's group layer (TM_<frame>_Bent<n> / _Wall<x>) -- the
                                        // emitter's own bent/wall grouping (authoritative; bay braces too)
@@ -2407,6 +2409,7 @@ namespace TimberDraw
                         BentTag     = ReadXTextField(tr, ent, "BentNumber"),
                         WallTag     = ReadXTextField(tr, ent, "WallTag"),
                         BayTag      = ReadXTextField(tr, ent, "BayTag"),
+                        FloorTag    = ReadXTextField(tr, ent, "FloorTag"),
                         Designation = ReadXTextField(tr, ent, "Designation"),
                         Layer       = ent.Layer
                     });
@@ -3146,11 +3149,16 @@ namespace TimberDraw
                             " roll " + (angle * 180.0 / Math.PI).ToString("0.#") + " deg (" + id.Handle + ").");
         }
 
-        // Assign freely-placed timbers to the frame's organization grid: pick one or more managed
-        // timbers, then say which FRAME + owner (Bent N or Wall X, with an optional Bay for a wall).
-        // Writes the grouping tags as an IN-PLACE XData patch -- the solid is NOT rebuilt (no erase/
-        // redraw, same handle) -- so the Browser regroups them on Refresh. A wall exists the moment a
-        // timber claims its letter (walls are implicit organizational labels).
+        // Assign freely-placed timbers to the frame's organization HIERARCHY:
+        //   Frame -> Bent N -> members | Wall X -> Bay -> members | Floor N -> members
+        // Pick one or more managed timbers, then say which frame + owner -- or set the target on the
+        // TPanel Assembly group first and the command runs promptless (ManagedAssembly). Floor is the
+        // owner of floor-system members (joists, summers), numbered bottom-up (1 = first). Writes the grouping
+        // tags as an IN-PLACE XData patch -- the solid is NOT rebuilt (no erase/redraw, same handle)
+        // -- so the Browser regroups them on Refresh. A wall/floor exists the moment a timber claims
+        // it (implicit organizational labels). Repetitive free families (Joist, Summer) also get their
+        // owner-addressed GridLabel minted here (J-<floor>-1..n in run order, continuing after the
+        // group's existing numbering) -- the label conventions' free-timber scheme.
         [CommandMethod("TAssign")]
         public static void AssignToFrame()
         {
@@ -3159,62 +3167,120 @@ namespace TimberDraw
             Editor ed = doc.Editor;
             Database db = doc.Database;
 
-            // Select solids (honors a pickfirst set), then keep only MANAGED timbers (frame xrecord).
-            var filter = new SelectionFilter(new[] { new TypedValue((int)DxfCode.Start, "3DSOLID") });
-            var pso = new PromptSelectionOptions { MessageForAdding = "\nSelect timbers to assign: " };
-            PromptSelectionResult sel = ed.GetSelection(pso, filter);
-            if (sel.Status != PromptStatus.OK) return;
+            // Targets: a pane handoff (the Frame Browser's selected rows, consumed ONCE) or an
+            // interactive selection (honors a pickfirst set). Either way only MANAGED timbers
+            // (frame xrecord) survive; stale browser rows (erased handles) are skipped.
+            List<ObjectId> picked = ManagedAssembly.TakeIds();
+            if (picked == null)
+            {
+                var filter = new SelectionFilter(new[] { new TypedValue((int)DxfCode.Start, "3DSOLID") });
+                var pso = new PromptSelectionOptions { MessageForAdding = "\nSelect timbers to assign: " };
+                PromptSelectionResult sel = ed.GetSelection(pso, filter);
+                if (sel.Status != PromptStatus.OK) return;
+                picked = new List<ObjectId>(sel.Value.GetObjectIds());
+            }
 
             var ids = new List<ObjectId>();
+            var frames = new Dictionary<ObjectId, ManagedTimber.TFrame>();
             int skipped = 0;
-            foreach (ObjectId id in sel.Value.GetObjectIds())
+            foreach (ObjectId id in picked)
             {
-                if (ManagedTimber.TryReadFrame(db, id, out _)) ids.Add(id);
+                if (!id.IsNull && !id.IsErased
+                    && ManagedTimber.TryReadFrame(db, id, out ManagedTimber.TFrame f)) { ids.Add(id); frames[id] = f; }
                 else skipped++;
             }
             if (ids.Count == 0) { ed.WriteMessage("\nNo managed timbers in the selection."); return; }
 
-            // Frame tag: default to the first selected timber's existing frame, else "A".
-            string defFrame = "A";
-            Module1.DataStructure first = Module1.GetXdata(ids[0]);
-            if (first != null && !string.IsNullOrEmpty(first.FrameTag)) defFrame = first.FrameTag;
-            PromptResult fr = ed.GetString(
-                new PromptStringOptions("\nFrame tag: ") { DefaultValue = defFrame, AllowSpaces = false });
-            if (fr.Status != PromptStatus.OK) return;
-            string frame = string.IsNullOrWhiteSpace(fr.StringResult) ? defFrame : fr.StringResult.Trim();
-
-            // Owner kind: a numbered bent or a lettered wall.
-            var pko = new PromptKeywordOptions("\nAssign as");   // API appends "[Bent/Wall] <Bent>:"
-            pko.Keywords.Add("Bent");
-            pko.Keywords.Add("Wall");
-            pko.Keywords.Default = "Bent";
-            PromptResult kr = ed.GetKeywords(pko);
-            if (kr.Status != PromptStatus.OK) return;
-
-            string bentTag = "", wallTag = "", bayTag = "";
-            if (kr.StringResult == "Bent")
+            // The palette's Assembly pane supplies the target SILENTLY when it is set (the pane is
+            // the command's visibility -- the ManagedSection pattern); the command-line prompts
+            // below remain for a console-driven assign or an unparseable pane value.
+            string frame = null;
+            string bentTag = "", wallTag = "", bayTag = "", floorTag = "", colTag = "";
+            if (ManagedAssembly.HasCurrent)
             {
-                PromptIntegerResult br = ed.GetInteger(new PromptIntegerOptions("\nBent number: ")
-                { DefaultValue = 1, LowerLimit = 1, AllowNegative = false, AllowZero = false });
-                if (br.Status != PromptStatus.OK) return;
-                bentTag = br.Value.ToString();   // bent member -> no wall / no bay
+                string owner = ManagedAssembly.Owner;
+                switch (ManagedAssembly.Kind)
+                {
+                    case "Bent":
+                        // Owner box = the bent number ("2", or typed intersection "2C"); the pane's
+                        // second coordinate box supplies the column letter -- together the grid
+                        // intersection a free post stands on.
+                        SplitIntersection(owner, out string pb, out string pc);
+                        if (pb.Length > 0)
+                        {
+                            bentTag = pb;
+                            colTag = pc.Length > 0 ? pc : LettersOnly(ManagedAssembly.Bay);
+                        }
+                        break;
+                    case "Wall":
+                        if (owner.Length > 0 && char.IsLetter(owner[0]))
+                        { wallTag = owner.ToUpperInvariant(); bayTag = ManagedAssembly.Bay.ToUpperInvariant(); }
+                        break;
+                    case "Floor":
+                        if (int.TryParse(owner, out int fn) && fn > 0) floorTag = fn.ToString();
+                        break;
+                }
+                if (bentTag.Length + wallTag.Length + floorTag.Length > 0) frame = ManagedAssembly.FrameTag;
             }
-            else
-            {
-                PromptResult wr = ed.GetString(
-                    new PromptStringOptions("\nWall letter: ") { DefaultValue = "A", AllowSpaces = false });
-                if (wr.Status != PromptStatus.OK) return;
-                wallTag = (string.IsNullOrWhiteSpace(wr.StringResult) ? "A" : wr.StringResult.Trim()).ToUpperInvariant();
 
-                PromptResult yr = ed.GetString(
-                    new PromptStringOptions("\nBay (Roman numeral, blank for none): ") { AllowSpaces = false });
-                if (yr.Status != PromptStatus.OK) return;
-                bayTag = (yr.StringResult ?? "").Trim().ToUpperInvariant();
+            if (frame == null)
+            {
+                // Frame tag: default to the first selected timber's existing frame, else "A".
+                string defFrame = "A";
+                Module1.DataStructure first = Module1.GetXdata(ids[0]);
+                if (first != null && !string.IsNullOrEmpty(first.FrameTag)) defFrame = first.FrameTag;
+                PromptResult fr = ed.GetString(
+                    new PromptStringOptions("\nFrame tag: ") { DefaultValue = defFrame, AllowSpaces = false });
+                if (fr.Status != PromptStatus.OK) return;
+                frame = string.IsNullOrWhiteSpace(fr.StringResult) ? defFrame : fr.StringResult.Trim();
+
+                // Owner kind: a numbered bent, a lettered wall (-> optional bay), or a numbered floor.
+                var pko = new PromptKeywordOptions("\nAssign as");   // API appends "[Bent/Wall/Floor] <Bent>:"
+                pko.Keywords.Add("Bent");
+                pko.Keywords.Add("Wall");
+                pko.Keywords.Add("Floor");
+                pko.Keywords.Default = "Bent";
+                PromptResult kr = ed.GetKeywords(pko);
+                if (kr.Status != PromptStatus.OK) return;
+
+                if (kr.StringResult == "Bent")
+                {
+                    // A bare number owns the timber ("2"); a grid INTERSECTION ("2C") also stamps the
+                    // post-style GridLabel -- how a free post joins the frame at bent 2 x wall C.
+                    PromptResult br = ed.GetString(new PromptStringOptions(
+                        "\nBent number (or intersection, e.g. 2C): ") { DefaultValue = "1", AllowSpaces = false });
+                    if (br.Status != PromptStatus.OK) return;
+                    SplitIntersection(br.StringResult, out bentTag, out colTag);
+                    if (bentTag.Length == 0) { ed.WriteMessage("\nTAssign: a bent must lead with its number."); return; }
+                }
+                else if (kr.StringResult == "Wall")
+                {
+                    PromptResult wr = ed.GetString(
+                        new PromptStringOptions("\nWall letter: ") { DefaultValue = "A", AllowSpaces = false });
+                    if (wr.Status != PromptStatus.OK) return;
+                    wallTag = (string.IsNullOrWhiteSpace(wr.StringResult) ? "A" : wr.StringResult.Trim()).ToUpperInvariant();
+
+                    PromptResult yr = ed.GetString(
+                        new PromptStringOptions("\nBay (Roman numeral, blank for none): ") { AllowSpaces = false });
+                    if (yr.Status != PromptStatus.OK) return;
+                    bayTag = (yr.StringResult ?? "").Trim().ToUpperInvariant();
+                }
+                else   // Floor: floor-system members (joists, summers), level numbered bottom-up
+                {
+                    PromptIntegerResult lr = ed.GetInteger(new PromptIntegerOptions("\nFloor number (1 = first): ")
+                    { DefaultValue = 1, LowerLimit = 1, AllowNegative = false, AllowZero = false });
+                    if (lr.Status != PromptStatus.OK) return;
+                    floorTag = lr.Value.ToString();
+                }
             }
+
+            // Owner-addressed labels for the repetitive free families (Joist -> J-1-1..): minted in
+            // run order before the patch so the loop below writes tags + label in one SetXdata.
+            Dictionary<ObjectId, string> mint = MintOwnerLabels(db, ids, frames, bentTag, wallTag, bayTag, floorTag);
 
             // In-place XData patch (no rebuild): set the grouping tags on each timber + move it to the
-            // group layer so it isolates with its bent/wall.
-            string groupLayer = ManagedTimber.GroupLayer(frame, bentTag, wallTag);
+            // group layer so it isolates with its bent/wall/floor.
+            string groupLayer = ManagedTimber.GroupLayer(frame, bentTag, wallTag, floorTag);
             int n = 0;
             using (doc.LockDocument())
             using (Transaction tr = db.TransactionManager.StartTransaction())
@@ -3232,15 +3298,118 @@ namespace TimberDraw
                 xd.BentNumber = bentTag;
                 xd.WallTag = wallTag;
                 xd.BayTag = bayTag;
+                xd.FloorTag = floorTag;
+                if (mint.TryGetValue(id, out string label)) xd.GridLabel = label;
+                else if (colTag.Length > 0)
+                {
+                    // Grid intersection, TYPE-FIRST like the emitter (P-2C beside the skeleton's
+                    // KP-2C -- distinct labels, so the shop-map dedup labels both).
+                    BentLabelFamilies.TryGetValue(xd.Type ?? "", out string fam);
+                    xd.GridLabel = (string.IsNullOrEmpty(fam) ? "" : fam + "-") + bentTag + colTag;
+                }
                 Module1.SetXdata(id, xd);
                 n++;
             }
 
             string target = bentTag.Length > 0
-                ? "Bent " + bentTag
-                : "Wall " + wallTag + (bayTag.Length > 0 ? " / Bay " + bayTag : "");
+                ? "Bent " + bentTag + (colTag.Length > 0 ? " (grid " + bentTag + colTag + ")" : "")
+                : wallTag.Length > 0 ? "Wall " + wallTag + (bayTag.Length > 0 ? " / Bay " + bayTag : "")
+                : "Floor " + floorTag;
             ed.WriteMessage("\nTAssign: " + n + " timber(s) -> Frame " + frame + " / " + target
+                + (mint.Count > 0 ? " (" + mint.Count + " label(s) minted)" : "")
                 + (skipped > 0 ? " (skipped " + skipped + " non-managed)" : "") + ".");
+            ManagedAssembly.RaiseApplied();   // an open Frame Browser refreshes its rows
+        }
+
+        // The free families TAssign mints owner-addressed labels for (label grammar FAM-OWNER-SEQ;
+        // hierarchy: floor-system members belong to their FLOOR -> J-1-1..n). Editor-local map -- the
+        // generator's FamilyCode table stays on its side of the boundary.
+        private static readonly Dictionary<string, string> OwnerLabelFamilies =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            { { "Joist", "J" }, { "Summer", "SB" } };
+
+        // Bent family codes for the grid-intersection mint (P-2C, KP-2C) -- the editor-local mirror of
+        // the generator's BentFamilyCode (the boundary keeps the tables separate on purpose). Unknown
+        // roles mint the bare anchor.
+        private static readonly Dictionary<string, string> BentLabelFamilies =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            { { "Post", "P" }, { "KingPost", "KP" }, { "QueenPost", "QP" }, { "Rafter", "RF" },
+              { "Strut", "ST" }, { "VStrut", "VS" }, { "HBeam", "HB" }, { "HPost", "HP" } };
+
+        // Mint FAM-<owner>-<seq> GridLabels for the selected family members. Owner preference: floor,
+        // else bay, else wall, else bent. Sequence runs ALONG THE ROW (midpoints sorted on the
+        // horizontal direction across the members, oriented +X/+Y so numbering is reproducible) and
+        // continues after the highest existing sequence in the same group among UNSELECTED timbers --
+        // so adding a second field to a floor extends the count, while re-assigning the whole field
+        // renumbers it.
+        private static Dictionary<ObjectId, string> MintOwnerLabels(Database db, List<ObjectId> ids,
+            Dictionary<ObjectId, ManagedTimber.TFrame> frames, string bentTag, string wallTag, string bayTag,
+            string floorTag)
+        {
+            var mint = new Dictionary<ObjectId, string>();
+            string owner = floorTag.Length > 0 ? floorTag
+                : bayTag.Length > 0 ? bayTag : wallTag.Length > 0 ? wallTag : bentTag;
+            if (owner.Length == 0) return mint;
+
+            var byFam = new Dictionary<string, List<ObjectId>>(StringComparer.Ordinal);
+            foreach (ObjectId id in ids)
+            {
+                Module1.DataStructure xd = Module1.GetXdata(id);
+                if (xd == null || string.IsNullOrEmpty(xd.Type)) continue;
+                if (!OwnerLabelFamilies.TryGetValue(xd.Type, out string fam)) continue;
+                if (!byFam.TryGetValue(fam, out var list)) byFam[fam] = list = new List<ObjectId>();
+                list.Add(id);
+            }
+            if (byFam.Count == 0) return mint;
+
+            List<ManagedTimber.ShopInfo> all = ManagedTimber.EnumerateForShop(db);
+            var selected = new HashSet<ObjectId>(ids);
+            foreach (var kv in byFam)
+            {
+                string prefix = kv.Key + "-" + owner + "-";
+                int next = 1;
+                foreach (var t in all)
+                {
+                    if (selected.Contains(t.Id)) continue;
+                    string gl = t.GridLabel ?? "";
+                    if (!gl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+                    if (int.TryParse(gl.Substring(prefix.Length), out int seq) && seq >= next) next = seq + 1;
+                }
+
+                Vector3d run = Vector3d.ZAxis.CrossProduct(frames[kv.Value[0]].Z);
+                if (run.Length < 1e-6) run = Vector3d.XAxis;         // vertical member: any stable order
+                run = run.GetNormal();
+                if (run.X < -1e-9 || (Math.Abs(run.X) < 1e-9 && run.Y < 0)) run = -run;
+                kv.Value.Sort((a, b) => MidAlong(frames[a], run).CompareTo(MidAlong(frames[b], run)));
+                foreach (ObjectId id in kv.Value) mint[id] = prefix + (next++);
+            }
+            return mint;
+        }
+
+        private static double MidAlong(ManagedTimber.TFrame f, Vector3d dir)
+            => (f.O + f.Z * (f.L / 2.0)).GetAsVector().DotProduct(dir);
+
+        // A 1-2 letter column string, uppercased; anything else -> "".
+        private static string LettersOnly(string s)
+        {
+            s = (s ?? "").Trim().ToUpperInvariant();
+            if (s.Length == 0 || s.Length > 2) return "";
+            foreach (char c in s) if (!char.IsLetter(c)) return "";
+            return s;
+        }
+
+        // "2C" -> bent "2" + column "C"; "2" -> bent "2", no column; "1.1B" -> "1.1" + "B" (sub-bent
+        // lines carry dots). Digits lead, a 1-2 letter column may trail; anything else parses empty.
+        private static void SplitIntersection(string s, out string bent, out string col)
+        {
+            s = (s ?? "").Trim().ToUpperInvariant();
+            int i = 0;
+            while (i < s.Length && (char.IsDigit(s[i]) || s[i] == '.')) i++;
+            bent = s.Substring(0, i);
+            col = s.Substring(i);
+            foreach (char c in col)
+                if (!char.IsLetter(c)) { col = ""; break; }
+            if (col.Length > 2 || bent.Length == 0) col = "";
         }
 
         // Span two timbers: pick two managed timbers; the facing faces are found from their stored
@@ -3269,12 +3438,21 @@ namespace TimberDraw
             Vector3d off = (fb.C - fa.C) - (fb.C - fa.C).DotProduct(fa.N) * fa.N;
             Point3d origin = fa.C + off * 0.5;
 
+            // DEPTH rides the more-vertical in-plane axis. On post sides the rail (fa.U = the host's
+            // length axis) is vertical and depth lies on it (a girt between posts); on girt sides the
+            // rail is horizontal and depth lies on fa.V (a summer between bent girts) -- the fixed
+            // fa.U assignment was rolling that section 90 degrees.
+            bool railVertical = Math.Abs(fa.U.GetNormal().DotProduct(Vector3d.ZAxis))
+                             >= Math.Abs(fa.V.GetNormal().DotProduct(Vector3d.ZAxis));
+            Vector3d dAxis = railVertical ? fa.U : fa.V;
+            Vector3d wAxis = railVertical ? fa.V : fa.U;
+
             // Ghost the span and let the user set its height along the post rail, measured from the UCS
             // origin (datum s=0 = base). The girt's Center/Bottom/Top face lands on that line. The drag
             // loop handles the live keywords; a pick commits. Height is picked in an elevation UCS (or
             // typed via the Height keyword) -- in Plan UCS a pick can't read height, so warn.
             CoordinateSystem3d ucs = ed.CurrentUserCoordinateSystem.CoordinateSystem3d;
-            var jig = new SpanJig(origin, fa, gap, d, w, ucs.Origin);
+            var jig = new SpanJig(origin, fa, gap, railVertical ? d : w, railVertical ? w : d, ucs.Origin);
             bool canPickHeight = Math.Abs(fa.U.GetNormal().DotProduct(ucs.Zaxis.GetNormal())) < 0.5;
             if (!canPickHeight)
                 ed.WriteMessage("\nTip: a pick can't set the height in this UCS (post is end-on) -- " +
@@ -3299,7 +3477,7 @@ namespace TimberDraw
                 break;
             }
 
-            ObjectId id = ManagedTimber.DrawBox(jig.Origin, fa.N, fa.U, fa.V, gap, d, w, type, "", "matchface", "matchface");
+            ObjectId id = ManagedTimber.DrawBox(jig.Origin, fa.N, dAxis, wAxis, gap, d, w, type, "", "matchface", "matchface");
             ed.WriteMessage("\nTSpan: " + type + " " + (int)w + "x" + (int)d + "x" + gap.ToString("0.#") +
                             " " + jig.Mode + " @ height " + jig.LineY.ToString("0.#") + " (" + id.Handle + ").");
         }
@@ -3331,12 +3509,17 @@ namespace TimberDraw
             ObjectId id;
             if (facing < -0.99)
             {
-                // Opposing-parallel: square-ended span filling the perpendicular gap, centred on the overlap.
+                // Opposing-parallel: square-ended span filling the perpendicular gap, centred on the
+                // overlap. Depth rides the more-vertical in-plane axis (same rule as TSpan -- a fixed
+                // fa.U assignment rolled the section 90 degrees on girt-side spans).
                 double gap = (fb.C - fa.C).DotProduct(fa.N);
                 if (gap <= 1e-6) { ed.WriteMessage("\nNo positive gap between the faces."); return; }
                 Vector3d off = (fb.C - fa.C) - gap * fa.N;
                 Point3d origin = fa.C + off * 0.5;
-                id = ManagedTimber.DrawBox(origin, fa.N, fa.U, fa.V, gap, d, w, type, "", "butt", "butt");
+                bool railVertical = Math.Abs(fa.U.GetNormal().DotProduct(Vector3d.ZAxis))
+                                 >= Math.Abs(fa.V.GetNormal().DotProduct(Vector3d.ZAxis));
+                id = ManagedTimber.DrawBox(origin, fa.N, railVertical ? fa.U : fa.V,
+                                           railVertical ? fa.V : fa.U, gap, d, w, type, "", "butt", "butt");
                 ed.WriteMessage("\nTJoin (square): " + type + " " + (int)w + "x" + (int)d + "x" + gap.ToString("0.#") +
                                 " (" + id.Handle + ").");
             }
@@ -4691,7 +4874,7 @@ namespace TimberDraw
             if (!ApplyPurlinJoint(db, puId, ref purlin, rId, ref rafter, _purlin,
                     out ObjectId npu, out ObjectId nr, out int jid, out string diag))
             { ed.WriteMessage("\nNothing to cut -- " + diag + "."); return; }
-            StampJoint(npu, nr, jid, ConnectionType.PurlinDovetail(_purlin));
+            StampJoint(npu, nr, jid, ConnectionType.HousedDovetail(_purlin));
             ed.WriteMessage("\n[diag] " + diag);
             ed.WriteMessage("\nTPurlin: joint #" + jid + " cut -- " + diag +
                             " (purlin " + npu.Handle + ", rafter " + nr.Handle + ").");
@@ -4727,7 +4910,7 @@ namespace TimberDraw
             while (true)
             {
                 var pko = new PromptKeywordOptions(
-                    "\nPurlin dovetail -- Seat=" + _purlin.Seat + " Length=" + _purlin.Length +
+                    "\nHoused dovetail -- Seat=" + _purlin.Seat + " Length=" + _purlin.Length +
                     " Width=" + _purlin.Width + " Depth=" + _purlin.Depth + " Angle=" + _purlin.Angle + ". ")
                 { AllowNone = true };
                 pko.Keywords.Add("Cut");
@@ -5442,14 +5625,18 @@ namespace TimberDraw
             target.BooleanOperation(BooleanOperationType.BoolUnite, box);
         }
 
-        // Width / Depth / type for a new member. When the palette has a current section active
-        // (ManagedSection), use it with no prompts; otherwise prompt at the command line as before.
         // Fill a rectangle with flat floor JOISTS by FOUR face picks: the two facing SPAN faces (the
-        // bearing girts the joists run flush between) + the two DISTRIBUTION faces (the run bounds),
-        // then Count or center Spacing. Each joist is a flat box hung flush between the span faces
-        // (square ends -> TScan finds the seat nodes), arrayed along the run. Joists are left untagged
-        // -- TAssign the field to its wall afterward. (Joist = the pitch-0 case of a future generalized
-        // purlin/common/joist array.)
+        // carriers -- girt / summer / sill sides -- the joists run flush between) + the two
+        // DISTRIBUTION faces (the run bounds), then Count or center Spacing. Each joist is a flat box
+        // hung between the span faces (square ends -> TScan finds the seat nodes), arrayed along the
+        // run, with its TOP FLUSH with the carrier tops (the dropped-in dovetail arrangement) minus
+        // the sticky Drop (recessed-deck practice; 0 = flush). Role is always "Joist" (the verb IS the
+        // family -- the palette section supplies W/D only) so role-keyed systems see the field. Joists
+        // are left untagged -- TAssign the field to its FLOOR afterward (which also mints the
+        // J-<floor>-n labels). (Joist = the pitch-0 case of a future generalized purlin/common/joist
+        // array.)
+        private static double _joistDrop = 0.0;   // session-sticky Drop below the carrier tops
+
         [CommandMethod("TJoist")]
         public static void Joists()
         {
@@ -5458,7 +5645,19 @@ namespace TimberDraw
             Editor ed = doc.Editor;
             Database db = doc.Database;
 
-            if (!GetSection(ed, out double w, out double d, out string type)) return;
+            // W/D from the palette section (or prompts); the role is fixed -- no type prompt.
+            const string type = "Joist";
+            double w, d;
+            if (ManagedSection.HasCurrent)
+            {
+                w = ManagedSection.Width; d = ManagedSection.Depth;
+                ed.WriteMessage("\nSection: " + (int)w + "x" + (int)d + " (palette).");
+            }
+            else
+            {
+                if (!GetPositive(ed, "Width", 8.0, out w)) return;
+                if (!GetPositive(ed, "Depth", 10.0, out d)) return;
+            }
 
             // Span pair: the two facing bearing faces the joists run between.
             if (!ManagedTimber.PickFace(ed, db, "\nPick the FIRST span (bearing) face: ", out _, out ManagedTimber.TFace fa)) return;
@@ -5480,6 +5679,15 @@ namespace TimberDraw
             else
             { depthAxis = fa.V.GetNormal(); runDir = fa.U.GetNormal(); }
 
+            // FLUSH TOPS: joist top = carrier top (a full side face's upper edge IS the carrier top),
+            // minus the sticky Drop. Unequal carriers take the lower top so no joist stands proud.
+            Vector3d vUp = depthAxis.DotProduct(up) >= 0 ? depthAxis : -depthAxis;
+            double topA = FaceTop(fa, vUp), topB = FaceTop(fb, vUp);
+            double top = System.Math.Min(topA, topB);
+            if (System.Math.Abs(topA - topB) > 0.01)
+                ed.WriteMessage("\nCarrier tops differ by " + System.Math.Abs(topA - topB).ToString("0.###")
+                                + "\" -- using the lower.");
+
             // Distribution pair: the run bounds, projected onto runDir.
             if (!ManagedTimber.PickFace(ed, db, "\nPick the FIRST distribution (run-bound) face: ", out _, out ManagedTimber.TFace fc)) return;
             if (!ManagedTimber.PickFace(ed, db, "\nPick the SECOND distribution (run-bound) face: ", out _, out ManagedTimber.TFace fd)) return;
@@ -5490,15 +5698,24 @@ namespace TimberDraw
             if (L <= 1e-6) { ed.WriteMessage("\nThe distribution faces don't bound a run along the floor."); return; }
 
             // Count (N even, end-inset) or on-center Spacing (default 36", centered in the run).
-            var pko = new PromptKeywordOptions("\nDistribute by");
-            pko.Keywords.Add("Count");
-            pko.Keywords.Add("Spacing");
-            pko.Keywords.Default = "Spacing";
-            PromptResult kr = ed.GetKeywords(pko);
-            if (kr.Status != PromptStatus.OK) return;
+            // Drop edits the sticky top recess (0 = flush tops) and re-asks.
+            string mode;
+            for (; ; )
+            {
+                var pko = new PromptKeywordOptions("\nDistribute by");
+                pko.Keywords.Add("Count");
+                pko.Keywords.Add("Spacing");
+                pko.Keywords.Add("Drop");
+                pko.Keywords.Default = "Spacing";
+                PromptResult kr = ed.GetKeywords(pko);
+                if (kr.Status != PromptStatus.OK) return;
+                if (kr.StringResult != "Drop") { mode = kr.StringResult; break; }
+                if (!GetDouble(ed, "Drop below carrier tops", _joistDrop, false, out double dr)) return;
+                _joistDrop = System.Math.Max(0.0, dr);
+            }
 
             var stations = new List<double>();
-            if (kr.StringResult == "Count")
+            if (mode == "Count")
             {
                 var io = new PromptIntegerOptions("\nNumber of joists: ")
                 { DefaultValue = 5, LowerLimit = 1, AllowNegative = false, AllowZero = false };
@@ -5520,8 +5737,9 @@ namespace TimberDraw
                 for (int k = 0; k < N; k++) stations.Add(first + k * S);
             }
 
-            // Place each joist: shift the lateral center to the run station; box runs `gap` along fa.N,
-            // d deep (vertical), w wide (along the run).
+            // Place each joist: shift the lateral center to the run station and lift the section so
+            // its top sits at (carrier top - Drop); box runs `gap` along fa.N, d deep, w wide.
+            cL += vUp * ((top - _joistDrop - d / 2.0) - cL.GetAsVector().DotProduct(vUp));
             double baseRun = cL.GetAsVector().DotProduct(runDir);
             int drawn = 0;
             foreach (double s in stations)
@@ -5531,9 +5749,18 @@ namespace TimberDraw
                 drawn++;
             }
             ed.WriteMessage("\nTJoist: " + drawn + " " + type + " " + (int)w + "x" + (int)d + "x" +
-                            gap.ToString("0.#") + " -- TAssign them to the wall.");
+                            gap.ToString("0.#") + (_joistDrop > 0 ? " dropped " + _joistDrop.ToString("0.###") + "\"" : ", tops flush")
+                            + " -- TAssign the field to its floor for J-labels.");
         }
 
+        // Highest reach of a rectangular face along an up axis: center + both projected half-extents.
+        private static double FaceTop(ManagedTimber.TFace f, Vector3d vUp)
+            => f.C.GetAsVector().DotProduct(vUp)
+               + System.Math.Abs(f.U.GetNormal().DotProduct(vUp)) * f.UHalf
+               + System.Math.Abs(f.V.GetNormal().DotProduct(vUp)) * f.VHalf;
+
+        // Width / Depth / type for a new member. When the palette has a current section active
+        // (ManagedSection), use it with no prompts; otherwise prompt at the command line as before.
         private static bool GetSection(Editor ed, out double w, out double d, out string type)
         {
             if (ManagedSection.HasCurrent)

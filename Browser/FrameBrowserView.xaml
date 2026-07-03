@@ -50,10 +50,44 @@
             </Grid>
         </Border>
 
-        <!-- Timber list, grouped Frame -> Owner (bents then walls) -> Bay; selecting a row zooms -->
-        <ListView ItemsSource="{Binding Timbers}"
+        <!-- Assembly: assign the selected row(s) to Frame > Bent / Wall+Bay / Floor (TAssign).
+             Selecting a single row LOADS its current assembly here (the review side). -->
+        <Border DockPanel.Dock="Bottom" BorderBrush="#CCC" BorderThickness="0,1,0,0"
+                Padding="0,6,0,0" Margin="0,6,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="34"/>
+                    <ColumnDefinition Width="70"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="40"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Frame" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                <TextBox   Grid.Column="1" Margin="0,0,6,0"
+                           Text="{Binding AsmFrame, UpdateSourceTrigger=PropertyChanged}"/>
+                <ComboBox  Grid.Column="2" Margin="0,0,6,0"
+                           ItemsSource="{Binding AsmKinds}" SelectedItem="{Binding AsmKind}"/>
+                <TextBox   Grid.Column="3" Margin="0,0,6,0"
+                           Text="{Binding AsmOwner, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBlock Grid.Column="4" Text="{Binding AsmExtraLabel}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                <TextBox   Grid.Column="5" Margin="0,0,6,0" IsEnabled="{Binding AsmExtraEnabled}"
+                           Text="{Binding AsmBay, UpdateSourceTrigger=PropertyChanged}"/>
+                <Button    Grid.Column="6" Content="Assign" Padding="10,2"
+                           Command="{Binding AssignCommand}"/>
+            </Grid>
+        </Border>
+
+        <!-- Timber list, grouped Frame -> Owner (bents, walls, floors) -> Bay. Selecting rows
+             grip-highlights them in the drawing (no view change) and loads the last-picked row's
+             assembly; double-click zooms; ctrl/shift multi-select feeds Assign. -->
+        <ListView x:Name="TimberList"
+                  ItemsSource="{Binding Timbers}"
                   SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
-                  IsSynchronizedWithCurrentItem="True">
+                  IsSynchronizedWithCurrentItem="True"
+                  SelectionChanged="TimberList_SelectionChanged"
+                  MouseDoubleClick="TimberList_MouseDoubleClick">
             <ListView.GroupStyle>
                 <!-- Level 0: Frame header (bold). -->
                 <GroupStyle>

@@ -90,14 +90,22 @@ namespace TimberDraw
                 return;
             }
 
-            // Braces come in identical groups (one cut mark, many instances). Export ONE set of
-            // drawings per UNIQUE brace (role + section + length + group symbol), not one per stick.
-            int braceDup = 0;
-            var braceSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            // Repetitive families (braces, joists, commons, purlins) come in identical groups (one cut
+            // mark, many instances). Export ONE set of drawings per UNIQUE geometry within a family --
+            // the first stick stands for the group and carries its COUNT (in the stem + the echo).
+            int repDup = 0;
+            var repCount = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);  // sig -> instances
+            var repSig = new Dictionary<ObjectId, string>();                               // representative -> sig
             var dedup = new List<ManagedTimber.ShopInfo>();
             foreach (var t in chosen)
             {
-                if (IsBrace(t.Role) && !braceSeen.Add(BraceSig(t))) { braceDup++; continue; }
+                if (RepFamily(t.Role) is string fam)
+                {
+                    string sig = fam + "|" + GeomSig(t);
+                    if (repCount.TryGetValue(sig, out int c)) { repCount[sig] = c + 1; repDup++; continue; }
+                    repCount[sig] = 1;
+                    repSig[t.Id] = sig;
+                }
                 dedup.Add(t);
             }
             chosen = dedup;
@@ -178,10 +186,14 @@ namespace TimberDraw
                         continue;
                     }
 
-                    // Braces get a readable shared stem (their group symbol sanitizes to nothing);
-                    // other timbers key off their grid label. Collisions get a distinguishing suffix.
-                    string stem = IsBrace(t.Role)
-                        ? ScribeTsj.Sanitise($"Brace_{Math.Round(t.F.W)}x{Math.Round(t.F.D)}")
+                    // Repetitive families get a readable shared stem carrying the group COUNT (a
+                    // brace's group symbol sanitizes to nothing; a deduped joist's J-1-1 would mislead
+                    // -- the file stands for the whole group: "cut this many"); other timbers key off
+                    // their grid label. Collisions get a suffix.
+                    int repN = repSig.TryGetValue(t.Id, out string sig) ? repCount[sig] : 1;
+                    string stem = RepFamily(t.Role) is string repFam
+                        ? ScribeTsj.Sanitise($"{repFam}_{Math.Round(t.F.W)}x{Math.Round(t.F.D)}"
+                                             + (repN > 1 ? $"_x{repN}" : ""))
                         : ScribeTsj.Sanitise(sheet.Id);
                     if (usedStems.TryGetValue(stem, out int n)) { usedStems[stem] = n + 1; stem += "_" + (n + 1); }
                     else usedStems[stem] = 1;
@@ -192,7 +204,8 @@ namespace TimberDraw
                         files++;
                     }
                     int dims = withMarks.Sum(fc => fc.DimCount);
-                    ed.WriteMessage($"\n  {Label(t)}: faces {string.Join(",", withMarks.Select(fc => fc.Number))}" +
+                    ed.WriteMessage($"\n  {Label(t)}{(repN > 1 ? $" (x{repN} identical)" : "")}:" +
+                                    $" faces {string.Join(",", withMarks.Select(fc => fc.Number))}" +
                                     $" ({withMarks.Sum(fc => fc.VisibleCount) - dims} marks + {dims} dims) -> {stem}_face*.tsj");
                 }
             }
@@ -203,18 +216,26 @@ namespace TimberDraw
 
             ed.WriteMessage($"\nScribe export: {files} .tsj file(s) from {chosen.Count - skipped} timber(s)" +
                             (skipped > 0 ? $" ({skipped} skipped)" : "") +
-                            (braceDup > 0 ? $" ({braceDup} duplicate brace instance(s) collapsed)" : "") +
+                            (repDup > 0 ? $" ({repDup} identical repeated member(s) collapsed)" : "") +
                             $"\n  -> {folder}");
         }
 
-        private static bool IsBrace(string role) =>
-            !string.IsNullOrEmpty(role) && role.IndexOf("brace", StringComparison.OrdinalIgnoreCase) >= 0;
+        // The repetitive families: many identical sticks share one cut mark, so the export collapses
+        // them. Role VARIANTS inside a family are deliberately merged (a bent brace and a bay brace of
+        // the same size are the same cut) -- geometry is the reliable key, the family just keeps, say,
+        // a brace from merging with a joist of the same dimensions.
+        private static string RepFamily(string role)
+        {
+            if (string.IsNullOrEmpty(role)) return null;
+            if (role.IndexOf("brace", StringComparison.OrdinalIgnoreCase) >= 0) return "Brace";
+            if (role.IndexOf("joist", StringComparison.OrdinalIgnoreCase) >= 0) return "Joist";
+            if (role.IndexOf("common", StringComparison.OrdinalIgnoreCase) >= 0) return "Common";
+            if (role.IndexOf("purlin", StringComparison.OrdinalIgnoreCase) >= 0) return "Purlin";
+            return null;
+        }
 
-        // Identity of a UNIQUE brace: its GEOMETRY -- section + length (to the nearest 1/2"). Role and
-        // the group symbol are deliberately ignored: a bent brace and a bay brace of the same size are
-        // the same cut, and the symbol is sometimes blank, so geometry is the reliable key. Identical
-        // braces collapse to one set of drawings.
-        private static string BraceSig(ManagedTimber.ShopInfo t) =>
+        // Identity of a unique stick within a family: section + length to the nearest 1/2".
+        private static string GeomSig(ManagedTimber.ShopInfo t) =>
             $"{Math.Round(t.F.W)}x{Math.Round(t.F.D)}x{Math.Round(t.F.L * 2.0) / 2.0}";
 
         // Output folder, defaulting next to the drawing (or Documents for an unsaved one).

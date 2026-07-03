@@ -229,7 +229,7 @@ namespace TimberDraw
 
         // The built-in presets, in display order.
         public static List<ConnectionType> BuiltIns() => new List<ConnectionType>
-            { BoxTenon(), StrutTenon(), BraceTenon(), RafterFoot(), RidgeHousing(), RafterHead(), CommonRidge(), Birdsmouth(), PurlinDovetail(), QPRafterApex() };
+            { BoxTenon(), StrutTenon(), BraceTenon(), RafterFoot(), RidgeHousing(), RafterHead(), CommonRidge(), Birdsmouth(), HousedDovetail(), QPRafterApex() };
 
         // ---- Built-in presets (factory + Spec* mapping + Apply delegate) ----
 
@@ -465,11 +465,13 @@ namespace TimberDraw
             return new ApplyResult { Ok = ok, Diag = diag, AId = nc, BId = ng, Jid = jid };
         }
 
-        // Purlin end -> rafter side: a Dovetail (housing Seat + tongue Length / Width / band Depth / taper Angle).
-        // The cutter does housing + dovetail as one unit (PurlinRafterSpec has a single On). a = purlin, b = rafter.
-        public static ConnectionType PurlinDovetail() => PurlinDovetail(JointDefaults.Purlin);
-        public static ConnectionType PurlinDovetail(ManagedTimber.PurlinRafterSpec d)
-            => new ConnectionType("Purlin dovetail",
+        // Housed dovetail, member end -> carrier side: a Dovetail (housing Seat + tongue Length /
+        // Width / band Depth / taper Angle). Host-neutral -- purlin -> rafter and joist -> carrier are
+        // the same cut. The cutter does housing + dovetail as one unit (PurlinRafterSpec has a single
+        // On). a = the dropped-in member, b = the carrier.
+        public static ConnectionType HousedDovetail() => HousedDovetail(JointDefaults.Purlin);
+        public static ConnectionType HousedDovetail(ManagedTimber.PurlinRafterSpec d)
+            => new ConnectionType("Housed dovetail",
                 new List<JointElement> { ElementKit.Dovetail(d.On, d) }, ApplyPurlinCut);
 
         private static ManagedTimber.PurlinRafterSpec SpecPurlin(ConnectionType ct)

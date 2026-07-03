@@ -30,10 +30,17 @@ namespace TimberDraw
         private Button btnPlan, btnBent, btnWall;
 
         // Place & connect verbs
-        private Button btnPlace, btnSpan, btnJoin, btnFit, btnScarf;
+        private Button btnPlace, btnSpan, btnJoin, btnFit, btnScarf, btnJoist;
 
         // Edit verbs
         private Button btnMove, btnRotate, btnScan, btnAssign, btnSection;
+
+        // Assembly (the TAssign target names, visible + editable). The second coordinate box is
+        // dual-purpose: the COLUMN letter for a Bent owner (grid intersection 2C), the BAY for a Wall.
+        private ComboBox cmbAsmKind;
+        private TextBox txtAsmFrame, txtAsmOwner, txtAsmBay;
+        private Label lblAsmExtra;
+        private GroupBox groupAssembly;
 
         // Footer
         private Label lblBuild;
@@ -123,11 +130,13 @@ namespace TimberDraw
             btnSpan  = Btn("Span", 82, 18, 70);
             btnFit   = Btn("Fit", 156, 18, 70);
             btnScarf = Btn("Scarf", 8, 47, 70);
+            btnJoist = Btn("Joist", 82, 47, 70);
             groupPlace = new GroupBox { Text = "Place & connect", Location = new Point(8, 276), Size = new Size(GW, 82) };
             groupPlace.Controls.Add(btnPlace);
             groupPlace.Controls.Add(btnSpan);
             groupPlace.Controls.Add(btnFit);
             groupPlace.Controls.Add(btnScarf);
+            groupPlace.Controls.Add(btnJoist);
 
             // ---- Brace group (foot/head legs + angle; check two, the third is computed). The Brace
             //      verb button (TJoin) lives here now, beside the spec it consumes. ----
@@ -147,17 +156,32 @@ namespace TimberDraw
             groupBrace.Controls.Add(txtAngle);
             groupBrace.Controls.Add(btnJoin);
 
-            // ---- Edit group ----
+            // ---- Assembly group (the TAssign target names, visible + editable; the Assign verb
+            //      lives beside the names it consumes, like the Brace button in its group) ----
+            txtAsmFrame = new TextBox { Location = new Point(60, 19), Size = new Size(40, 22) };
+            cmbAsmKind  = new ComboBox { Location = new Point(12, 47), Size = new Size(70, 22), DropDownStyle = ComboBoxStyle.DropDownList };
+            txtAsmOwner = new TextBox { Location = new Point(86, 47), Size = new Size(48, 22) };
+            txtAsmBay   = new TextBox { Location = new Point(176, 47), Size = new Size(46, 22) };
+            btnAssign   = Btn("Assign", 8, 76, 70);   // assign selected timbers (TAssign) to these names
+            groupAssembly = new GroupBox { Text = "Assembly", Location = new Point(8, 0), Size = new Size(GW, 110) };
+            lblAsmExtra = Cap("Col", 142, 50);
+            groupAssembly.Controls.Add(Cap("Frame", 12, 22));
+            groupAssembly.Controls.Add(txtAsmFrame);
+            groupAssembly.Controls.Add(cmbAsmKind);
+            groupAssembly.Controls.Add(txtAsmOwner);
+            groupAssembly.Controls.Add(lblAsmExtra);
+            groupAssembly.Controls.Add(txtAsmBay);
+            groupAssembly.Controls.Add(btnAssign);
+
+            // ---- Edit group (Assign moved to the Assembly group) ----
             btnMove = Btn("Move", 8, 18, 70);
             btnRotate = Btn("Rotate", 82, 18, 70);
             btnScan = Btn("Scan", 156, 18, 70);
-            btnAssign = Btn("Assign", 8, 47, 70);   // assign selected timbers to a frame/bent/wall (TAssign)
-            btnSection = Btn("Section", 82, 47, 70); // re-section any managed timber in place (TSection)
+            btnSection = Btn("Section", 8, 47, 70); // re-section any managed timber in place (TSection)
             groupEdit = new GroupBox { Text = "Edit & nodes", Location = new Point(8, 364), Size = new Size(GW, 82) };
             groupEdit.Controls.Add(btnMove);
             groupEdit.Controls.Add(btnRotate);
             groupEdit.Controls.Add(btnScan);
-            groupEdit.Controls.Add(btnAssign);
             groupEdit.Controls.Add(btnSection);
 
             // ---- Footer: build stamp (so a stale NETLOAD is obvious) ----
@@ -175,6 +199,7 @@ namespace TimberDraw
             flowEdit.Controls.Add(groupOrient);
             flowEdit.Controls.Add(groupPlace);
             flowEdit.Controls.Add(groupBrace);
+            flowEdit.Controls.Add(groupAssembly);
             flowEdit.Controls.Add(groupEdit);
 
             flowTbd = TabFlow();   // empty placeholder for future tools

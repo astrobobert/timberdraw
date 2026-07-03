@@ -24,8 +24,11 @@ namespace TimberDraw
         private readonly Point3d _o0;       // centered base origin (fixes the fa.V + fa.N placement)
         private readonly Vector3d _len;     // fa.N -- across the gap (member length)
         private readonly Vector3d _u;       // fa.U unit, oriented up -- the slide rail along the timbers
-        private readonly Vector3d _v;       // fa.V -- member width
-        private readonly double _gap, _d, _w;
+        private readonly Vector3d _v;       // fa.V -- the cross (in-plane, off-rail) axis
+        private readonly double _gap;
+        private readonly double _railDim;   // section dimension lying ALONG the rail (depth on a post
+                                            // rail, width on a girt rail) -- the justify offset
+        private readonly double _crossDim;  // section dimension along fa.V
         private readonly Point3d _ucsOrg;   // UCS origin (WCS) -- the rail datum (s = 0)
         private readonly Point3d _floorAnchor; // the s=0 point on the rail -- the pick base point
 
@@ -36,9 +39,9 @@ namespace TimberDraw
         public Justify Mode => _just;
         public double LineY => _sTarget;    // height above the datum, for the echo
 
-        public SpanJig(Point3d o0, ManagedTimber.TFace fa, double gap, double d, double w, Point3d ucsOrg)
+        public SpanJig(Point3d o0, ManagedTimber.TFace fa, double gap, double railDim, double crossDim, Point3d ucsOrg)
         {
-            _o0 = o0; _len = fa.N; _v = fa.V; _gap = gap; _d = d; _w = w;
+            _o0 = o0; _len = fa.N; _v = fa.V; _gap = gap; _railDim = railDim; _crossDim = crossDim;
             _ucsOrg = ucsOrg;
             Vector3d r = fa.U.GetNormal();
             if (r.DotProduct(Vector3d.ZAxis) < 0.0) r = r.Negate();   // orient up so +s is upward
@@ -57,9 +60,9 @@ namespace TimberDraw
         {
             get
             {
-                double centerS = _sTarget;                          // Center: axis on the line
-                if (_just == Justify.Bottom) centerS += _d / 2.0;   // lower face on the line
-                else if (_just == Justify.Top) centerS -= _d / 2.0; // upper face on the line
+                double centerS = _sTarget;                                // Center: axis on the line
+                if (_just == Justify.Bottom) centerS += _railDim / 2.0;   // lower face on the line
+                else if (_just == Justify.Top) centerS -= _railDim / 2.0; // upper face on the line
                 return _o0 + _u * (centerS - S(_o0));
             }
         }
@@ -101,7 +104,7 @@ namespace TimberDraw
 
         protected override bool WorldDraw(WorldDraw draw)
         {
-            JigGeometry.DrawBoxWire(draw, Origin, _len, _gap, _u, _d, _v, _w, 5);
+            JigGeometry.DrawBoxWire(draw, Origin, _len, _gap, _u, _railDim, _v, _crossDim, 5);
             return true;
         }
     }

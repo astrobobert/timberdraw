@@ -244,10 +244,13 @@ namespace TimberDraw
             public string FrameTag;
             public string BayTag;
             public string WallTag;
+            // Floor LEVEL a floor-system member (joist/summer) belongs to, digits bottom-up ("1", "2");
+            // blank on everything else. Owner hierarchy: Frame -> Bent | Wall -> Bay | Floor.
+            public string FloorTag;
             // The installer label derived from the structural grid: a VERTICAL member's column ("1A"),
             // a SPANNING member's two columns ("1BC"). Stamped at emit; blank on free/legacy timbers.
             public string GridLabel;
-            public DataStructure() { JointNear = ""; JointFar = ""; JointNearParams = ""; JointFarParams = ""; JointNearParamsDrawn = ""; JointFarParamsDrawn = ""; FrameTag = ""; BayTag = ""; WallTag = ""; GridLabel = ""; }
+            public DataStructure() { JointNear = ""; JointFar = ""; JointNearParams = ""; JointFarParams = ""; JointNearParamsDrawn = ""; JointFarParamsDrawn = ""; FrameTag = ""; BayTag = ""; WallTag = ""; FloorTag = ""; GridLabel = ""; }
 			public DataStructure(string type, string bentNumber, string designation, string size,
                 string tagHandle, int tenonCnt, int mortiseCnt, int pegCnt,
                 double width = 0, double depth = 0, double length = 0,
@@ -316,6 +319,7 @@ namespace TimberDraw
                     data.FrameTag    = ReadTextField(extDict, tr, "FrameTag");
                     data.BayTag      = ReadTextField(extDict, tr, "BayTag");
                     data.WallTag     = ReadTextField(extDict, tr, "WallTag");
+                    data.FloorTag    = ReadTextField(extDict, tr, "FloorTag");
                     data.GridLabel   = ReadTextField(extDict, tr, "GridLabel");
                 }
                 tr.Commit();
@@ -392,6 +396,7 @@ namespace TimberDraw
                 WriteTextField(extDict,   tr, "FrameTag",             data.FrameTag ?? "");
                 WriteTextField(extDict,   tr, "BayTag",               data.BayTag ?? "");
                 WriteTextField(extDict,   tr, "WallTag",              data.WallTag ?? "");
+                WriteTextField(extDict,   tr, "FloorTag",             data.FloorTag ?? "");
                 WriteTextField(extDict,   tr, "GridLabel",            data.GridLabel ?? "");
                 tr.Commit();
             }

@@ -210,13 +210,39 @@ namespace TimberDraw
             btnJoin.Click += (s, e) => { ApplySelectionToSection(); Send("TJoin"); };
             btnFit.Click += (s, e) => Send("TFit");
             btnScarf.Click += (s, e) => Send("TScarf");
+            // Joist rows read the section for W/D only (the role is always "Joist").
+            btnJoist.Click += (s, e) => { ApplySelectionToSection(); Send("TJoist"); };
 
             // Edit / nodes -- Move/Rotate are now stock AutoCAD: the ManagedTransformOverrule keeps each
             // managed timber's frame + scarf node in lockstep, so no special TMove/TRotate is needed.
             btnMove.Click += (s, e) => Send("_MOVE");
             btnRotate.Click += (s, e) => Send("_ROTATE");
             btnScan.Click += (s, e) => Send("TScan");
-            btnAssign.Click += (s, e) => Send("TAssign");
+
+            // Assembly: the TAssign target names live on the pane. Assign pushes them into the
+            // sticky ManagedAssembly and fires the command, which then runs promptless -- the pane
+            // is the command's visibility. The owner is TWO grid coordinates: a Bent takes its
+            // number + an optional COLUMN letter (the intersection a free post stands on, 2C); a
+            // Wall takes its letter + an optional Bay; a Floor is its number alone.
+            cmbAsmKind.Items.AddRange(new object[] { "Bent", "Wall", "Floor" });
+            cmbAsmKind.SelectedIndex = 0;
+            txtAsmFrame.Text = "A";
+            txtAsmOwner.Text = "1";
+            lblAsmExtra.Text = "Col";
+            cmbAsmKind.SelectedIndexChanged += (s, e) =>
+            {
+                string kind = (string)cmbAsmKind.SelectedItem;
+                txtAsmBay.Enabled = kind != "Floor";
+                lblAsmExtra.Text = kind == "Wall" ? "Bay" : "Col";
+                txtAsmOwner.Text = kind == "Wall" ? "A" : "1";
+                txtAsmBay.Text = "";
+            };
+            btnAssign.Click += (s, e) =>
+            {
+                ManagedAssembly.Set(txtAsmFrame.Text, (string)cmbAsmKind.SelectedItem,
+                                    txtAsmOwner.Text, txtAsmBay.Enabled ? txtAsmBay.Text : "");
+                Send("TAssign");
+            };
             // Re-section reads the picked timber's current section and prompts -- it does NOT adopt the
             // palette's active section, so no ApplySelectionToSection() here.
             btnSection.Click += (s, e) => Send("TSection");
