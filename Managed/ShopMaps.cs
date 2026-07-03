@@ -23,7 +23,7 @@ namespace TimberDraw
         private const double CrossPlaneDot = 0.35;  // |length-axis . world X| above this = spans the building (wall/roof)
         private const double StationTol    = 2.0;   // inches: timbers "on the same bent / wall line" cluster
 
-        public enum MapKind { Bent, Wall, Plan }
+        public enum MapKind { Bent, Wall, Floor, Plan }
 
         // One assembly map: a named group of timbers + the orthographic projection basis to flatten them.
         // A WCS point P projects to the 2D map coordinate (P.DotProduct(U), P.DotProduct(V)); W = U x V is
@@ -47,11 +47,12 @@ namespace TimberDraw
         }
 
         // Which map a timber belongs to, as (kind, key). PRIMARY signal is the emitter's stamped GROUP
-        // LAYER (TM_<frame>_Bent<n> / _Wall<x>) -- the app's own bent/wall grouping, which correctly files
-        // even a face-offset bay brace (its layer is its side wall) with the girts + commons. Falls back to
-        // the XData tags (BentNumber -> bent, WallTag -> wall), then geometry (a length axis with a real
-        // component along the building, world X, spans bays -> wall; else it sits in a YZ plane -> bent).
-        // Geometry alone can't tell a COMMON rafter (roof) from a PRINCIPAL rafter, so the layer/tags lead.
+        // LAYER (TM_<frame>_Bent<n> / _Wall<x> / _Floor<n>) -- the app's own grouping, which correctly
+        // files even a face-offset bay brace (its layer is its side wall) with the girts + commons. Falls
+        // back to the XData tags (BentNumber -> bent, WallTag -> wall, FloorTag -> floor), then geometry
+        // (a length axis with a real component along the building, world X, spans bays -> wall; else it
+        // sits in a YZ plane -> bent). Geometry alone can't tell a COMMON rafter (roof) from a PRINCIPAL
+        // rafter, so the layer/tags lead. Floor-system members (joists, summers) key by their floor LEVEL.
         public static (MapKind kind, string key) ClassifyGroup(ManagedTimber.ShopInfo t)
         {
             string lyr = t.Layer ?? "";
@@ -59,9 +60,12 @@ namespace TimberDraw
             if (iB >= 0) return (MapKind.Bent, lyr.Substring(iB + 5));
             int iW = lyr.IndexOf("_Wall", StringComparison.Ordinal);
             if (iW >= 0) return (MapKind.Wall, lyr.Substring(iW + 5));
+            int iF = lyr.IndexOf("_Floor", StringComparison.Ordinal);
+            if (iF >= 0) return (MapKind.Floor, lyr.Substring(iF + 6));
 
             if (!string.IsNullOrEmpty(t.BentTag)) return (MapKind.Bent, t.BentTag);
             if (!string.IsNullOrEmpty(t.WallTag)) return (MapKind.Wall, t.WallTag);
+            if (!string.IsNullOrEmpty(t.FloorTag)) return (MapKind.Floor, t.FloorTag);
             return Math.Abs(t.F.Z.DotProduct(Vector3d.XAxis)) > CrossPlaneDot
                  ? (MapKind.Wall, "") : (MapKind.Bent, "");
         }
@@ -69,6 +73,13 @@ namespace TimberDraw
         // Box centroid = near-end face center O advanced half the length along the axis (X/Y are
         // symmetric about the axis, so this is the geometric center of the nominal box).
         public static Point3d Centroid(ManagedTimber.TFrame f) => f.O + f.Z * (f.L * 0.5);
+
+        // A floor-system stick (joist / summer) -- the members that appear END-ON, housed in a wall
+        // map's girts, and so carry the X/+ direction mark there.
+        private static bool IsFloorMember(string role) =>
+            !string.IsNullOrEmpty(role)
+            && (role.IndexOf("joist", StringComparison.OrdinalIgnoreCase) >= 0
+                || role.IndexOf("summer", StringComparison.OrdinalIgnoreCase) >= 0);
 
         // Build every assembly map for the drawing's managed timbers: a bent map per world-X station
         // (cross members), a wall map per world-Y station (longitudinal members), and one plan (all).
@@ -80,10 +91,12 @@ namespace TimberDraw
             var maps = new List<ShopMap>();
             if (timbers == null || timbers.Count == 0) return maps;
 
-            // Partition by the emitter's group (layer-derived): bents keyed by number, walls by letter.
+            // Partition by the emitter's group (layer-derived): bents keyed by number, walls by letter,
+            // floors by level.
             var classified = timbers.Select(t => (g: ClassifyGroup(t), t)).ToList();
-            var bentMembers = classified.Where(c => c.g.kind == MapKind.Bent).ToList();
-            var wallMembers = classified.Where(c => c.g.kind == MapKind.Wall).ToList();
+            var bentMembers  = classified.Where(c => c.g.kind == MapKind.Bent).ToList();
+            var wallMembers  = classified.Where(c => c.g.kind == MapKind.Wall).ToList();
+            var floorMembers = classified.Where(c => c.g.kind == MapKind.Floor).ToList();
 
             // BENT maps: group by bent key (a face-offset bent brace keeps its bent), ordered by world-X
             // station. VIEW DIRECTION follows the timber-framing convention: the exterior END bents are
@@ -124,8 +137,24 @@ namespace TimberDraw
                 });
             }
 
-            // No PLAN drawing (it duplicated every timber). Post footprints are drawn in place on the
-            // structural grid instead -- see ShopMaps.Draw / DrawFootprints.
+            // FLOOR maps: a PLAN (look down world Z) per floor LEVEL, ordered bottom-up. Members are the
+            // floor-system sticks (joists, summers -- Floor N via TAssign); their carriers arrive as
+            // face-adjacency context below, so each floor's joist spacing reads against the girts that
+            // carry it. (Floor 0 = the in-place column-grid plan synthesized in Draw.)
+            foreach (var grp in floorMembers.GroupBy(c => c.g.key)
+                                            .OrderBy(g => int.TryParse(g.Key, out int lv) ? lv : 0))
+            {
+                maps.Add(new ShopMap
+                {
+                    Kind = MapKind.Floor,
+                    Name = "Floor " + (string.IsNullOrEmpty(grp.Key) ? "1" : grp.Key),
+                    U = Vector3d.XAxis, V = Vector3d.YAxis, W = Vector3d.ZAxis,
+                    Members = grp.Select(c => c.t).ToList()
+                });
+            }
+
+            // No all-timber PLAN drawing (it duplicated every timber). Post footprints are drawn in place
+            // on the structural grid instead -- see ShopMaps.Draw / DrawFootprints.
             AttachContext(maps, timbers);
             return maps;
         }
@@ -133,7 +162,8 @@ namespace TimberDraw
         // Fill each map's Context with its connected neighbors (face-adjacent to a primary, not primary).
         // For a WALL map, an adjacent BENT member pulls in its WHOLE bent (a rafter joins a post, not the
         // eave girt, so it is 2 hops from the wall -- expanding the bent surfaces the posts/rafters/ridge
-        // the user wants). Bent maps stay strict 1-hop (just the crossing longitudinals). Plan gets none.
+        // the user wants). Bent maps stay strict 1-hop (just the crossing longitudinals); FLOOR maps get
+        // 1-hop too (the carriers the joists/summers bear on). Plan gets none.
         private static void AttachContext(List<ShopMap> maps, List<ManagedTimber.ShopInfo> timbers)
         {
             var adj = BuildAdjacency(timbers);
@@ -242,9 +272,8 @@ namespace TimberDraw
         private const double BubbleTextH = 8.0;   // bubble text height
         private const double BubbleGap   = 24.0;  // drop below the drawing to the bubble row (model inches)
         private const double MarkerR     = 9.0;   // grid-bubble radius (arrow starts at the bubble edge)
-        private const double MarkerShaft = 20.0;  // thin shaft length
-        private const double MarkerHeadL = 14.0;  // solid arrowhead length
-        private const double MarkerHeadW = 11.0;  // solid arrowhead base width
+        private const double MarkerHeadL = 7.0;   // solid arrowhead length
+        private const double MarkerHeadW = 14.0;  // solid arrowhead base width
 
         private const double TitleGap   = 12.0;   // gap above the drawing to the title (model inches)
         private const double TitleTextH = 14.0;   // model-space drawing title height
@@ -257,8 +286,8 @@ namespace TimberDraw
         // BYLAYER color (256): every shop entity inherits the TM_SHOP layer color (blue ACI 5).
         private static readonly Color ByLayer = Color.FromColorIndex(ColorMethod.ByLayer, 256);
 
-        // The order maps stack in rows (one row per kind): bents, then walls, then the plan on top.
-        private static readonly MapKind[] RowOrder = { MapKind.Bent, MapKind.Wall, MapKind.Plan };
+        // The order maps stack in rows (one row per kind): bents, then walls, then floor plans on top.
+        private static readonly MapKind[] RowOrder = { MapKind.Bent, MapKind.Wall, MapKind.Floor, MapKind.Plan };
 
         // Draw the given maps into model space, flattened onto the world XY plane and tiled just to the
         // RIGHT of the frame (so they never overlap the live 3D model). Maps are laid out in ROWS by kind
@@ -305,13 +334,14 @@ namespace TimberDraw
                 DrawFootprints(tr, btr, layer, mapsToDraw);   // post footprints in place on the grid
                 DrawElevationMarkers(tr, btr, db, layer, mapsToDraw, minX, minY);  // per-drawing view-direction markers
 
-                // A COLUMN-GRID "plan": a Plan-kind map framing the frame's REAL location (the structural
-                // grid + the post feet). ShopLayouts gives it its own viewport with the 3D timber layers
-                // frozen, so it reads as a clean column/foundation plan. Added after the row flow so it is
-                // not drawn as an offset map; its title is drawn here in place above the frame.
+                // FLOOR 0: a Plan-kind map framing the frame's REAL location (the structural grid + the
+                // post feet; frame SILLS will live here too, once built). ShopLayouts gives it its own
+                // viewport with the 3D timber layers frozen, so it reads as a clean column/foundation
+                // plan. Added after the row flow so it is not drawn as an offset map; its title is drawn
+                // here in place above the frame.
                 var gridMap = new ShopMap
                 {
-                    Kind = MapKind.Plan, Name = "Column Grid",
+                    Kind = MapKind.Plan, Name = "Floor 0",
                     U = Vector3d.XAxis, V = Vector3d.YAxis, W = Vector3d.ZAxis,
                     RegionOrigin = new Point3d(minX - GridMargin, minY - GridMargin, 0.0),
                     RegionW = (maxX - minX) + 2.0 * GridMargin,
@@ -359,19 +389,17 @@ namespace TimberDraw
             }
         }
 
-        // A direction arrow emanating from a grid bubble (edge) along the unit `dir` -- a thin shaft with a
-        // SOLID (filled) arrowhead, drawn as one polyline whose head segment tapers from full width to zero
-        // (the standard leader/section-arrow look). On the shop layer.
+        // A direction arrow emanating from a grid bubble (edge) along the unit `dir` -- a single SOLID
+        // (filled) arrowhead: one polyline segment, 14" wide at the base tapering to zero over 7" (a
+        // wide flat chevron; no hairline tail -- Robert's dimensions). On the shop layer.
         private static void DrawArrow(Transaction tr, BlockTableRecord btr, ObjectId layer, Point3d bubble, Vector3d dir)
         {
             Point3d start = bubble + dir * MarkerR;
-            Point3d headBase = start + dir * MarkerShaft;
-            Point3d tip = headBase + dir * MarkerHeadL;
+            Point3d tip = start + dir * MarkerHeadL;
 
-            var pl = new Polyline(3);
-            pl.AddVertexAt(0, new Point2d(start.X, start.Y), 0.0, 0.0, 0.0);          // shaft (hairline)
-            pl.AddVertexAt(1, new Point2d(headBase.X, headBase.Y), 0.0, MarkerHeadW, 0.0);  // head: width -> 0
-            pl.AddVertexAt(2, new Point2d(tip.X, tip.Y), 0.0, 0.0, 0.0);
+            var pl = new Polyline(2);
+            pl.AddVertexAt(0, new Point2d(start.X, start.Y), 0.0, MarkerHeadW, 0.0);   // 14 wide -> 0 over 7
+            pl.AddVertexAt(1, new Point2d(tip.X, tip.Y), 0.0, 0.0, 0.0);
             pl.LayerId = layer; pl.Color = ByLayer;
             btr.AppendEntity(pl); tr.AddNewlyCreatedDBObject(pl, true);
             ManagedTimber.WriteShopTag(tr, pl);
@@ -417,19 +445,27 @@ namespace TimberDraw
             Point3d Embed(Point2d q) =>
                 m.RegionOrigin + Vector3d.XAxis * (q.X - min.X) + Vector3d.YAxis * (q.Y - min.Y);
 
-            // Context (connected neighbors) first, faded + unlabeled, so the primary members draw on top.
-            // A BENT map marks each end-on context member with X (projects toward the viewer, -X) or + (away,
-            // +X) relative to the bent's world-X station; a WALL map ghosts the connected frame as outlines.
-            double bentX = (m.Kind == MapKind.Bent && m.Members.Count > 0)
-                         ? m.Members.Average(t => Centroid(t.F).X) : 0.0;
+            // Context (connected neighbors) first, faded + unlabeled, so the primary members draw on
+            // top. END-ON context gets a direction mark: X = projects TOWARD the viewer, + = away.
+            // A BENT map marks every context member (its context is the crossing longitudinals); a
+            // WALL map marks its housed FLOOR members (joists/summers end-on in the girts -- the
+            // bent-expansion context of posts/rafters stays unmarked); a FLOOR plan marks nothing
+            // (nothing is end-on looking straight down).
+            Point3d planeRef = Point3d.Origin;
+            if (m.Members.Count > 0)
+                planeRef = new Point3d(m.Members.Average(t => Centroid(t.F).X),
+                                       m.Members.Average(t => Centroid(t.F).Y),
+                                       m.Members.Average(t => Centroid(t.F).Z));
             foreach (ManagedTimber.ShopInfo c in m.Context)
             {
                 DrawShape(tr, btr, ctxLayer, m, c, Embed);
-                if (m.Kind == MapKind.Bent)
+                bool markIt = m.Kind == MapKind.Bent
+                           || (m.Kind == MapKind.Wall && IsFloorMember(c.Role));
+                if (markIt)
                 {
                     Point3d p = Embed(Project(Centroid(c.F), m));
-                    double along = (Centroid(c.F).X - bentX) * m.W.X;    // + = along the look dir (away from viewer)
-                    string mark = along < 0 ? "X" : "+";                 // toward viewer / away
+                    double along = (Centroid(c.F) - planeRef).DotProduct(m.W);   // + = away from viewer
+                    string mark = along < 0 ? "X" : "+";                         // toward viewer / away
                     AddMark(tr, btr, db, ctxLayer, mark, p);
                 }
             }
@@ -482,9 +518,11 @@ namespace TimberDraw
             ManagedTimber.WriteShopTag(tr, t);
         }
 
-        // Column / bent NOTE BUBBLES in a row below the drawing (bent + wall only). Under a BENT: a lettered
-        // bubble at each vertical member's (post/king) horizontal position, from the column letter in its
-        // grid label. Under a WALL: a numbered bubble at each connected bent's station. FrameGrid bubble style.
+        // Column / bent NOTE BUBBLES around the drawing. Under a BENT: a lettered bubble at each vertical
+        // member's (post/king) horizontal position, from the column letter in its grid label. Under a
+        // WALL: a numbered bubble at each connected bent's station. A FLOOR plan reads BOTH axes: numbered
+        // bent bubbles along the bottom (world X = U) + lettered wall bubbles up the LEFT (world Y = V),
+        // taken from the connected carriers' groups. FrameGrid bubble style.
         private static void DrawBubbles(Transaction tr, BlockTableRecord btr, Database db, ObjectId layer,
                                         ShopMap m, Point2d min)
         {
@@ -503,6 +541,28 @@ namespace TimberDraw
                     if (string.IsNullOrEmpty(letter) || !seen.Add(letter)) continue;
                     double u = Project(Centroid(t.F), m).X;
                     DrawBubble(tr, btr, db, layer, Embed(new Point2d(u, vRow)), letter);
+                }
+            }
+            else if (m.Kind == MapKind.Floor)
+            {
+                double uCol = min.X - BubbleGap;   // projected U of the bubble column, left of the drawing
+                foreach (ManagedTimber.ShopInfo c in m.Context)
+                {
+                    var g = ClassifyGroup(c);
+                    if (g.kind == MapKind.Bent)
+                    {
+                        string num = string.IsNullOrEmpty(g.key) ? c.BentTag : g.key;
+                        if (string.IsNullOrEmpty(num) || !seen.Add("#" + num)) continue;
+                        double u = Project(Centroid(c.F), m).X;
+                        DrawBubble(tr, btr, db, layer, Embed(new Point2d(u, vRow)), num);
+                    }
+                    else if (g.kind == MapKind.Wall)
+                    {
+                        string letter = string.IsNullOrEmpty(g.key) ? c.WallTag : g.key;
+                        if (string.IsNullOrEmpty(letter) || !seen.Add("@" + letter)) continue;
+                        double v = Project(Centroid(c.F), m).Y;
+                        DrawBubble(tr, btr, db, layer, Embed(new Point2d(uCol, v)), letter);
+                    }
                 }
             }
             else   // Wall: a bubble per connected bent, numbered
@@ -551,26 +611,34 @@ namespace TimberDraw
             return tail.Length <= 2 ? tail : "";
         }
 
-        // Draw one timber's ACTUAL projected shape on `layer` (BYLAYER color). Projects the real Solid3d's
-        // edges (so joinery -- birdsmouths, tenons, tapers, gable cuts -- reads), falling back to the
-        // nominal-box convex hull if the Brep is unavailable.
+        // Draw one timber's projected shape on `layer` (BYLAYER color): the PRE-JOINERY BODY -- the
+        // timber's real shape (mitered/plumb end cuts, shape cuts) with every joinery feature
+        // stripped, so the maps read as clean arris lines without mortise/tenon/peg noise (Robert's
+        // rule; the joinery detail lives in the scribe files -- do not reintroduce it here without
+        // asking). Falls back to the nominal-box hull if the body solid can't be built.
         private static void DrawShape(Transaction tr, BlockTableRecord btr, ObjectId layer,
                                       ShopMap m, ManagedTimber.ShopInfo t, Func<Point2d, Point3d> embed)
         {
-            if (!TryDrawSolidEdges(tr, btr, layer, m, t.Id, embed))
+            if (!TryDrawBodyEdges(tr, btr, layer, m, t.F, embed))
                 DrawHull(tr, btr, layer, m, t.F, embed);
         }
 
-        // Project every edge of the timber's Solid3d onto the map plane and draw each as a polyline.
-        // Edges parallel to the view direction collapse to ~a point and are skipped, so an axis-aligned
-        // box reads as a clean outline. Returns false (=> hull fallback) if the Brep yields no drawable edge.
-        private static bool TryDrawSolidEdges(Transaction tr, BlockTableRecord btr, ObjectId layer,
-                                              ShopMap m, ObjectId id, Func<Point2d, Point3d> embed)
+        // Project every edge of the timber's PRE-JOINERY body onto the map plane and draw each as a
+        // polyline. The body is a TRANSIENT solid built from the frame with the joinery lists nulled
+        // (Features / Pegs / JointPolys / JointPolysZ / JointPrisms) -- the preview-ghost pattern --
+        // so end cuts and shape cuts read, joinery doesn't. Edges parallel to the view direction
+        // collapse to ~a point and are skipped. Returns false (=> hull fallback) on any Brep hiccup.
+        private static bool TryDrawBodyEdges(Transaction tr, BlockTableRecord btr, ObjectId layer,
+                                             ShopMap m, ManagedTimber.TFrame f, Func<Point2d, Point3d> embed)
         {
-            if (!(tr.GetObject(id, OpenMode.ForRead) is Solid3d sol)) return false;
+            ManagedTimber.TFrame body = f;   // struct copy: shape stays, joinery lists dropped
+            body.Features = null; body.Pegs = null;
+            body.JointPolys = null; body.JointPolysZ = null; body.JointPrisms = null;
+
             int drawn = 0;
             try
             {
+                using (Solid3d sol = ManagedTimber.BuildFramedSolid(body))
                 using (var brep = new Autodesk.AutoCAD.BoundaryRepresentation.Brep(sol))
                 {
                     foreach (Autodesk.AutoCAD.BoundaryRepresentation.Edge edge in brep.Edges)
@@ -624,7 +692,19 @@ namespace TimberDraw
             ManagedTimber.WriteShopTag(tr, pl);
         }
 
-        // Fallback: the nominal-box convex-hull outline (8 corners), when the Brep is unavailable.
+        // Larger of the width/height of a set of 2D points (0 when they collapse to a point).
+        private static double Extent2d(List<Point2d> pts)
+        {
+            double minx = double.MaxValue, miny = double.MaxValue, maxx = double.MinValue, maxy = double.MinValue;
+            foreach (Point2d p in pts)
+            {
+                if (p.X < minx) minx = p.X; if (p.X > maxx) maxx = p.X;
+                if (p.Y < miny) miny = p.Y; if (p.Y > maxy) maxy = p.Y;
+            }
+            return Math.Max(maxx - minx, maxy - miny);
+        }
+
+        // Fallback: the nominal-box convex-hull outline (8 corners) when the body solid won't build.
         private static void DrawHull(Transaction tr, BlockTableRecord btr, ObjectId layer,
                                      ShopMap m, ManagedTimber.TFrame f, Func<Point2d, Point3d> embed)
         {
@@ -641,18 +721,6 @@ namespace TimberDraw
             pl.LayerId = layer; pl.Color = ByLayer;
             btr.AppendEntity(pl); tr.AddNewlyCreatedDBObject(pl, true);
             ManagedTimber.WriteShopTag(tr, pl);
-        }
-
-        // Larger of the width/height of a set of 2D points (0 when they collapse to a point).
-        private static double Extent2d(List<Point2d> pts)
-        {
-            double minx = double.MaxValue, miny = double.MaxValue, maxx = double.MinValue, maxy = double.MinValue;
-            foreach (Point2d p in pts)
-            {
-                if (p.X < minx) minx = p.X; if (p.X > maxx) maxx = p.X;
-                if (p.Y < miny) miny = p.Y; if (p.Y > maxy) maxy = p.Y;
-            }
-            return Math.Max(maxx - minx, maxy - miny);
         }
 
         // Project a WCS point onto the map plane: (P.U, P.V).

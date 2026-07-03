@@ -149,14 +149,16 @@ namespace TimberDraw
             try { if (freeze.Count > 0) vp.FreezeLayersInViewport(freeze.GetEnumerator()); } catch { }
         }
 
-        // The framed model rect for a map (drawing + reserved bubble row below + title above) and the paper
-        // viewport size to show it at Scale. Outputs the model-space center + model height + paper W/H.
+        // The framed model rect for a map (drawing + reserved bubble row below + title above; a FLOOR plan
+        // also reserves a bubble COLUMN on the left for its wall letters) and the paper viewport size to
+        // show it at Scale. Outputs the model-space center + model height + paper W/H.
         private static void FramedRect(ShopMaps.ShopMap m, out double mcx, out double mcy,
                                        out double fh, out double vpW, out double vpH)
         {
-            double fx0 = m.RegionOrigin.X;
+            double left = m.Kind == ShopMaps.MapKind.Floor ? ShopMaps.BubbleReserve : 0.0;
+            double fx0 = m.RegionOrigin.X - left;
             double fy0 = m.RegionOrigin.Y - ShopMaps.BubbleReserve;
-            double fw  = m.RegionW;
+            double fw  = m.RegionW + left;
             fh = m.RegionH + ShopMaps.BubbleReserve + ShopMaps.TitleReserve;
             mcx = fx0 + fw / 2.0;
             mcy = fy0 + fh / 2.0;

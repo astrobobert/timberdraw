@@ -7,8 +7,10 @@ namespace TimberDraw
 {
     // Shop drawings: automated 2D "assembly elevation maps" of the managed frame. Every timber is drawn
     // in its real place as a nominal box outline and labeled where it sits, so each stick is seen in
-    // context of its neighbors -- one map per BENT, one per WALL, plus a PLAN. This is the command
-    // surface (thin); the grouping + geometry live in ShopMaps, the paper-space wrapper in ShopLayouts.
+    // context of its neighbors -- one map per BENT, one per WALL, one FLOOR PLAN per floor level
+    // (joists/summers + carrier context), plus Floor 0 (the in-place structural grid + post feet; sills
+    // later). This is the command surface (thin); the grouping + geometry live in ShopMaps, the
+    // paper-space wrapper in ShopLayouts.
     public partial class ManagedCommands
     {
         [CommandMethod("TShop")]
@@ -32,9 +34,12 @@ namespace TimberDraw
             ShopMaps.Draw(doc.Database, maps);
             ShopLayouts.Create(doc.Database, maps);
 
-            int bents = maps.Count(m => m.Kind == ShopMaps.MapKind.Bent);
-            int walls = maps.Count(m => m.Kind == ShopMaps.MapKind.Wall);
-            ed.WriteMessage($"\nShop: {bents} bent + {walls} wall + 1 column-grid drawing(s) on the 'TM Shop' layout at 3/8\"=1'-0\".");
+            int bents  = maps.Count(m => m.Kind == ShopMaps.MapKind.Bent);
+            int walls  = maps.Count(m => m.Kind == ShopMaps.MapKind.Wall);
+            int floors = maps.Count(m => m.Kind == ShopMaps.MapKind.Floor);
+            ed.WriteMessage($"\nShop: {bents} bent + {walls} wall"
+                + (floors > 0 ? $" + {floors} floor plan(s)" : "")
+                + " + Floor 0 (grid) on the 'TM Shop' layout at 3/8\"=1'-0\".");
             foreach (var m in maps)
                 ed.WriteMessage($"\n  {m.Name}: {m.Members.Count} members");
         }

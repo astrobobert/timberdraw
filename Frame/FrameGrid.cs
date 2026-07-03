@@ -87,10 +87,13 @@ namespace TimberDraw
             return g;
         }
 
-        // The installer label for a bent member: vertical -> bent + its column letter ("1A"); spanning
-        // -> bent + the two column letters its ends fall between ("1BC"). Longitudinal members get no
-        // grid label (they keep the Wall/Bay grouping). Braces / commons / purlins are labeled by the
-        // emitter (group symbol / consecutive number), not here. Empty when the grid has no columns.
+        // The installer label for a bent member, TYPE-FIRST (user convention, 2026-07-03): family code
+        // + the grid anchor -- vertical -> FAM-bent+column ("P-2A", "KP-2C"); spanning -> FAM-bent+the
+        // two end columns ("RF-1AC", "TG-1AE"). The prefix groups the cut list by family AND keeps two
+        // members at one anchor distinct (a free post beside the king post: P-2C vs KP-2C -- without it
+        // the shop-map label dedup silently dropped one). Longitudinal members get no grid label here
+        // (they keep the Wall/Bay grouping). Braces / commons / purlins are labeled by the emitter
+        // (group symbol / consecutive number), not here. Empty when the grid has no columns.
         //
         // LEVEL QUALIFIER (user convention): when a bent carries a FLOOR girt, the two same-span girts
         // are told apart by level -- the floor girt reads "-Dn" (down) and the bent/tie girt "-Up".
@@ -98,14 +101,16 @@ namespace TimberDraw
         public string LabelForEdge(FrameEdge e, ManagedTimber.TFrame f)
         {
             if (e.Longitudinal || ColX.Count == 0) return "";
+            string fam = BentFamilyCode(e.Role, e.Designation);
+            string pre = fam.Length > 0 ? fam + "-" : "";
             string bent = !string.IsNullOrEmpty(e.BentTag) ? e.BentTag : BentNumberAt(f.O.Z);
             if (System.Math.Abs(f.Z.Y) >= VertDot)
-                return bent + ColLetter(f.O.X);                  // vertical -> single column
+                return pre + bent + ColLetter(f.O.X);            // vertical -> single column
 
             double x0 = f.O.X, x1 = (f.O + f.Z * f.L).X;         // spanning -> the two end columns
             string a = ColLetter(System.Math.Min(x0, x1));
             string b = ColLetter(System.Math.Max(x0, x1));
-            string label = a == b ? bent + a : bent + a + b;
+            string label = pre + (a == b ? bent + a : bent + a + b);
 
             if (e.Role == "Girt")
             {
@@ -114,6 +119,28 @@ namespace TimberDraw
                     return label + "-Up";                                            // tie above a floor girt
             }
             return label;
+        }
+
+        // Abbreviated family code LEADING a bent-member label (KP-2C), per the agreed label
+        // conventions (structural-timber-label-conventions): P/KP/QP/ST/VS/HB/HP/TG/FG. Rafter is RF
+        // here (the conventions' R already ships as the RIDGE's bay code, R-C-I). The girt splits by
+        // designation (FG floor girt vs TG for the tie + other bent-plane girts). Unknown roles stay
+        // bare (the anchor alone, the pre-2026-07-03 form).
+        private static string BentFamilyCode(string role, string desig)
+        {
+            switch (role)
+            {
+                case "Post":      return "P";
+                case "KingPost":  return "KP";
+                case "QueenPost": return "QP";
+                case "Rafter":    return "RF";
+                case "Strut":     return "ST";
+                case "VStrut":    return "VS";
+                case "HBeam":     return "HB";
+                case "HPost":     return "HP";
+                case "Girt":      return desig == "FG" ? "FG" : "TG";
+                default:          return "";
+            }
         }
 
         // ---- brace / commons / purlin labels (stamped by the emitter) ------------------------------
