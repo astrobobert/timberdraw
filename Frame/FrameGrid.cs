@@ -21,6 +21,7 @@ namespace TimberDraw
         public List<double> ColX = new List<double>();      // column-line across-span coords (sorted)
         public List<bool>   ColGround = new List<bool>();   // parallel to ColX: vertical reaches the floor
         public List<double> BentZ = new List<double>();     // bent-line building-length coords (sorted)
+        private readonly List<double> _floorGirtZ = new List<double>();  // bents that carry a floor girt
 
         private const double Tol = 2.0;          // cluster tolerance (inches): members "on the same line"
         private const double VertDot = 0.9;      // |f.Z . up| above this = a vertical member
@@ -42,6 +43,8 @@ namespace TimberDraw
             foreach (var (e, f) in frames)
             {
                 if (e.Longitudinal) continue;                    // runs along the building, not a column
+                if (e.Role == "Girt" && e.Designation == "FG")
+                    InsertZ(g._floorGirtZ, f.O.Z);               // this bent carries a floor girt (Dn/Up)
                 if (System.Math.Abs(f.Z.Y) < VertDot) continue;  // not vertical -> not a column line
                 double footY = System.Math.Min(f.O.Y, (f.O + f.Z * f.L).Y);
                 bool ground = footY <= GroundTol;                // reaches the floor (post) vs elevated
@@ -88,6 +91,10 @@ namespace TimberDraw
         // -> bent + the two column letters its ends fall between ("1BC"). Longitudinal members get no
         // grid label (they keep the Wall/Bay grouping). Braces / commons / purlins are labeled by the
         // emitter (group symbol / consecutive number), not here. Empty when the grid has no columns.
+        //
+        // LEVEL QUALIFIER (user convention): when a bent carries a FLOOR girt, the two same-span girts
+        // are told apart by level -- the floor girt reads "-Dn" (down) and the bent/tie girt "-Up".
+        // A tie girt in a bent with no floor girt stays unqualified.
         public string LabelForEdge(FrameEdge e, ManagedTimber.TFrame f)
         {
             if (e.Longitudinal || ColX.Count == 0) return "";
@@ -98,7 +105,15 @@ namespace TimberDraw
             double x0 = f.O.X, x1 = (f.O + f.Z * f.L).X;         // spanning -> the two end columns
             string a = ColLetter(System.Math.Min(x0, x1));
             string b = ColLetter(System.Math.Max(x0, x1));
-            return a == b ? bent + a : bent + a + b;
+            string label = a == b ? bent + a : bent + a + b;
+
+            if (e.Role == "Girt")
+            {
+                if (e.Designation == "FG") return label + "-Dn";                     // the floor girt
+                if (e.Designation == "AE" && NearAny(_floorGirtZ, f.O.Z))
+                    return label + "-Up";                                            // tie above a floor girt
+            }
+            return label;
         }
 
         // ---- brace / commons / purlin labels (stamped by the emitter) ------------------------------
