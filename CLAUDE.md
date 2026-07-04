@@ -2,9 +2,9 @@
 
 ## What This Project Is
 
-TimberDraw is a **.NET 4.8 AutoCAD plugin** (class library) that draws timber frame bent geometry in AutoCAD. It is the first application in the **Timber Frame Suite**.
+TimberDraw is a **.NET 4.8 AutoCAD plugin** (class library) that designs traditional timber frames as managed 3D solids in AutoCAD -- parametric rough-in, editor verbs, joinery cutting, structural-grid labels, BOM/shop drawings, and laser scribe export. It is the primary application of the **Timber Frame Suite**.
 
-The plugin loads into AutoCAD via `NETLOAD` and exposes a single command (`TDraw`) that opens a palette with a Windows Forms UI. Users configure bent parameters, then click to draw 2D or 3D timber members directly in the current drawing.
+The plugin loads into AutoCAD via `NETLOAD`. `TDraw` opens the frame tree editor (the recipe/generator), `TPanel` opens the assembly palette with the managed editor verbs; the full command set is tabled under "Editor commands" below. Naming (trade terms + canonical joinery param names) is governed by `GLOSSARY.md` -- the single source of truth.
 
 ## Architecture Direction (READ FIRST -- 2026-06-16)
 
@@ -45,14 +45,28 @@ sections further below are the GENERATOR's internals only.
 - `FrameRegistry` / `TFreeze` -- the one-way freeze gate. Once frozen the tree's Draw button refuses and
   the timbers carry on as the source of truth.
 
-`Managed\ManagedTimber.cs` -- the managed timber model + the editor:
+`Managed\` -- the managed timber model, the editor, and the output layer. `ManagedTimber.cs` is the core:
 - `TFrame` struct -- a timber's WCS frame (`O`, axes `X/Y/Z`, `L/D/W`) + end-cut normals + feature lists.
   `Faces(TFrame)` returns the 6 nominal faces; `ComputeNodes` derives connectivity from face coincidence
   (`FacesMate`), surfaced by `TScan`. `BuildFramedSolid` builds the solid (box -> slice end cuts -> convex
-  Cuts -> concave Subtracts -> joinery Features/Pegs); `DrawFramedSolid` / `RebuildFromFrame` persist
-  everything as XData trailers and preserve the production `TagHandle`.
+  Cuts -> concave Subtracts -> joinery Features/Pegs/JointPolys/JointPolysZ); `DrawFramedSolid` /
+  `RebuildFromFrame` persist everything as XData trailers and preserve the production `TagHandle`.
 
-### Editor commands (all in `Managed\ManagedTimber.cs`)
+The rest of `Managed\`: jigs (`PlaceJig`/`SpanJig`/`ScarfJig`/`JigGeometry`), sticky section + assembly
+model (`ManagedSection`/`ManagedAssembly`), connection types (`ConnectionType`/`JointDefaults`), the
+Joints pane commands (`JoinCommands.cs`), labels (`RelabelCommands.cs`), BOM (`BomCommands.cs`), shop
+drawings (`ShopCommands`/`ShopMaps`/`ShopLayouts`), and scribe export (`Scribe*.cs`). The frame browser
+palette lives in `Browser\`.
+
+### Editor commands
+
+Frame lifecycle (`Commands.cs`): `TDraw` (tree editor palette), `TRoughIn` (generate from the spec),
+`TFreeze` (one-way break), `TGrid` (redraw the structural grid), `TPanel` (assembly palette),
+`TBrowse` (frame browser: assign + review surface; highlight on select, double-click zooms),
+`TBom` (BOM grid palette), `TVer` (build stamp), `TFrameSave`/`TFrameLoad` (frame JSON).
+Parked/legacy: `TFrameFlat`, `TDrawLegacy`, `TRegenTimber`, `TFrame`/`TFrameQP`/`TFrameHB`/`TFrameKPT`/`TFrameQPT`, `TSave`/`TLoad`.
+
+Editor verbs (`Managed\ManagedTimber.cs` unless noted):
 
 | Command | Description |
 |---|---|
@@ -62,22 +76,50 @@ sections further below are the GENERATOR's internals only.
 | `TFit` | Trim/extend a timber's picked END onto a target face (square or mitered); other end stays. |
 | `TSection` | Re-section a managed timber (change W x D) in place. |
 | `TScarf` | Scarf-splice a timber into two pieces; stores the scarf interface node. |
-| `TJoist` | Place a row of floor joists in a wall/bay (free-assembly infill). |
-| `TAssign` | Assign free timber(s) to a bent/wall group for grid addressing. |
+| `TJoist` | Place a row of floor joists in a wall/bay (free-assembly infill; Joist role, FLUSH tops, Drop). |
+| `TAssign` | Assign free timber(s) to a group for addressing -- hierarchy Frame -> Bent\|Wall -> Bay\|FLOOR. |
 | `TScan` | Rescan all managed timbers for coincident faces; mark the derived nodes. |
 | `TPickFace` | Debug/util: interactively pick one analytic face. |
 | `TUcsPlan` / `TUcsBent` / `TUcsWall` | UCS presets for placement. |
-| `TJoint` / `TJointDel` / `TJointAll` | Girt->post joinery -- cut one / delete one / batch-cut all (below). |
+| `TRelabel` | Retrofit current label conventions onto an older frame (type-first, Dn/Up). `RelabelCommands.cs`. |
 
-### Managed Joinery (girt -> post mortise & tenon + pegs)
+Joinery commands (each family below; every cutter has a matching `...Del`):
 
-Fresh managed cutters on the TFrame/face model (the parked `Joints\` path is untouched). Full depth in the
-`managed-joinery-v1` memory; the essentials:
-- **Two LOCAL feature primitives on `TFrame`** (transform-invariant; `Faces()` ignore both, so TScan still
+| Command | Connection |
+|---|---|
+| `TJoint` / `TJointAll` / `TJointDel` | Girt end -> post side: tenon + housing + pegs (`TJointAll` = batch over the whole frame). |
+| `TJoinPick` / `TJoinApply` | Joints pane flow (`TPanel` -> Joints): pick pair, edit the element stack, live re-cut. |
+| `TStrut` / `TStrutDel` | Strut / v-strut -> rafter underside, post side, king-post side, girt underside (any angle). |
+| `TBrace` / `TBraceDel` | Knee brace -> post/girt: same engine, 1.5" barefaced default. |
+| `TRafterFoot` / `TRafterFootDel` | Principal rafter foot -> post ("girt at a pitch": sloped housing + tenon). |
+| `TRafterHead` / `TRafterHeadDel` | Principal rafter head -> king-post shoulder notch. |
+| `TRidge` / `TRidgeDel` | Ridge -> king post: drop-in housing (chamfered tongue). |
+| `TRidgeRafter` / `TRidgeRafterDel` | Ridge -> principal rafter head: the TRidge drop-in housed into the rafter instead (king-post-less bents; once per rafter). |
+| `TCommonRidge` / `TCommonRidgeDel` | Common rafter -> ridge. |
+| `TCommonEave` / `TCommonEaveDel` | Common rafter -> eave girt (birdsmouth). |
+| `TPurlin` / `TPurlinDel` | Purlin -> rafter (housed dovetail). |
+| `TQPRafter` / `TQPRafterDel` | Queen-post rafter APEX: the male rafter's peak end seats + box-tenons into the host rafter. |
+
+Output commands: `TBom` (sortable per-timber grid; rows highlight solids; CSV export), `TShop` /
+`TShopClear` (shop maps per bent/wall + floor plans, paper-space layouts, pre-joinery arris linework,
+X/+ housing marks), `TScribe` / `TScribeAll` / `TScribeProbe` (`.tsj` laser scribe export + diagnostics).
+
+### Managed Joinery
+
+Fresh managed cutters on the TFrame/face model (the parked `Joints\` path is untouched). The connection
+catalog + canonical param names live in `GLOSSARY.md` section D. The essentials:
+- **Four LOCAL feature primitives on `TFrame`** (transform-invariant; `Faces()` ignore them, so TScan still
   reports the clean bearing node): `Features` = boxes `(Min,Max,Subtract,Joint)` (subtract=mortise,
-  union=tenon); `Pegs` = cylinders `(C,Axis,R,Half,Joint)` (full/blind bores). Serialized as xrecord
-  trailers after the base frame, in order: cuts, subtracts, Features, Pegs.
-- **`GirtPostJoint(JointSpec)`** -- cuts a shouldered tenon (independent top/bottom relish + lateral
+  union=tenon); `Pegs` = cylinders `(C,Axis,R,Half,Joint)` (full/blind bores); `JointPolys` = elevation
+  polygons with a width band, extruded across the section (wedge family: `TRafterFoot`); `JointPolysZ` =
+  cross-section polygons extruded along the length (`TRafterHead`, `TRidge`). All id-carrying union OR
+  subtract. Serialized as xrecord trailers after the base frame, in order: cuts, subtracts, Features,
+  Pegs, JointPolys, JointPolysZ.
+- **`StrutTenonJoint`** (`TStrut`/`TBrace`) -- ONE host-neutral end->side tenon engine, any angle: standard
+  5-field spec (Thickness/Length/ShoulderTop/ShoulderBottom/Offset), world-up-keyed shoulders, tongue =
+  one wall square to the host face + one along the member axis, shared-solid UNION(male)/SUBTRACT(host)
+  under one joint id. `TBrace` = same engine, 1.5" barefaced default (Offset auto=(W-T)/2, Flip picks cheek).
+- **`GirtPostJoint(JointSpec)`** (`TJoint`) -- cuts a shouldered tenon (independent top/bottom relish + lateral
   offset, exact-fit) + the matching mortise + peg bores. Pegs bore the POST ONLY (the shop bores the tenon
   in the field), stacked across the girt depth. `JointSpec = {TenonSpec, PegSpec}` is the session-sticky
   `_joint`, edited via the `TJoint` review loop (`ReviewJoint` / `ReviewPegs`).
@@ -88,6 +130,25 @@ Fresh managed cutters on the TFrame/face model (the parked `Joints\` path is unt
   `RecordHistory=false; ShowHistory=false` AFTER `AppendEntity` (in `DrawFramedSolid` / `DrawBox`), or the
   DWG fails to save while AUDIT stays clean. (2) RELISH maps to WORLD up (`girt.Y . ZAxis`), not local +Y
   -- bent and wall girts run their depth axis opposite ways.
+
+### Labels, floors, and output
+
+- **Label grammar** (see the structural-label memory files + `GLOSSARY.md`): type-first
+  `FAM-ANCHOR-quals` (e.g. `P-2A`, `EG-B-I`, `J-A-1`); digit-first anchor = bent/intersection,
+  letter-first = wall/bay; qualifiers hand L/R, level Dn/Up, per-anchor seq. Three IDs per timber:
+  location label, cut-mark (identical sticks share it -- the buy list), and the stable production
+  number in the `TagHandle` slot. `TRelabel` retrofits older frames.
+- **Floors (phase 1)**: `TJoist` places joist rows (Joist role, FLUSH tops, Drop); `TAssign` hierarchy is
+  Frame -> Bent|Wall -> Bay|FLOOR (FloorTag; `J-<floor>-n` labels; intersection posts mint `P-2C` style
+  addresses via the two-box UI). `TBrowse` is the assign + review surface (highlight, not zoom;
+  double-click zooms). Phase 2 (joist dovetails + summers) and phase 3 (sills) are planned.
+- **Output layer** (reads the model/XData, never re-derives geometry): `TBom` grid; `TShop` shop maps
+  (per bent, per wall, floor plans; PRE-JOINERY arris linework; X/+ housing marks; 'TM Shop'
+  paper-space layouts at 3/8" = 1'-0"); `TScribe`/`TScribeAll` write `.tsj` burn-path files per face
+  (SOLPROF linework + ray-from-viewer annotations, cut-to-length lines both ends every face, blind-peg
+  'B', 0.5" fixed text; identical braces dedupe to one drawing set + count). `TScribeProbe` explains
+  per-face annotation decisions. Do NOT reintroduce surface-side visibility probes in the scribe
+  annotator -- every variant regressed.
 
 ## Build
 
@@ -674,11 +735,11 @@ JointFactory.RequiredExtras(type)      // string[] of keys needed in JointParams
 Generators live in `Joints\`. Working: `TenonGenerator`, `MortiseGenerator`, `ButtGenerator`.
 Stubs: all others (return ObjectId.Null; implement in Phase 2 member migration).
 
-### Commands
+### Commands (legacy parametric path)
 
 | Command | Description |
 |---|---|
-| `TDraw` | Opens TimberDraw palette |
+| `TDraw` | Opens TimberDraw palette (now the frame tree editor; `TDrawLegacy` opens the old flat palette) |
 | `TSave` | Saves current palette state to `.tproj` file |
 | `TLoad` | Loads `.tproj`, restores palette |
 | `TRegenTimber` | Picks a timber, prompts Width/Depth, calls TimberFactory.Regenerate() |

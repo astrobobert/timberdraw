@@ -1,94 +1,94 @@
 # TimberDraw Root .cs Files — Summary
 
+The bent/bay member classes formerly at the root (PostLeft, BentGirt, EaveGirt, Ridge, Purlins,
+Commons, ...) now live in `Bent\` and `Bay\` — they are the legacy generator's internals and are
+summarized in CLAUDE.md. This file covers what remains at the project root: command registration,
+global state, and the palette UI controls.
+
 ---
 
 ### Commands.cs
-The plugin **entry point**. Registers the `TDraw` AutoCAD command, creates a `PaletteSet` docked panel on first call, adds `UserControl1` to it, and saves settings on plugin unload.
+The plugin **entry point**. Registers every AutoCAD command and owns the palettes: `TDraw` (frame
+tree editor), `TRoughIn` (generate from the spec), `TFreeze` (one-way freeze gate), `TGrid`
+(structural grid), `TPanel` (assembly palette), `TBrowse` (frame browser), `TBom` (BOM palette),
+`TVer` (build stamp), `TFrameSave`/`TFrameLoad`, and the parked legacy commands (`TFrameFlat`,
+`TDrawLegacy`, `TRegenTimber`, `TFrame*`).
 
 ---
 
 ### Module1.cs
-The **global state and utility hub** — the most important file in the project. Contains:
-- All shared bent parameters (`Span`, `EaveHt`, `Pitch`, `Beta`, `Make3D`, `HasJoinery`, etc.)
-- `DrawElement()` — draws a polyline profile and optionally extrudes it to a 3D solid
-- `DrawPeg()` — draws a cylindrical peg on the "pegs" layer
-- `DrawBrace()` — draws a brace using a 2D polyline with bulge (curved corner)
-- `AddJoint()` / `DeleteJoint()` — boolean union (tenon) or subtraction (mortise) on 3D solids
-- `AddConnection()` — stores a linked-member relationship in entity extension dictionary xdata
-- `SetXdata()` / `GetXdata()` — reads/writes `Type`, `BentNumber`, `Designation`, `Size`, tenon/mortise/peg counts to each entity's extension dictionary
-- `DataStructure` — the xdata schema class
-- `JointType` enum — full vocabulary: Tenon, Mortise, Butt, Dovetail, Birdmouth, Scarf, Spline (used for future TimberScribe export)
-- `arabic2roman()`, `MaxDeflection()`, `PolarPoint()`, `AtPoint()` — geometry and utility helpers
-
----
-
-### PostLeft.cs / PostRight.cs
-**Wall post** members. Draw a vertical post profile from grade to eave height, with optional shouldered seats (1" setback notches) at the bent girt and floor girt elevations. The shoulder cuts are mirror images of each other. Both expose `AddMortise()` to receive tenons from connecting bay members.
-
----
-
-### BentGirt.cs
-The **horizontal tie beam** across the bent at eave height. Draws a rectangular profile spanning between the two posts (minus post depth), with optional 1" shoulder housings. Draws left and right tenons (4" long, 2" wide) and places TFG-standard pegs at both ends, guarded by `maxPegPos`. Exposes `AddMortise()`.
-
----
-
-### BentBrace.cs
-The **diagonal knee brace** within the bent plane. Uses a 45 degree geometry (`SinBeta = sqrt(2)/2`) and `DrawBrace()` with a small bulge radius at the corner. Draws two tenons (up and down) and one peg each. Respects `OffsetType` (Back/Centered/Front) in 3D to position itself within the post width.
-
----
-
-### BayBrace.cs
-The **diagonal brace across a bay** (the 3D direction). Nearly identical geometry to `BentBrace`, but oriented in the bay axis. Accepts explicit `Peg1Z`/`Peg2Z`/`Peg1Length`/`Peg2Length` for precise peg placement into the connecting posts/girts. Also supports `XAngle` rotation for the four brace positions (two bents x two sides).
-
----
-
-### EaveGirt.cs
-The **longitudinal girt at eave height** running bent-to-bent. One of the more complex members -- draws two separate timbers (left-side and right-side of the bent, with the roof slope notch cut into the top edge). Each side has its own tenon and up to 3 pegs placed symmetrically about the beam center (`center +/- ps`), guarded by `[minPegY, maxPegY]`. Has a `Side` enum and `AddMortise(id, side)` to receive eave brace mortises into the correct half.
-
----
-
-### FloorBentGirt.cs
-The **floor-level girt in the bent plane**. Structurally identical to `BentGirt` but positioned at `Height` rather than eave height. Same shoulder logic, same 4"-long tenon geometry, same TFG peg pattern. Draws pegs at both ends with the same `maxPegPos` guard.
-
----
-
-### FloorBayGirt.cs
-The **floor-level girt running across bays** (longitudinal, like `EaveGirt` but at floor level). Draws two timbers -- one on the left post face and one on the right -- each with two tenons (near and far bay ends). `RightBentNumber()` looks up the correct wall letter based on truss type (different member counts per bent type). Exposes `AddMortise(id, Side)`.
-
----
-
-### TrussGirt.cs
-The **bottom chord / tie beam for truss bents** (King Post Truss and Queen Post Truss). Spans full width at eave height, with notched birdmouth cuts on both ends to receive the rafter tails at the correct plumb angle. No joinery (pegs/tenons) -- `TenonWidth` is commented out. Exposes `AddMortise()`.
-
----
-
-### Ridge.cs
-The **ridge beam** at the apex of the roof. Draws the ridge profile (hexagonal -- rectangular with angled top cuts matching roof pitch). In joinery mode, creates:
-- Two plumb-cut **tenons** (near and far bay ends)
-- Two **mortise** slots (`Mortise1Id` + `Mortise1aId` for king post; `Mortise2Id` for far end) that the King Post or Queen Post rafters cut into
-
-Exposes `AddMortise()` to receive ridge brace tenons.
-
----
-
-### Purlins.cs
-**Roof purlins** -- secondary roof framing members running parallel to the ridge, spaced 48" on-center along the rafter slope. Uses `PolarPoint()` to walk down the rafter length in both directions from the ridge, drawing one purlin profile at each station. In joinery mode draws a dovetail tenon at the near-bent face and a simple tenon at the far face, collecting them into `TenonLeftCol`/`TenonRightCol` for the calling code to wire into rafter mortises.
----
-
-### Commons.cs
-**Common rafters** -- the intermediate rafters between bents, spaced to evenly fill each bay. Calculates spacing from bay width and rafter count. Draws pairs of rafters (left slope and right slope) at each Z station. Handles two cases: with ridge (rafters butt into ridge sides) and without ridge (rafters meet at the apex). In joinery mode draws eave-seat housings at the bottom and ridge-lap housings at the top, wired into `TenonLeft/RightDownCol` / `TenonLeft/RightUpCol`. The `IDisposable` pattern is correctly implemented here (unlike `Purlins`).
+The **legacy global state and utility hub** for the parametric generator path: shared bent
+parameters (`Span`, `EaveHt`, `Pitch`, `Beta`, `Make3D`, ...), `DrawElement()`, `DrawPeg()`,
+`DrawBrace()`, `AddJoint()`/`DeleteJoint()`, `AddConnection()`, `SetXdata()`/`GetXdata()`, the
+`DataStructure` xdata schema, the cross-bent pending-mortise queues, and geometry helpers
+(`arabic2roman()`, `PolarPoint()`, `AtPoint()`).
 
 ---
 
 ### UserControl1.cs
-The **main UI controller** (~2,769 lines). Handles all Windows Forms interactions: loading settings, wiring UI controls to `Module1` globals, and the `ButtonPickStartPoint_Click` handler that orchestrates the full drawing sequence -- instantiates the selected bent type, sets all its properties from settings, calls `Draw()`, then draws all bay members (ridge, braces, eave girts, purlins, commons, floor girts) and wires joinery connections between them.
+The **legacy flat palette** (opened by `TDrawLegacy`): wires Windows Forms controls to `Module1`
+globals and orchestrates the old full-bent drawing sequence including bay members and cross-bent
+joinery wiring.
+
+---
+
+### FrameTreeControl.cs
+The **frame tree editor** hosted by `TDraw`. The FrameSpec is the source of truth: the tree holds
+Bents and Bays (right-click to add), the property pane edits the selected item, member checkboxes
+toggle timbers, and the Draw button regenerates the skeleton (refused once frozen).
+
+---
+
+### PropertyPane.cs
+A lightweight, **fully-ordered property panel** that replaces the stock PropertyGrid: renders
+PropertyDescriptors in exact order with section headers, separators, per-row styling, and
+type-appropriate editors; values go through each descriptor's converter (unit input/display).
+
+---
+
+### FrameControl.cs
+Frame-shaped palette for the early TFrame node/edge model (KingPost only). Persists through
+`Settings.Default` and drives `Commands.DrawFrame`/`SaveFrame`/`LoadFrame`. Superseded by the
+tree editor for day-to-day use.
+
+---
+
+### TimberPaletteControl.cs
+The **assembly palette** (`TPanel`). Sections shown as a tree grouped by member type with each
+cross-section (W x D) as a leaf; selecting a leaf sets the sticky `ManagedSection`. Verb buttons
+fire the managed commands; orientation buttons fire the UCS presets.
+
+---
+
+### JoinPaletteControl.cs
+The **Joints pane**: pick a timber pair (`TJoinPick`), choose a connection type, and edit joinery
+params on one stable grid listing every element + param across all connection types (unavailable
+rows grayed). The real joint re-cuts live as values change; each param carries a glossary tooltip.
+
+---
+
+### JointGlossary.cs
+Plain-language **tooltips for the Joints pane**, mirroring GLOSSARY.md sections C (joint parts) and
+E (canonical params). Pure UI text — keep in step with GLOSSARY.md, the single source of truth.
+
+---
+
+### BomGridControl.cs
+The **BOM palette** (`TBom`): a sortable, read-only DataGridView of the per-timber piece tally.
+Selecting rows highlights the matching solids in model space; Refresh re-reads the model; Export
+writes CSV.
+
+---
+
+### TimberFactory.cs
+The **legacy parametric regeneration dispatcher** (`TRegenTimber` path): reads a timber's stored
+DrawContext + xdata, erases and redraws with new dimensions, and cascades mortise re-cuts into
+connected members. Applies to legacy-pipeline drawings only — managed timbers are edited with the
+editor verbs instead.
 
 ---
 
 ### ProjectFile.cs
-**`TSave` and `TLoad` commands** for the `BentProject.json` project file format.
-`TSave` snapshots the current palette state (all bent and bay parameters) into a
-`.tproj` file. `TLoad` reads it back, restores all settings, and reopens the
-`TDraw` palette so the UI reflects the loaded values. Data model:
-`BentProjectFile` contains `Bents[]` (one entry per bent) and `Bays[]` (one entry
-per bay between adjacent bents). Serialised with `System.Text.Json`.
+**`TSave` and `TLoad`** for the legacy `BentProject.json`/`.tproj` project file format (palette
+state snapshot). The managed path persists frame specs via `TFrameSave`/`TFrameLoad` and stores
+everything else on the timbers themselves.

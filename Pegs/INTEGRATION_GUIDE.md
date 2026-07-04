@@ -1,5 +1,13 @@
 # TimberScribe -- Joinery & Peg Standards Integration Guide
 
+> **STATUS: HISTORICAL REFERENCE.** This guide describes the original plan for a
+> TimberScribe AutoCAD plugin sharing a `TimberFrameSuite.Standards.dll`. That
+> architecture was not built: TimberScribe is now a standalone Raspberry Pi Flask
+> server, and the active scribe export lives in `Managed\Scribe*.cs`
+> (`TScribe`/`TScribeAll`). `JoineryExporter.cs` is a retained stub. The peg
+> standards files (`PegSpecification.cs`, `TFGPegStandards.cs`) remain in active
+> use by TimberDraw itself.
+
 ## Overview
 This integration adds **Timber Framers Guild (TFG) peg sizing and placement standards** to the TimberScribe plugin. It enables automatic validation and documentation of pegged joints during the export process.
 

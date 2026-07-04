@@ -1,25 +1,22 @@
 # TimberDraw
 
-**TimberDraw** is an AutoCAD plugin for drawing traditional timber frame bent geometry. It generates 2D elevation drawings and 3D solid models of full timber frame bents — including posts, rafters, girts, braces, struts, king posts, queen posts, and hammer beams — with accurate joinery (tenons, mortises, and drawbored pegs) conforming to Timber Framers Guild (TFG) standards.
+**TimberDraw** is the design side of the **Timber Frame Suite** — an open-source CAD/CAM system for traditional timber framers. The suite helps you design timber frames, produce shop drawings and cut lists, and laser-scribe accurate joinery layouts directly onto the timbers. The joinery is still cut by hand using traditional tools, preserving craftsmanship while reducing layout time and improving accuracy.
 
-TimberDraw is the first application in the **Timber Frame Suite**.
+TimberDraw is the AutoCAD half of that pipeline. It models the frame as managed 3D solids — a parametric rough-in of five classic bent types, per-timber editing, and mortise-and-tenon joinery conforming to Timber Framers Guild (TFG) practice — and produces everything the shop needs: structural-grid labels, a cut list / BOM, shop drawings, and `.tsj` scribe files for the companion **TimberScribe** laser print head.
 
 ---
 
 ## Features
 
-- **Five bent types:** King Post, Queen Post, Hammer Beam, King Post Truss, Queen Post Truss
-- **2D and 3D modes:** Flat elevation for layout, or fully extruded 3D solid model
-- **Complete joinery generation:** Tenons, mortises, and pegs drawn per Timber Framers Guild standards
-  - Peg diameter = 1/2 x tenon thickness (TFG rule)
-  - First peg 2" from bearing nose; subsequent pegs at 3.5x peg-diameter spacing
-  - Far-end clearance matches near-end: 2" minimum from tenon tip (TFG symmetric setback)
-  - Number of pegs placed dynamically — only pegs that fit within the tenon bounds are drawn
-- **Bay framing:** Common rafters, purlins, floor girts, and bay braces between bents
-- **AutoCAD palette UI:** All parameters entered in a docked tool palette; no command-line prompts
-- **Persistent settings:** All bent parameters save between sessions via AutoCAD's settings system
-- **Project file save/load:** `TSave` writes `BentProject.json` capturing all bent and bay parameters; `TLoad` restores them and refreshes the palette
-- **Parametric regeneration:** `TRegenTimber` command edits any timber's Width/Depth/JointType in place; automatically cascades to re-cut mortises in all connected members and updates the selection set of the legacy TimberTag palette
+- **Parametric frame design:** A tree editor (`TDraw`) models the frame as Bents x Walls x Bays with five bent types -- King Post, Queen Post, Hammer Beam, King Post Truss, Queen Post Truss -- plus bay framing (eave/floor girts, braces, ridge, common rafters, purlins) and recipe parameters that survive regeneration (girt drop, per-bay girt heights, rafter tails, and more).
+- **Managed timbers:** Every solid carries its own geometry, joinery, and identity as XData -- there is no side database. A one-way freeze (`TFreeze`) ends the parametric phase; after that every timber is edited the same way, skeleton or free.
+- **Editor verbs:** Place, span, join, fit, re-section, scarf-splice, and joist-fill commands (`TPlace`, `TSpan`, `TJoin`, `TFit`, `TSection`, `TScarf`, `TJoist`), driven from an assembly palette (`TPanel`) with sticky section sizes and UCS presets.
+- **Joinery engine:** A kit-of-parts connection catalog -- girt-to-post tenon + housing + pegs (`TJoint`, batch `TJointAll`), braces and struts at any angle (`TBrace`, `TStrut`), rafter foot/head, ridge drop-in, birdsmouths, housed dovetail purlins, and scarfs. Joints are identity-tracked: re-cutting replaces in place, and every cutter has a matching delete command. Pegs follow TFG sizing and placement standards.
+- **Structural grid + labels:** Bent numbers and wall letters (skipping I/O) address every timber; labels are type-first (`P-2A`, `EG-B-I`, `J-A-1`) with hand and level qualifiers. Each timber carries a location label, a cut-mark shared by identical sticks (the buy list), and a stable production number.
+- **Shop output:** `TBom` (sortable cut-list grid with model highlighting and CSV export), `TShop` (per-bent, per-wall, and floor-plan shop maps in paper-space layouts), and `TScribe`/`TScribeAll` (`.tsj` burn-path files per timber face for the TimberScribe laser head).
+- **Frame browser:** `TBrowse` lists the whole frame for assign-and-review -- selecting highlights, double-click zooms.
+
+The shared vocabulary (timber anatomy, joint types, canonical parameter names) lives in [GLOSSARY.md](GLOSSARY.md).
 
 ---
 
@@ -39,30 +36,19 @@ TimberDraw is the first application in the **Timber Frame Suite**.
 1. Build the project in Visual Studio 2022 (Debug or Release).
 2. Copy `..\bin\Debug\TimberDraw.dll` (build output lands one level above the repo root) to a convenient location.
 3. In AutoCAD, type `NETLOAD` and browse to `TimberDraw.dll`.
-4. Type `TDraw` to open the TimberDraw palette.
+4. Type `TDraw` to open the frame editor.
 
-To load automatically on startup, add the `NETLOAD` path to your AutoCAD startup suite (`APPLOAD` -> Startup Suite).
+To load automatically on startup, add the `NETLOAD` path to your AutoCAD startup suite (`APPLOAD` -> Startup Suite). `TVer` confirms which build is loaded; NETLOAD cannot hot-swap, so reopen AutoCAD to pick up a new DLL.
 
 ---
 
-## Usage
+## Workflow
 
-Open the palette with the `TDraw` command. Configure your bent:
-
-| Setting | Description |
-|---|---|
-| **Bent Type** | King Post, Queen Post, Hammer Beam, King Post Truss, Queen Post Truss |
-| **Span** | Overall bent width (outside of post to outside of post) |
-| **Eave Height** | Height from grade to the top of the wall plate / eave line |
-| **Roof Pitch** | Rise and run (e.g. 8/12) |
-| **Bay Width** | Spacing between bents (for 3D and bay member generation) |
-| **Member sizes** | Width and depth for each member type |
-| **Has Joinery** | Generate tenons, mortises, and pegs |
-| **Has Shoulder** | Add housing shoulders to beam seats |
-| **Make 3D** | Extrude all members to full 3D solids |
-| **Bent Number / Wall** | Roman-numeral bent label and wall letter for designations |
-
-Click the draw button for the appropriate bent type. The plugin places the bent at the AutoCAD insertion point using the current UCS.
+1. **Design** -- `TDraw` opens the tree editor: add bents and bays, pick bent types, set spans, heights, pitch, member sizes, and roof framing. Draw regenerates the skeleton until you freeze.
+2. **Freeze** -- `TFreeze` ends the parametric phase (one-way). The timbers carry on as the source of truth.
+3. **Edit** -- `TPanel` opens the assembly palette; use the editor verbs to add floors, infill, and free timbers. `TAssign` gives free timbers grid addresses; `TScan` re-derives connectivity from face coincidence.
+4. **Joinery** -- `TJointAll` batch-cuts the girt-to-post joints; the per-connection commands (`TBrace`, `TStrut`, `TRafterFoot`, `TRidge`, `TPurlin`, ...) or the Joints pane (`TPanel` -> Joints) cut the rest.
+5. **Output** -- `TBom` for the cut list, `TShop` for shop drawings, `TScribeAll` for `.tsj` laser scribe files consumed by TimberScribe.
 
 ---
 
@@ -70,44 +56,37 @@ Click the draw button for the appropriate bent type. The plugin places the bent 
 
 ```
 TimberDraw\
-  Commands.cs          -- AutoCAD command registration (TDraw command)
-  Module1.cs           -- Global state and core draw helpers (DrawElement, DrawPeg, AddJoint)
-  UserControl1.cs      -- Windows Forms palette UI
-  Commons.cs           -- Common rafters between bents
+  Commands.cs            -- Command registration + palettes (TDraw, TRoughIn, TFreeze, TGrid, TPanel, TBrowse, TVer, ...)
+  FrameTreeControl.cs    -- The frame tree editor UI (FrameSpec is the source of truth)
+  PropertyPane.cs        -- Ordered property panel used by the tree editor
+  TimberPaletteControl.cs-- Assembly palette (TPanel): sticky sections + verb buttons
+  JoinPaletteControl.cs  -- Joints pane: connection type + element stack, live re-cut
+  BomGridControl.cs      -- BOM palette grid (TBom)
 
-  PostLeft.cs          -- Left wall post
-  PostRight.cs         -- Right wall post
-  BentGirt.cs          -- Tie beam / bent girt
-  BentBrace.cs         -- Knee brace
-  BayBrace.cs          -- Bay brace (between bents)
-  EaveGirt.cs          -- Eave girt
-  FloorBentGirt.cs     -- Floor girt in bent plane
-  FloorBayGirt.cs      -- Floor girt across bays
-  TrussGirt.cs         -- Girt for truss bents
-  Ridge.cs             -- Ridge beam
-  Purlins.cs           -- Roof purlins
-  ProjectFile.cs       -- TSave / TLoad commands (BentProject.json read/write)
+  Frame\                 -- The GENERATOR + frame model
+    FrameSpec.cs         -- The recipe (Bents x Walls x Bays), edited by the tree editor
+    KingPostBentGraph.cs -- Bent geometry as convex intersections of half-planes
+                            (+ QueenPost / HammerBeam / Truss partials)
+    ManagedFrameEmitter.cs -- The freeze bridge: emits managed timber solids from the graph
+    FrameGrid.cs         -- Structural grid + installer labels
+    FrameRegistry.cs     -- The one-way freeze gate
 
-  Kpost\               -- King Post bent components
-    KPBent.cs          -- Orchestrates the full King Post bent
-    KPost.cs           -- King post
-    KPRafterLeft.cs    -- Left principal rafter
-    KPRafterRight.cs   -- Right principal rafter
-    KPStrutLeft.cs     -- Left diagonal strut
-    KPStrutRight.cs    -- Right diagonal strut
-    KPVertStrutLeft.cs -- Left vertical strut
-    KPVertStrutRight.cs
+  Managed\               -- The MANAGED SUBSTRATE (editor + joinery + output)
+    ManagedTimber.cs     -- TFrame model, faces/nodes, solid build, editor verbs, joinery commands
+    JoinCommands.cs      -- Joints pane commands (TJoinPick / TJoinApply)
+    RelabelCommands.cs   -- TRelabel
+    BomCommands.cs       -- TBom
+    ShopCommands.cs / ShopMaps.cs / ShopLayouts.cs -- TShop shop drawings
+    Scribe*.cs           -- TScribe / TScribeAll .tsj export + annotations
 
-  Qpost\               -- Queen Post bent components (same pattern as Kpost\)
-  Hbeam\               -- Hammer Beam bent components
-  KpostTruss\          -- King Post Truss variant
-  QpostTruss\          -- Queen Post Truss variant
+  Browser\               -- TBrowse frame browser palette
+  docs\                  -- floor-systems design doc, user-guide outline
+  GLOSSARY.md            -- Trade terms + canonical joinery parameter names (single source of truth)
 
-  Pegs\                -- Timber Framers Guild peg standards
-    PegSpecification.cs     -- Peg data model (namespace: TimberFrameSuite.Standards)
-    TFGPegStandards.cs      -- Standard presets and lookup (namespace: TimberFrameSuite.Standards)
-    JoineryExporter.cs      -- JSON export stub for future TimberScribe app
-    INTEGRATION_GUIDE.md    -- Guide for wiring into TimberScribe
+  Bent\ Bay\ Kpost\ Qpost\ Hbeam\ KpostTruss\ QpostTruss\ Joints\
+                         -- Legacy parametric pipeline (the generator's internals; parked)
+  Pegs\                  -- TFG peg standards (shared by both paths)
+  tests\                 -- Architecture boundary tests (run standalone, not in the .sln)
 ```
 
 ---
@@ -122,13 +101,11 @@ All pegs are sized and placed per TFG (Timber Frame Engineering Council) researc
 - 1.5" tenon -> 0.75" diameter peg (braces)
 - Maximum standard peg diameter: 1.25"
 
-**Peg placement along beam:**
+**Peg placement:**
 - First peg: 2" from bearing nose (framing-square body thickness)
 - Spacing between pegs: 3.5 x peg diameter
-- Far-end clearance: 2" from tenon tip (symmetric with near-end setback)
-- Peg count: determined dynamically — only pegs that fit within [2", Depth - 2"] are drawn
-  - Typical 6-8" members: 1-2 pegs per joint
-  - Members 11"+ deep: up to 3 pegs per joint
+- Peg count: determined dynamically -- only pegs that fit within clearances are drawn
+- On managed joints, pegs bore the post only; draw-boring the tenon is done by hand in the field
 
 **References:**
 - *Edge Spacing of Pegs in Mortise and Tenon Joints* -- TFEC Research Report
@@ -139,15 +116,13 @@ All pegs are sized and placed per TFG (Timber Frame Engineering Council) researc
 
 ## Timber Frame Suite
 
-TimberDraw is the drawing engine of a planned three-app suite:
-
 | App | Status | Purpose |
 |---|---|---|
-| **TimberDraw** (this project) | Active development | AutoCAD drawing plugin — draws managed timber solids, cuts joinery, labels/BOM/shop maps, exports `.tsj` scribe files (`TScribe`/`TScribeAll`) |
-| **TimberScribe** | Active development | Raspberry Pi Flask server — receives `.tsj` files and drives laser print head |
-| **TimberTag** | **Legacy — superseded** | Old AutoCAD tagging/export plugin; its scribe export, BOM, and tagging roles have been absorbed into TimberDraw. Only needed for drawings made by the legacy parametric pipeline. |
+| **TimberDraw** (this project) | Active development | AutoCAD plugin -- draws managed timber solids, cuts joinery, labels/BOM/shop drawings, exports `.tsj` scribe files |
+| **[TimberScribe](https://github.com/astrobobert/timberscribe)** | Active development | Raspberry Pi Flask server -- receives `.tsj` files and drives the self-propelled laser print head |
+| **TimberTag** | Legacy -- superseded | Old AutoCAD tagging/export plugin (archived with the pre-split monorepo); its scribe export, BOM, and tagging roles have been absorbed into TimberDraw. Only needed for drawings made by the legacy parametric pipeline. |
 
-The `Pegs\` folder contains `JoineryExporter.cs`, a pre-staged stub originally planned for a TimberScribe AutoCAD plugin. TimberScribe is now a standalone Pi application and consumes `.tsj` files produced by TimberDraw's managed scribe export (`Managed\Scribe*.cs`, ported from the original TimberTag pipeline); `JoineryExporter.cs` is retained for reference only.
+The `.tsj` schema is byte-compatible with the original TimberTag export, so the Pi does not care which produced the file.
 
 ---
 
@@ -166,30 +141,19 @@ Output: `..\bin\Debug\TimberDraw.dll` (one level above the repo root)
 ### Key Technical Details
 
 - **SDK-style `.csproj`** -- all `.cs` files in the project directory tree are compiled automatically; no need to add files manually.
-- **C# 9.0** -- required for `new()` target-typed creation used in `Pegs\` classes.
+- **C# 9.0** -- required for `new()` target-typed creation.
 - **Source encoding** -- all source files must contain only ASCII characters. The .NET Framework compiler reads files in the system ANSI codepage; Unicode decorative characters in source will cause compile errors.
 - **ObjectARX SDK** -- DLLs referenced by absolute path from `C:\Autodesk\ObjectARX_for_AutoCAD_2020_Win_64_bit\inc\`.
-- **AutoCAD command** -- `TDraw` opens the palette. The command name cannot match the assembly name (`TimberDraw`) due to AutoCAD namespace conflict.
+- **AutoCAD command** -- `TDraw` opens the frame editor. The command name cannot match the assembly name (`TimberDraw`) due to AutoCAD namespace conflict.
+- **Boundary guard** -- `tests\TimberDraw.Architecture.Tests` enforces the generator/editor folder split (run with `dotnet test`, standalone).
 
-### Adding a New Member Type
-
-1. Create a class in the appropriate subdirectory following the pattern in any existing member class.
-2. Declare `private double TenonWidth = 2;` (or `1.5` for braces).
-3. In the joinery block, call `TFGPegStandards.GetPresetForTenonThickness(TenonWidth)` to compute `r`, `y1/y2/y3`, and `maxPegPos`. Use the bounds check pattern:
-   ```csharp
-   double maxPegPos = tenonLength - peg.FirstPegSetbackInches;
-   PegCol.Add(DrawPeg at y1);               // always
-   if (y2 <= maxPegPos) PegCol.Add(...y2);  // conditional
-   if (y3 <= maxPegPos) PegCol.Add(...y3);  // conditional
-   ```
-4. Add `using TimberFrameSuite.Standards;` at the top of the file.
-5. Wire the new class into the appropriate `*Bent.cs` orchestrator.
+See [CLAUDE.md](CLAUDE.md) for the full architecture guide.
 
 ---
 
 ## History
 
-Originally written in VB.NET around 2009. Converted to C# and modernized to an SDK-style project in 2026. Renamed from DrawAFrame to TimberDraw, May 2026. TFG peg standards integration and dynamic peg bounds enforcement completed May 2026. Phase 2 parametric regeneration (all member types) and Phase 3 receiver-driven mortise re-cut + cascade handle correction + TimberTag SS update completed May 2026.
+Originally written in VB.NET around 2009. Converted to C# and modernized to an SDK-style project in 2026; renamed from DrawAFrame to TimberDraw, May 2026. The parametric regeneration/cascade pipeline (May 2026) was superseded in June 2026 by the managed-timber substrate: frame graph generator + one-way freeze, editor verbs, identity-tracked joinery engine, structural-grid labels, BOM/shop drawings, managed scribe export, and floor systems phase 1. Split out of the timber-frame-suite monorepo into its own repository, July 2026.
 
 ---
 
