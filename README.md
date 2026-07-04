@@ -34,7 +34,7 @@ The shared vocabulary (timber anatomy, joint types, canonical parameter names) l
 ## Installation
 
 1. Build the project in Visual Studio 2022 (Debug or Release).
-2. Copy `..\bin\Debug\TimberDraw.dll` (build output lands one level above the repo root) to a convenient location.
+2. The build output is `bin\Debug\TimberDraw.dll` in the repo root; copy it to a convenient location (or load it in place).
 3. In AutoCAD, type `NETLOAD` and browse to `TimberDraw.dll`.
 4. Type `TDraw` to open the frame editor.
 
@@ -136,7 +136,7 @@ Open `TimberDraw.sln` in Visual Studio 2022 and build, or from PowerShell:
 & "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" TimberDraw.csproj /p:Configuration=Debug /nologo /v:minimal
 ```
 
-Output: `..\bin\Debug\TimberDraw.dll` (one level above the repo root)
+Output: `bin\Debug\TimberDraw.dll` (in the repo root)
 
 ### Key Technical Details
 

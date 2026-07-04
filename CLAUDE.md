@@ -158,11 +158,11 @@ catalog + canonical param names live in `GLOSSARY.md` section D. The essentials:
 # Building the solution works too: MSBuild.exe TimberDraw.sln /p:Configuration=Debug
 ```
 
-Output: `..\bin\Debug\TimberDraw.dll` -- ONE LEVEL ABOVE the repo root (`<OutDir>..\bin\$(Configuration)\</OutDir>`,
-NOT a `net48\` subfolder; `AppendTargetFrameworkToOutputPath=false`). Deliberately kept after the repo split
-so the user's AutoCAD APPLOAD/NETLOAD startup path (`...\Timber Frame Suite\bin\Debug\TimberDraw.dll`) stays
-stable; TODO before going public: move OutDir inside the repo and update the APPLOAD entry. AutoCAD locks the
-DLL while loaded, so a copy after build may need a retry.
+Output: `bin\Debug\TimberDraw.dll` -- inside the repo root (`<OutDir>bin\$(Configuration)\</OutDir>`,
+NOT a `net48\` subfolder; `AppendTargetFrameworkToOutputPath=false`). Moved inside the repo 2026-07-04
+(was `..\bin` in the suite container folder for APPLOAD stability across the repo split -- the APPLOAD
+entry now points at the in-repo path). AutoCAD locks the DLL while loaded, so a rebuild needs AutoCAD
+closed.
 
 **Key project settings:**
 - Target: `net48` (.NET Framework 4.8)

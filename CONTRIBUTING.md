@@ -35,10 +35,9 @@ Build:
 & "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" TimberDraw.csproj /p:Configuration=Debug /nologo /v:minimal
 ```
 
-Output currently lands at `..\bin\Debug\TimberDraw.dll` — **one level above
-the repo root** (a deliberate leftover for a stable APPLOAD path; see the
-README). `NETLOAD` it in AutoCAD; `TVer` confirms the loaded build. AutoCAD
-locks the DLL — close AutoCAD before rebuilding.
+Output lands at `bin\Debug\TimberDraw.dll` in the repo root. `NETLOAD` it in
+AutoCAD; `TVer` confirms the loaded build. AutoCAD locks the DLL — close
+AutoCAD before rebuilding.
 
 ## Ground rules
 

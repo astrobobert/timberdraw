@@ -12,7 +12,7 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Nullable>disable</Nullable>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <OutDir>..\bin\$(Configuration)\</OutDir>
+    <OutDir>bin\$(Configuration)\</OutDir>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
