@@ -1,0 +1,82 @@
+# Appendix A. Command Reference
+
+Every command, one line, grouped by job. Legacy commands are for drawings made
+by the old parametric pipeline — **not for new work**.
+
+## Frame design
+
+| Command | One line |
+|---|---|
+| `TDraw` | Open the frame editor (tree + properties + Draw/Freeze/templates). Ch. 5 |
+| `TRoughIn` | Command-line alternate: emit one bent of the configured type at a picked point. Ch. 5 |
+| `TFreeze` | The break: lock the frame's generator, one-way. Ch. 6 |
+| `TFrameSave` / `TFrameLoad` | Write / redraw the frame graph as a `.tframe` JSON file. |
+
+## Grid + labels
+
+| Command | One line |
+|---|---|
+| `TGrid` | Redraw the structural grid, derived from the drawing. Ch. 7 |
+| `TAssign` | Give free timbers an address (bent intersection / wall+bay / floor). Ch. 7 |
+| `TRelabel` | Retrofit current label conventions onto an older frame. Ch. 7 |
+
+## Editor verbs
+
+| Command | One line |
+|---|---|
+| `TPanel` | Open the assembly palette (sticky sections + verbs + UCS presets). Ch. 8 |
+| `TPlace` | Place one timber of the sticky section. Ch. 8 |
+| `TSpan` | Fill the gap between two picked timbers. Ch. 8 |
+| `TJoin` | Connect two picked faces (square filler or mitered knee). Ch. 8 |
+| `TFit` | Trim/extend a picked end onto a target face. Ch. 8 |
+| `TSection` | Re-section a timber (W x D) in place. Ch. 8 |
+| `TScarf` | Split a timber in two with a scarf splice. Ch. 8 |
+| `TJoist` | Place a row of floor joists in a bay. Ch. 8 |
+| `TScan` | Rescan face coincidence; mark connection nodes. Ch. 8 |
+| `TBrowse` | The frame browser: filter, highlight, zoom, send to TAssign. Ch. 8 |
+| `TUcsPlan` / `TUcsBent` / `TUcsWall` | UCS presets for comfortable placement. Ch. 8 |
+
+## Joinery
+
+| Command | One line |
+|---|---|
+| `TJoinPick` / `TJoinApply` | The Joints pane: pick a pair, edit the element stack, cut. Ch. 10 |
+| `TJoint` / `TJointDel` | Girt end -> post: tenon + housing + pegs. Ch. 10 |
+| `TJointAll` | Batch-cut every girt-to-post contact in the frame. Ch. 10 |
+| `TBrace` / `TBraceDel` | Knee brace: 1 1/2" barefaced tenon. Ch. 10 |
+| `TStrut` / `TStrutDel` | Strut / V-strut tenon onto any host face, any angle. Ch. 10 |
+| `TRafterFoot` / `TRafterFootDel` | Rafter foot let into a post side (sloped wedge). Ch. 10 |
+| `TRafterHead` / `TRafterHeadDel` | Rafter head shoulder notch on the king post. Ch. 10 |
+| `TRidge` / `TRidgeDel` | Ridge drop-in housing at the king-post apex. Ch. 10 |
+| `TRidgeRafter` / `TRidgeRafterDel` | The same drop-in, housed into a rafter head (no-king-post bents). Ch. 10 |
+| `TCommonRidge` / `TCommonRidgeDel` | Common rafter head housed into the ridge. Ch. 10 |
+| `TCommonEave` / `TCommonEaveDel` | Common rafter birdsmouth on the eave girt. Ch. 10 |
+| `TPurlin` / `TPurlinDel` | Purlin housed dovetail into the rafter back. Ch. 10 |
+| `TQPRafter` / `TQPRafterDel` | Queen-post rafter apex: peak end tenons into the host rafter. Ch. 10 |
+
+## Output
+
+| Command | One line |
+|---|---|
+| `TBom` | The cut-list palette; rows highlight solids; CSV export. Ch. 11 |
+| `TShop` / `TShopClear` | Build / remove the shop-map set on the TM Shop layout. Ch. 12 |
+| `TScribe` | Export `.tsj` scribe files for selected timbers. Ch. 13 |
+| `TScribeAll` | Export the whole frame (clears the folder first). Ch. 13 |
+| `TScribeProbe` | Explain one timber's per-face scribe decisions. Ch. 13 |
+
+## Utility
+
+| Command | One line |
+|---|---|
+| `TVer` | Print the loaded build (the am-I-stale check). Ch. 2 |
+| `TPickFace` | Debug: pick and report one analytic face. |
+
+## Legacy (parked — not for new drawings)
+
+| Command | One line |
+|---|---|
+| `TDrawLegacy` | The old flat parametric palette. |
+| `TFrameFlat` | The old frame-params palette. |
+| `TFrame` / `TFrameQP` / `TFrameHB` / `TFrameKPT` / `TFrameQPT` | Draw a single legacy bent graph per type. |
+| `TRegenTimber` | Legacy parametric regeneration (old XData pipeline drawings only). |
+| `TSave` / `TLoad` | Legacy `.tproj` palette-state files. |
