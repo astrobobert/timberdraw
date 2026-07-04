@@ -1,0 +1,23 @@
+# CI: architecture-boundary tests only.
+#
+# The plugin itself (net48 + ObjectARX) cannot build in CI -- the SDK is a
+# licensed local install referenced by absolute path. The arch tests are
+# deliberately dependency-free (net8.0, read sources as text), so they run
+# anywhere and guard the generator/editor boundary on every push.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  architecture-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Run architecture boundary tests
+        run: dotnet test tests/TimberDraw.Architecture.Tests --nologo
