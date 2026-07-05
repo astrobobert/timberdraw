@@ -20,24 +20,12 @@ namespace TimberDraw
         // Raised (deferred to the message loop) after a successful edit; arg = the descriptor's Name.
         public event Action<string> ValueCommitted;
 
-        private const int LabelW = 150;
-        private static readonly Color HeaderBack = SystemColors.ControlLight;
-        private static readonly Color ReadOnlyFore = SystemColors.GrayText;
-
         public PropertyPane()
         {
             AutoScroll = true;
-            _table = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                ColumnCount = 2,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                GrowStyle = TableLayoutPanelGrowStyle.AddRows,
-                Padding = new Padding(0, 0, 0, 4)
-            };
-            _table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, LabelW));
-            _table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            BackColor = Theme.Bg;
+            ForeColor = Theme.Fg;
+            _table = PaneRows.MakeGrid();   // the shared 2-col row idiom (Theme.LabelW label column)
             Controls.Add(_table);
         }
 
@@ -126,48 +114,12 @@ namespace TimberDraw
         }
 
         // ------------------------------------------------------------- rendering
-        private void AddHeader(string text)
-        {
-            var lbl = new Label
-            {
-                Text = text, Dock = DockStyle.Fill, Height = 20, BackColor = HeaderBack,
-                Font = new Font(Font, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(4, 0, 0, 0), Margin = new Padding(0)
-            };
-            int r = _table.RowCount++;
-            _table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            _table.Controls.Add(lbl, 0, r);
-            _table.SetColumnSpan(lbl, 2);
-        }
+        private void AddHeader(string text) => PaneRows.AddFullRow(_table, PaneRows.HeaderCell(text));
 
-        private void AddSeparator()
-        {
-            var sep = new Panel { Dock = DockStyle.Fill, Height = 7, Margin = new Padding(0) };
-            sep.Paint += (s, e) =>
-            {
-                int y = sep.Height / 2;
-                using (var p = new Pen(SystemColors.ControlDark))
-                    e.Graphics.DrawLine(p, 2, y, sep.Width - 2, y);
-            };
-            int r = _table.RowCount++;
-            _table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            _table.Controls.Add(sep, 0, r);
-            _table.SetColumnSpan(sep, 2);
-        }
+        private void AddSeparator() => PaneRows.AddSeparator(_table);
 
         private void AddRow(DisplayRow row)
-        {
-            int r = _table.RowCount++;
-            _table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            var lbl = new Label
-            {
-                Text = row.Label, Dock = DockStyle.Fill, Height = 23, AutoEllipsis = true,
-                TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(6, 0, 0, 0),
-                Margin = new Padding(0), ForeColor = row.ReadOnly ? ReadOnlyFore : ForeColor
-            };
-            _table.Controls.Add(lbl, 0, r);
-            _table.Controls.Add(BuildEditor(row), 1, r);
-        }
+            => PaneRows.AddParamRow(_table, PaneRows.RowLabel(row.Label, 6, subtle: row.ReadOnly), BuildEditor(row));
 
         private Control BuildEditor(DisplayRow row)
         {
@@ -176,8 +128,8 @@ namespace TimberDraw
             if (row.ReadOnly)
                 return new Label
                 {
-                    Text = mixed ? "" : Display(row, val), Dock = DockStyle.Fill, Height = 23,
-                    TextAlign = ContentAlignment.MiddleLeft, ForeColor = ReadOnlyFore,
+                    Text = mixed ? "" : Display(row, val), Dock = DockStyle.Fill, Height = Theme.RowH,
+                    TextAlign = ContentAlignment.MiddleLeft, ForeColor = Theme.SubtleFg,
                     Padding = new Padding(3, 0, 0, 0), Margin = new Padding(0, 1, 0, 1)
                 };
 
@@ -198,10 +150,15 @@ namespace TimberDraw
                 // Items are the converter's raw standard values (the stored objects, e.g. ints 4/6); the
                 // Format event renders each through the converter so a mapping converter can show display
                 // text (e.g. "2"/"3") while SelectedItem -> Commit still passes the stored value.
+                // Editors are rebuilt on every Bind -- after the one-time Theme.Apply walk -- so
+                // theme them here (a ComboBox never inherits ambient colors; Flat in dark mode
+                // because the standard renderer ignores BackColor for the closed portion).
                 var combo = new ComboBox
                 {
                     Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList,
-                    Margin = new Padding(0, 1, 1, 1), FormattingEnabled = true
+                    Margin = new Padding(0, 1, 1, 1), FormattingEnabled = true,
+                    BackColor = Theme.Surface, ForeColor = Theme.Fg,
+                    FlatStyle = Theme.IsDark ? FlatStyle.Flat : FlatStyle.Standard
                 };
                 combo.Format += (s, e) => e.Value = Display(row, e.ListItem);
                 combo.Items.AddRange(items);
@@ -210,7 +167,12 @@ namespace TimberDraw
                 return combo;
             }
 
-            var txt = new TextBox { Dock = DockStyle.Fill, Margin = new Padding(0, 1, 1, 1), Text = mixed ? "" : Display(row, val) };
+            var txt = new TextBox
+            {
+                Dock = DockStyle.Fill, Margin = new Padding(0, 1, 1, 1),
+                BackColor = Theme.Surface, ForeColor = Theme.Fg,
+                Text = mixed ? "" : Display(row, val)
+            };
             txt.Leave += (s, e) => CommitText(row, txt);
             txt.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { CommitText(row, txt); e.SuppressKeyPress = true; } };
             return txt;

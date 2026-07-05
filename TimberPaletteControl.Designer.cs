@@ -45,15 +45,14 @@ namespace TimberDraw
         // Footer
         private Label lblBuild;
 
-        // Containers: a TabControl (Edit | TBD). The "Edit" tab holds every group (section, orientation,
-        // place & connect, brace, edit & nodes); "TBD" is an empty placeholder for future tools. (The
-        // Rough-in / Generate tab is gone -- generation + the freeze break live in TDraw's tree editor.)
-        private TabControl tabs;
-        private TabPage pageEdit, pageTbd;
-        private FlowLayoutPanel flowEdit, flowTbd;
+        // Container: ONE scrolling top-down flow of groups (section, orientation, place & connect,
+        // brace, assembly, edit & nodes). The old internal Edit|TBD TabControl is gone -- the shell
+        // supplies the tabs now, and the TBD page was an empty placeholder. (The Rough-in / Generate
+        // tab is longer gone still -- generation + the freeze break live in the Frame tab.)
+        private FlowLayoutPanel flowEdit;
         private GroupBox groupSection, groupOrient, groupPlace, groupEdit;
 
-        // A scrolling top-down flow panel that fills its tab page.
+        // A scrolling top-down flow panel that fills the control.
         private static FlowLayoutPanel TabFlow()
         {
             return new FlowLayoutPanel
@@ -66,19 +65,28 @@ namespace TimberDraw
             };
         }
 
+        // Pixel-placed control helpers, styled through the shared Theme.
         private static Label Cap(string text, int x, int y)
         {
-            return new Label { Text = text, Location = new Point(x, y), AutoSize = true };
+            Label l = Theme.Caption(text);
+            l.Location = new Point(x, y);
+            l.Padding = new Padding(0);
+            return l;
         }
 
         private static Button Btn(string text, int x, int y, int w)
         {
-            return new Button { Text = text, Location = new Point(x, y), Size = new Size(w, 25) };
+            Button b = Theme.Button(text);
+            b.Location = new Point(x, y);
+            b.Size = new Size(w, 25);
+            return b;
         }
 
         private static CheckBox Chk(string text, int x, int y)
         {
-            return new CheckBox { Text = text, Location = new Point(x, y), AutoSize = true };
+            CheckBox c = Theme.Check(text);
+            c.Location = new Point(x, y);
+            return c;
         }
 
         private void InitializeComponent()
@@ -189,11 +197,11 @@ namespace TimberDraw
             {
                 Text = "Build ...",
                 AutoSize = true,
-                ForeColor = SystemColors.GrayText,
+                ForeColor = Theme.SubtleFg,
                 Margin = new Padding(6, 6, 0, 6)
             };
 
-            // ---- Root: two tabs (Edit | TBD). The "Edit" tab holds every group; "TBD" is empty. ----
+            // ---- Root: the flow of groups fills the control; the shell supplies the tabs. ----
             flowEdit = TabFlow();
             flowEdit.Controls.Add(groupSection);
             flowEdit.Controls.Add(groupOrient);
@@ -202,25 +210,15 @@ namespace TimberDraw
             flowEdit.Controls.Add(groupAssembly);
             flowEdit.Controls.Add(groupEdit);
 
-            flowTbd = TabFlow();   // empty placeholder for future tools
-
-            pageEdit = new TabPage("Edit") { UseVisualStyleBackColor = true };
-            pageEdit.Controls.Add(flowEdit);
-            pageTbd  = new TabPage("TBD")  { UseVisualStyleBackColor = true };
-            pageTbd.Controls.Add(flowTbd);
-
-            tabs = new TabControl { Dock = DockStyle.Fill };
-            tabs.TabPages.Add(pageEdit);
-            tabs.TabPages.Add(pageTbd);
-
-            // Footer docks at the bottom (below the tabs). SendToBack puts the fill control at the
-            // back of the z-order so the bottom strip is reserved first, then the tabs fill the rest.
+            // Footer docks at the bottom (below the flow). SendToBack puts the fill control at the
+            // back of the z-order so the bottom strip is reserved first, then the flow fills the rest.
             lblBuild.Dock = DockStyle.Bottom;
-            this.Controls.Add(tabs);
+            this.Controls.Add(flowEdit);
             this.Controls.Add(lblBuild);
-            tabs.SendToBack();
+            flowEdit.SendToBack();
             this.Name = "TimberPaletteControl";
             this.Size = new Size(GW + 24, 560);
+            Theme.Apply(this);   // inputs + buttons follow the shared palette
         }
     }
 }

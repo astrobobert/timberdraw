@@ -22,7 +22,7 @@ namespace TimberDraw
         private readonly Label _lblPair = new Label();
         private readonly Label _lblStatus = new Label();          // last apply result / diagnostic
         private readonly Panel _stackHost = new Panel();          // scroll host for the grid
-        private readonly TableLayoutPanel _grid = new TableLayoutPanel();
+        private readonly TableLayoutPanel _grid = PaneRows.MakeGrid();   // the shared 2-col row idiom
         private readonly Button _btnApply = new Button();
         private readonly Button _btnSetDefault = new Button();    // persist the active values as the type's default
         private readonly Button _btnResetDefault = new Button();  // drop the saved default (disabled = none saved)
@@ -41,9 +41,6 @@ namespace TimberDraw
         private ElementKind _activeKind;
         private string _activeName;
 
-        private const int LabelW = 124;
-        private static readonly Color HeaderBack = SystemColors.ControlLight;
-
         // Element groups in display order; only kinds that some preset actually uses appear.
         private static readonly ElementKind[] ElementOrder =
             { ElementKind.Tenon, ElementKind.Housing, ElementKind.Shoulder, ElementKind.Dovetail, ElementKind.Pegs };
@@ -59,9 +56,10 @@ namespace TimberDraw
         public JoinPaletteControl()
         {
             Dock = DockStyle.Fill;
-            BackColor = SystemColors.Control;
+            BackColor = Theme.Bg;
+            ForeColor = Theme.Fg;
 
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 7, Padding = new Padding(4) };
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 7, Padding = new Padding(Theme.Pad) };
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));   // type selector
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));   // pick button
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 22));   // pair label
@@ -83,13 +81,9 @@ namespace TimberDraw
             _lblStatus.Dock = DockStyle.Fill; _lblStatus.TextAlign = ContentAlignment.MiddleLeft;
             _lblStatus.AutoEllipsis = true; _lblStatus.Text = "";
 
-            // The grid: a 2-col TableLayoutPanel docked to the top of an auto-scrolling host (mirrors PropertyPane).
+            // The grid: the SHARED 2-col row idiom (PaneRows), same metrics as PropertyPane.
             _stackHost.Dock = DockStyle.Fill; _stackHost.AutoScroll = true; _stackHost.BorderStyle = BorderStyle.FixedSingle;
-            _grid.Dock = DockStyle.Top; _grid.ColumnCount = 2; _grid.AutoSize = true;
-            _grid.AutoSizeMode = AutoSizeMode.GrowAndShrink; _grid.GrowStyle = TableLayoutPanelGrowStyle.AddRows;
-            _grid.Padding = new Padding(0, 0, 0, 4);
-            _grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, LabelW));
-            _grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            _stackHost.BackColor = Theme.Bg;
             _stackHost.Controls.Add(_grid);
 
             _btnApply.Dock = DockStyle.Fill; _btnApply.Text = "Apply";
@@ -118,6 +112,7 @@ namespace TimberDraw
             Controls.Add(layout);
 
             BuildGrid();   // the stable union grid, once
+            Theme.Apply(this);   // inputs + buttons follow the shared palette (dark or light)
 
             JoinSession.Changed += OnSessionChanged;
             Disposed += (s, e) => JoinSession.Changed -= OnSessionChanged;
@@ -214,12 +209,7 @@ namespace TimberDraw
                 if (!union.TryGetValue(kind, out List<JointParam> ps)) continue;
 
                 ElementKind kc = kind;
-                var chk = new CheckBox
-                {
-                    Text = kind.ToString(), Dock = DockStyle.Fill, Height = 22,
-                    Font = new Font(Font, FontStyle.Bold), BackColor = HeaderBack,
-                    TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(2, 0, 0, 0), Margin = new Padding(0)
-                };
+                CheckBox chk = PaneRows.HeaderCheck(kind.ToString());
                 _tip.SetToolTip(chk, JointGlossary.ElementTip(kind));
                 chk.CheckedChanged += (s, e) =>
                 {
@@ -235,11 +225,7 @@ namespace TimberDraw
 
                 foreach (JointParam desc in ps)
                 {
-                    var lbl = new Label
-                    {
-                        Text = desc.Name, Dock = DockStyle.Fill, Height = 23, AutoEllipsis = true,
-                        TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(8, 0, 0, 0), Margin = new Padding(0)
-                    };
+                    Label lbl = PaneRows.RowLabel(desc.Name, 8);
                     Control editor = BuildEditor(kind, desc);
                     string tip = JointGlossary.ParamTip(desc.Name);
                     if (tip.Length > 0) { _tip.SetToolTip(lbl, tip); _tip.SetToolTip(editor, tip); }
@@ -276,21 +262,9 @@ namespace TimberDraw
             _loading = false;
         }
 
-        private void AddHeaderRow(Control c)
-        {
-            int r = _grid.RowCount++;
-            _grid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            _grid.Controls.Add(c, 0, r);
-            _grid.SetColumnSpan(c, 2);
-        }
+        private void AddHeaderRow(Control c) => PaneRows.AddFullRow(_grid, c);
 
-        private void AddParamRow(Control label, Control editor)
-        {
-            int r = _grid.RowCount++;
-            _grid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            _grid.Controls.Add(label, 0, r);
-            _grid.Controls.Add(editor, 1, r);
-        }
+        private void AddParamRow(Control label, Control editor) => PaneRows.AddParamRow(_grid, label, editor);
 
         // A typed editor for a param DESCRIPTOR (its value is set later by ApplyActive). Handlers resolve the LIVE
         // param from the active type by (kind, name) at edit time, so the same persistent control drives whichever
@@ -416,15 +390,15 @@ namespace TimberDraw
             }));
         }
 
-        // Show a status message: blue for a hint / "nothing to cut", default text otherwise (never green -- the
-        // user is red/green colorblind). The full text is also a tooltip, since long diagnostics get ellipsized.
+        // Show a status message via the Theme convention: blue for a hint / "nothing to cut", plain
+        // otherwise (never green -- the user is red/green colorblind). The full text is also a
+        // tooltip, since long diagnostics get ellipsized.
         private void SetStatus(string msg)
         {
-            _lblStatus.Text = string.IsNullOrEmpty(msg) ? "" : msg;
             bool issue = !string.IsNullOrEmpty(msg) &&
                 (msg.StartsWith("nothing", StringComparison.OrdinalIgnoreCase) ||
                  msg.StartsWith("Pick a pair", StringComparison.OrdinalIgnoreCase));
-            _lblStatus.ForeColor = issue ? Color.FromArgb(0, 70, 200) : SystemColors.ControlText;
+            Theme.SetStatus(_lblStatus, msg, issue);
             _tip.SetToolTip(_lblStatus, _lblStatus.Text);
         }
 

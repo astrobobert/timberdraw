@@ -19,6 +19,7 @@ namespace TimberDraw
 
         private readonly List<Sec> _sections = new List<Sec>();
         private bool _loading;
+        private bool _asmLoading;   // suppress AssemblyTarget echo while repainting the two-box
 
         private bool _braceLoading;
         private readonly List<CheckBox> _braceOrder = new List<CheckBox>();
@@ -219,28 +220,42 @@ namespace TimberDraw
             btnRotate.Click += (s, e) => Send("_ROTATE");
             btnScan.Click += (s, e) => Send("TScan");
 
-            // Assembly: the TAssign target names live on the pane. Assign pushes them into the
-            // sticky ManagedAssembly and fires the command, which then runs promptless -- the pane
-            // is the command's visibility. The owner is TWO grid coordinates: a Bent takes its
-            // number + an optional COLUMN letter (the intersection a free post stands on, 2C); a
-            // Wall takes its letter + an optional Bay; a Floor is its number alone.
+            // Assembly: the TAssign target names live on the pane, backed by the SHARED
+            // AssemblyTarget (the Browser's assign row is the same state -- edit either, both
+            // follow). Assign stamps the target into the sticky ManagedAssembly and fires the
+            // command, which then runs promptless -- the pane is the command's visibility. The
+            // owner is TWO grid coordinates: a Bent takes its number + an optional COLUMN letter
+            // (the intersection a free post stands on, 2C); a Wall takes its letter + an optional
+            // Bay; a Floor is its number alone.
             cmbAsmKind.Items.AddRange(new object[] { "Bent", "Wall", "Floor" });
-            cmbAsmKind.SelectedIndex = 0;
-            txtAsmFrame.Text = "A";
-            txtAsmOwner.Text = "1";
-            lblAsmExtra.Text = "Col";
+            _asmLoading = true;
+            cmbAsmKind.SelectedItem = AssemblyTarget.Kind;
+            if (cmbAsmKind.SelectedIndex < 0) cmbAsmKind.SelectedIndex = 0;
+            txtAsmFrame.Text = AssemblyTarget.Frame;
+            txtAsmOwner.Text = AssemblyTarget.Owner;
+            txtAsmBay.Text = AssemblyTarget.Bay;
+            txtAsmBay.Enabled = (string)cmbAsmKind.SelectedItem != "Floor";
+            lblAsmExtra.Text = (string)cmbAsmKind.SelectedItem == "Wall" ? "Bay" : "Col";
+            _asmLoading = false;
             cmbAsmKind.SelectedIndexChanged += (s, e) =>
             {
                 string kind = (string)cmbAsmKind.SelectedItem;
                 txtAsmBay.Enabled = kind != "Floor";
                 lblAsmExtra.Text = kind == "Wall" ? "Bay" : "Col";
+                if (_asmLoading) return;   // an echo repaint keeps the incoming owner/bay
                 txtAsmOwner.Text = kind == "Wall" ? "A" : "1";
                 txtAsmBay.Text = "";
+                PushAsmTarget();
             };
+            txtAsmFrame.TextChanged += (s, e) => PushAsmTarget();
+            txtAsmOwner.TextChanged += (s, e) => PushAsmTarget();
+            txtAsmBay.TextChanged   += (s, e) => PushAsmTarget();
+            AssemblyTarget.Changed += OnAsmTargetChanged;
+            Disposed += (s, e) => AssemblyTarget.Changed -= OnAsmTargetChanged;
             btnAssign.Click += (s, e) =>
             {
-                ManagedAssembly.Set(txtAsmFrame.Text, (string)cmbAsmKind.SelectedItem,
-                                    txtAsmOwner.Text, txtAsmBay.Enabled ? txtAsmBay.Text : "");
+                PushAsmTarget();
+                AssemblyTarget.Push();
                 Send("TAssign");
             };
             // Re-section reads the picked timber's current section and prompts -- it does NOT adopt the
@@ -409,6 +424,35 @@ namespace TimberDraw
             ManagedSection.Set(sec.Type, sec.W, sec.D);
         }
 
+        // Write the two-box into the shared AssemblyTarget (skipped while an incoming change is
+        // being painted, so an echo never loops).
+        private void PushAsmTarget()
+        {
+            if (_asmLoading) return;
+            AssemblyTarget.Set(txtAsmFrame.Text, (string)cmbAsmKind.SelectedItem,
+                               txtAsmOwner.Text, txtAsmBay.Enabled ? txtAsmBay.Text : "", this);
+        }
+
+        // Another surface (the Browser's assign row) changed the shared target: repaint the
+        // two-box to match. Deferred to the UI queue; guarded so the repaint doesn't push back.
+        private void OnAsmTargetChanged(object source)
+        {
+            if (ReferenceEquals(source, this) || !IsHandleCreated) return;
+            BeginInvoke(new Action(() =>
+            {
+                _asmLoading = true;
+                try
+                {
+                    txtAsmFrame.Text = AssemblyTarget.Frame;
+                    if (cmbAsmKind.Items.Contains(AssemblyTarget.Kind))
+                        cmbAsmKind.SelectedItem = AssemblyTarget.Kind;
+                    txtAsmOwner.Text = AssemblyTarget.Owner;
+                    txtAsmBay.Text = AssemblyTarget.Bay;
+                }
+                finally { _asmLoading = false; }
+            }));
+        }
+
         // Launch an AutoCAD command from the palette. SendStringToExecute is required here --
         // Editor.Command / interactive prompts do not run directly from a WinForms handler.
         private static void Send(string command)
@@ -417,9 +461,6 @@ namespace TimberDraw
             doc?.SendStringToExecute(command + " ", true, false, true);
         }
 
-        private static void Warn(string msg)
-        {
-            MessageBox.Show(msg, "TimberDraw", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        }
+        private static void Warn(string msg) => Dialogs.Warn(msg);
     }
 }

@@ -20,7 +20,7 @@ namespace TimberDraw
         private TreeView treeView;
         private PropertyPane propPane;
         private Panel panelButtons;
-        private Button ButtonDraw, ButtonNew, ButtonSave, ButtonSaveAs, ButtonLoad, ButtonSetDefault, ButtonFreeze;
+        private Button ButtonDraw, ButtonNew, ButtonSave, ButtonSaveAs, ButtonLoad, ButtonSetDefault, ButtonFreeze, ButtonGrid;
 
         private void InitializeComponent()
         {
@@ -61,7 +61,9 @@ namespace TimberDraw
             // Freeze: the one-way break -- locks this frame's parametric generator (Draw stops re-emitting)
             // and hands the skeleton timbers to the managed editor. Mirrors TPanel's Freeze button.
             this.ButtonFreeze = new Button { Name = "ButtonFreeze", Text = "Freeze", Location = new Point(132, 70), Size = new Size(116, 26) };
-            this.panelButtons = new Panel { Name = "panelButtons", Dock = DockStyle.Bottom, Height = 104 };
+            // Grid: redraw the structural grid from the drawing's managed timbers (fires TGrid).
+            this.ButtonGrid = new Button { Name = "ButtonGrid", Text = "Redraw Grid", Location = new Point(6, 100), Size = new Size(248, 26) };
+            this.panelButtons = new Panel { Name = "panelButtons", Dock = DockStyle.Bottom, Height = 134 };
             this.panelButtons.Controls.Add(this.ButtonDraw);
             this.panelButtons.Controls.Add(this.ButtonNew);
             this.panelButtons.Controls.Add(this.ButtonSave);
@@ -69,12 +71,14 @@ namespace TimberDraw
             this.panelButtons.Controls.Add(this.ButtonLoad);
             this.panelButtons.Controls.Add(this.ButtonSetDefault);
             this.panelButtons.Controls.Add(this.ButtonFreeze);
+            this.panelButtons.Controls.Add(this.ButtonGrid);
 
             this.Controls.Add(this.split);
             this.Controls.Add(this.panelButtons);
             this.Name = "FrameTreeControl";
             this.Size = new Size(300, 640);
             this.ResumeLayout(false);
+            Theme.Apply(this);   // inputs + buttons follow the shared palette
         }
     }
 }

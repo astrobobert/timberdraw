@@ -1,14 +1,29 @@
 <UserControl x:Class="TimberDraw.Browser.FrameBrowserView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             FontFamily="Segoe UI" FontSize="12">
-    <DockPanel LastChildFill="True" Margin="6">
+             FontFamily="Segoe UI" FontSize="12"
+             Background="{DynamicResource TdBg}">
+    <!-- Colors come from the shared Theme via ThemeWpf.Apply (the Td* resources) so this WPF
+         surface tracks the same COLORTHEME-driven palette as the WinForms tabs. -->
+    <UserControl.Resources>
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="{DynamicResource TdSurface}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TdFg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource TdBorder}"/>
+        </Style>
+        <Style TargetType="ListView">
+            <Setter Property="Background" Value="{DynamicResource TdSurface}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TdFg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource TdBorder}"/>
+        </Style>
+    </UserControl.Resources>
+    <DockPanel LastChildFill="True" Margin="6" TextElement.Foreground="{DynamicResource TdFg}">
 
         <!-- Header: status + refresh -->
         <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="0,0,0,6">
             <Button DockPanel.Dock="Right" Content="Refresh" Padding="10,2"
                     Command="{Binding RefreshCommand}"/>
-            <TextBlock Text="{Binding Status}" VerticalAlignment="Center" Foreground="#444"/>
+            <TextBlock Text="{Binding Status}" VerticalAlignment="Center" Foreground="{DynamicResource TdSubtle}"/>
         </DockPanel>
 
         <!-- Filter (type / handle); also the ElementHost keyboard-focus spike -->
@@ -18,7 +33,7 @@
         </DockPanel>
 
         <!-- Property editor: re-section the selected timber, write back + regenerate -->
-        <Border DockPanel.Dock="Bottom" BorderBrush="#CCC" BorderThickness="0,1,0,0"
+        <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource TdBorder}" BorderThickness="0,1,0,0"
                 Padding="0,6,0,0" Margin="0,6,0,0">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -52,7 +67,7 @@
 
         <!-- Assembly: assign the selected row(s) to Frame > Bent / Wall+Bay / Floor (TAssign).
              Selecting a single row LOADS its current assembly here (the review side). -->
-        <Border DockPanel.Dock="Bottom" BorderBrush="#CCC" BorderThickness="0,1,0,0"
+        <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource TdBorder}" BorderThickness="0,1,0,0"
                 Padding="0,6,0,0" Margin="0,6,0,0">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -94,7 +109,7 @@
                     <GroupStyle.HeaderTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Name}" FontWeight="Bold"
-                                       Margin="2,6,0,2" Foreground="#205080"/>
+                                       Margin="2,6,0,2" Foreground="{DynamicResource TdAccent}"/>
                         </DataTemplate>
                     </GroupStyle.HeaderTemplate>
                 </GroupStyle>
@@ -103,7 +118,7 @@
                     <GroupStyle.HeaderTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
-                                       Margin="14,3,0,1" Foreground="#333"/>
+                                       Margin="14,3,0,1" Foreground="{DynamicResource TdFg}"/>
                         </DataTemplate>
                     </GroupStyle.HeaderTemplate>
                 </GroupStyle>
@@ -112,7 +127,7 @@
                     <GroupStyle.HeaderTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Name}" FontStyle="Italic"
-                                       Margin="28,1,0,1" Foreground="#666">
+                                       Margin="28,1,0,1" Foreground="{DynamicResource TdSubtle}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Style.Triggers>

@@ -129,6 +129,10 @@ namespace TimberDraw
             ButtonLoad.Click   += (s, e) => LoadFromFile();
             ButtonSetDefault.Click += (s, e) => SetAsDefault();
             ButtonFreeze.Click += (s, e) => FreezeFrame();
+            // TGrid reads the drawing + FrameSpecJson in a command context -- fire it like the
+            // other palette verbs rather than calling into the DB from a WinForms handler.
+            ButtonGrid.Click += (s, e) =>
+                AcadApp.DocumentManager.MdiActiveDocument?.SendStringToExecute("TGrid ", true, false, true);
         }
 
         // Reflect the active frame's freeze gate (the break): a frozen frame's parametric generator is
@@ -180,16 +184,15 @@ namespace TimberDraw
             string frame = FrameTagSafe();
 
             if (FrameRegistry.IsFrozen(db, frame))
-            { MessageBox.Show("Frame " + frame + " is already frozen.", "TimberDraw"); RefreshFrozenState(); return; }
+            { Dialogs.Info("Frame " + frame + " is already frozen."); RefreshFrozenState(); return; }
 
             if (ManagedTimber.EnumerateFrameFrames(db, frame).Count == 0)
-            { MessageBox.Show("Nothing to freeze in frame " + frame + " -- draw it first.", "TimberDraw"); return; }
+            { Dialogs.Info("Nothing to freeze in frame " + frame + " -- draw it first."); return; }
 
-            if (MessageBox.Show(
+            if (!Dialogs.ConfirmWarn(
                     "Freeze frame " + frame + "? This is the one-way break: the parametric palette locks, "
                     + "Draw stops re-emitting, and the timbers carry on as the managed-editor truth "
-                    + "(edit them with the managed verbs).",
-                    "TimberDraw -- Freeze", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) != DialogResult.OK)
+                    + "(edit them with the managed verbs)."))
                 return;
 
             FrameRegistry.SetFrozen(db, frame, true);
@@ -658,7 +661,7 @@ namespace TimberDraw
             }
             apply.Enabled = apply.DropDownItems.Count > 0;
             _menu.Items.Add(apply);
-            _menu.Items.Add(new ToolStripMenuItem("Manage Templates...", null, (s, a) => ManageTemplates()));
+            _menu.Items.Add(new ToolStripMenuItem("Manage Templates...", null, (s, a) => Dialogs.ManageTemplates(this)));
         }
 
         // "Insert Bent from Template >": every Bent template; inserts a NEW bent after `sel`, types it, overlays.
@@ -678,13 +681,12 @@ namespace TimberDraw
         private void SaveTemplate(FrameElement el)
         {
             if (TypeDefaults.Key(el) == null)
-            { MessageBox.Show("Set the bent/bay type first, then Save as Template.", "TimberDraw"); return; }
+            { Dialogs.Info("Set the bent/bay type first, then Save as Template."); return; }
             string defName = el is BentSpec b ? "My " + b.BentType + " Bent"
                            : el is BaySpec y ? "My " + y.RoofShort() + " Bay" : "My Template";
-            if (!PromptText("Template name:", defName, out string name)) return;
+            if (!Dialogs.PromptText(this, "Template name:", defName, out string name)) return;
             if (TemplateLibrary.Exists(name) &&
-                MessageBox.Show("Replace the existing template \"" + name + "\"?", "TimberDraw",
-                    MessageBoxButtons.OKCancel) != DialogResult.OK)
+                !Dialogs.Confirm("Replace the existing template \"" + name + "\"?"))
                 return;
             if (TemplateLibrary.Save(name, el))
                 AcadApp.DocumentManager.MdiActiveDocument?.Editor.WriteMessage("\nSaved template \"" + name + "\".");
@@ -704,70 +706,13 @@ namespace TimberDraw
             string prompt = interior
                 ? "Distance from the upstream bent (< " + Fmt(gap) + "), splits the bay:"
                 : "Separation for the new bent (extends the frame):";
-            if (!PromptDistance(prompt, interior ? gap : 0.0, out double d)) return;
+            if (!Dialogs.PromptDistance(this, prompt, interior ? gap : 0.0, out double d)) return;
             BentSpec nb = _spec.InsertBent(sel, false, d);
-            if (nb == null) { MessageBox.Show("Could not insert the bent (invalid distance).", "TimberDraw"); return; }
+            if (nb == null) { Dialogs.Info("Could not insert the bent (invalid distance)."); return; }
             nb.BentType = sb.BentType;
             nb.RebuildTimbers();                    // canonical members for the type
             TypeDefaults.ApplyElement(nb, saved);   // overlay the template's sizes + config
             Persist(); BuildTree(); SelectByTag(nb);
-        }
-
-        // Small modal text prompt (mirrors PromptDistance). False on cancel / empty.
-        private bool PromptText(string prompt, string initial, out string value)
-        {
-            value = "";
-            using (var dlg = new Form
-            {
-                Text = "TimberDraw", FormBorderStyle = FormBorderStyle.FixedDialog,
-                StartPosition = FormStartPosition.CenterParent, MinimizeBox = false, MaximizeBox = false,
-                ClientSize = new System.Drawing.Size(330, 116)
-            })
-            {
-                var lbl = new Label { Text = prompt, Location = new System.Drawing.Point(10, 12), Size = new System.Drawing.Size(310, 20) };
-                var txt = new TextBox { Text = initial ?? "", Location = new System.Drawing.Point(10, 40), Size = new System.Drawing.Size(310, 24) };
-                var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new System.Drawing.Point(160, 82), Size = new System.Drawing.Size(75, 24) };
-                var cancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Location = new System.Drawing.Point(245, 82), Size = new System.Drawing.Size(75, 24) };
-                dlg.Controls.AddRange(new Control[] { lbl, txt, ok, cancel });
-                dlg.AcceptButton = ok; dlg.CancelButton = cancel;
-                txt.SelectAll();
-                if (dlg.ShowDialog(this) != DialogResult.OK) return false;
-                value = txt.Text.Trim();
-                return value.Length > 0;
-            }
-        }
-
-        // List + Rename / Delete / Set-as-type-default for the named template library.
-        private void ManageTemplates()
-        {
-            using (var dlg = new Form
-            {
-                Text = "Manage Templates", FormBorderStyle = FormBorderStyle.FixedDialog,
-                StartPosition = FormStartPosition.CenterParent, MinimizeBox = false, MaximizeBox = false,
-                ClientSize = new System.Drawing.Size(430, 286)
-            })
-            {
-                var list = new ListBox { Location = new System.Drawing.Point(10, 10), Size = new System.Drawing.Size(290, 266) };
-                void Reload() { list.Items.Clear(); foreach ((string Name, string Type) t in TemplateLibrary.All()) list.Items.Add(t.Name + "   (" + t.Type + ")"); }
-                Reload();
-                string Sel()
-                {
-                    if (list.SelectedIndex < 0) return null;
-                    string s = (string)list.SelectedItem;
-                    int p = s.IndexOf("   (");
-                    return p > 0 ? s.Substring(0, p) : s;
-                }
-                var rename = new Button { Text = "Rename...", Location = new System.Drawing.Point(310, 10), Size = new System.Drawing.Size(110, 26) };
-                var del = new Button { Text = "Delete", Location = new System.Drawing.Point(310, 44), Size = new System.Drawing.Size(110, 26) };
-                var setdef = new Button { Text = "Set as type default", Location = new System.Drawing.Point(310, 88), Size = new System.Drawing.Size(110, 26) };
-                var close = new Button { Text = "Close", DialogResult = DialogResult.OK, Location = new System.Drawing.Point(310, 250), Size = new System.Drawing.Size(110, 26) };
-                rename.Click += (s, a) => { string n = Sel(); if (n != null && PromptText("New name:", n, out string nn)) { if (TemplateLibrary.Rename(n, nn)) Reload(); else MessageBox.Show("That name is already taken.", "TimberDraw"); } };
-                del.Click += (s, a) => { string n = Sel(); if (n != null && MessageBox.Show("Delete template \"" + n + "\"?", "TimberDraw", MessageBoxButtons.OKCancel) == DialogResult.OK) { TemplateLibrary.Remove(n); Reload(); } };
-                setdef.Click += (s, a) => { string n = Sel(); if (n != null && TemplateLibrary.TryGet(n, out FrameElement el)) { string k = TypeDefaults.Save(el); if (k != null) MessageBox.Show("\"" + n + "\" is now the default for new " + k + " elements.", "TimberDraw"); } };
-                dlg.Controls.AddRange(new Control[] { list, rename, del, setdef, close });
-                dlg.AcceptButton = close;
-                dlg.ShowDialog(this);
-            }
         }
 
         // --------------------------------------------------------- mutations
@@ -799,9 +744,9 @@ namespace TimberDraw
             string prompt = interior
                 ? "Distance from the upstream bent (< " + Fmt(gap) + "), splits the bay:"
                 : "Separation for the new bent (extends the frame):";
-            if (!PromptDistance(prompt, interior ? gap : 0.0, out double d)) return;
+            if (!Dialogs.PromptDistance(this, prompt, interior ? gap : 0.0, out double d)) return;
             BentSpec nb = _spec.InsertBent(sel, before, d);
-            if (nb == null) { MessageBox.Show("Could not insert the bent (invalid distance).", "TimberDraw"); return; }
+            if (nb == null) { Dialogs.Info("Could not insert the bent (invalid distance)."); return; }
             Persist(); BuildTree(); SelectByTag(nb);
         }
 
@@ -811,9 +756,9 @@ namespace TimberDraw
             string prompt = interior
                 ? "Distance from the upstream wall (< " + Fmt(gap) + "), splits the span:"
                 : "Separation for the new wall (extends the span):";
-            if (!PromptDistance(prompt, interior ? gap : 0.0, out double d)) return;
+            if (!Dialogs.PromptDistance(this, prompt, interior ? gap : 0.0, out double d)) return;
             WallSpec nw = _spec.InsertWall(sel, before, d);
-            if (nw == null) { MessageBox.Show("Could not insert the wall (invalid distance).", "TimberDraw"); return; }
+            if (nw == null) { Dialogs.Info("Could not insert the wall (invalid distance)."); return; }
             Persist(); BuildTree(); SelectByTag(nw);
         }
 
@@ -822,33 +767,6 @@ namespace TimberDraw
             if (!_spec.RemoveWall(w)) return;
             Persist();
             BuildTree();
-        }
-
-        // Small modal distance prompt; accepts AutoCAD architectural input (1'2-1/2") via UnitInput.
-        // `max > 0` enforces a strict upper bound (the gap being split).
-        private bool PromptDistance(string prompt, double max, out double value)
-        {
-            value = 0.0;
-            using (var dlg = new Form
-            {
-                Text = "TimberDraw", FormBorderStyle = FormBorderStyle.FixedDialog,
-                StartPosition = FormStartPosition.CenterParent, MinimizeBox = false, MaximizeBox = false,
-                ClientSize = new System.Drawing.Size(330, 116)
-            })
-            {
-                var lbl = new Label { Text = prompt, Location = new System.Drawing.Point(10, 10), Size = new System.Drawing.Size(310, 36) };
-                var txt = new TextBox { Location = new System.Drawing.Point(10, 50), Size = new System.Drawing.Size(310, 24) };
-                var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new System.Drawing.Point(160, 82), Size = new System.Drawing.Size(75, 24) };
-                var cancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Location = new System.Drawing.Point(245, 82), Size = new System.Drawing.Size(75, 24) };
-                dlg.Controls.Add(lbl); dlg.Controls.Add(txt); dlg.Controls.Add(ok); dlg.Controls.Add(cancel);
-                dlg.AcceptButton = ok; dlg.CancelButton = cancel;
-                if (dlg.ShowDialog(this) != DialogResult.OK) return false;
-                if (!UnitInput.TryParseDistance(txt.Text, out value) || value <= 0.0)
-                { MessageBox.Show("Enter a positive distance (e.g. 8'6\").", "TimberDraw"); return false; }
-                if (max > 0.0 && value >= max)
-                { MessageBox.Show("Must be less than " + Fmt(max) + ".", "TimberDraw"); return false; }
-                return true;
-            }
         }
 
         private static string Fmt(double inches) => inches.ToString("0.##") + "\"";
@@ -877,8 +795,8 @@ namespace TimberDraw
             var gate = AcadApp.DocumentManager.MdiActiveDocument;
             if (gate != null && FrameRegistry.IsFrozen(gate.Database, FrameTagSafe()))
             {
-                MessageBox.Show("Frame " + FrameTagSafe() + " is frozen -- the parametric generator is locked. "
-                    + "Edit the timbers with the managed verbs, or start a new frame.", "TimberDraw");
+                Dialogs.Info("Frame " + FrameTagSafe() + " is frozen -- the parametric generator is locked. "
+                    + "Edit the timbers with the managed verbs, or start a new frame.");
                 RefreshFrozenState();
                 return;
             }
@@ -940,9 +858,8 @@ namespace TimberDraw
         // start state it just seeds.
         private void NewFrame()
         {
-            if (!SpecIsEmpty && MessageBox.Show(
-                    "Start a new frame project? The current frame will be cleared (Save first if you want to keep it).",
-                    "TimberDraw", MessageBoxButtons.OKCancel) != DialogResult.OK)
+            if (!SpecIsEmpty && !Dialogs.Confirm(
+                    "Start a new frame project? The current frame will be cleared (Save first if you want to keep it)."))
                 return;
 
             ResetToSeed();
@@ -957,13 +874,13 @@ namespace TimberDraw
             FrameElement el = (tag as FrameElement) ?? (tag as TimberLeaf)?.Owner as FrameElement;
             if (!(el is BentSpec || el is BaySpec))
             {
-                MessageBox.Show("Select a bent or bay (with its type set), then Set as Default.", "TimberDraw");
+                Dialogs.Info("Select a bent or bay (with its type set), then Set as Default.");
                 return;
             }
             string key = TypeDefaults.Save(el);
             if (key == null)
             {
-                MessageBox.Show("Set the bent/bay type first, then Set as Default.", "TimberDraw");
+                Dialogs.Info("Set the bent/bay type first, then Set as Default.");
                 return;
             }
             AcadApp.DocumentManager.MdiActiveDocument?.Editor.WriteMessage(
@@ -986,7 +903,7 @@ namespace TimberDraw
                 Persist();
                 AcadApp.DocumentManager.MdiActiveDocument?.Editor.WriteMessage("\nSaved frame template to " + path);
             }
-            catch (System.Exception ex) { MessageBox.Show("Save failed: " + ex.Message, "TimberDraw"); }
+            catch (System.Exception ex) { Dialogs.Info("Save failed: " + ex.Message); }
         }
 
         private void LoadFromFile()
@@ -1000,7 +917,7 @@ namespace TimberDraw
                 Persist();
                 BuildTree();
             }
-            catch (System.Exception ex) { MessageBox.Show("Load failed: " + ex.Message, "TimberDraw"); }
+            catch (System.Exception ex) { Dialogs.Info("Load failed: " + ex.Message); }
         }
 
         private void Persist()

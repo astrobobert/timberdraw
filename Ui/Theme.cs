@@ -81,7 +81,9 @@ namespace TimberDraw
             TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(Pad, 0, 0, 0),
         };
 
-        // Walk a control tree and apply the palette to the common WinForms control kinds.
+        // Walk a control tree and apply the palette. Only INPUT controls, buttons, and grids are
+        // touched explicitly -- labels, checkboxes, group boxes, and containers inherit the root's
+        // ambient Bg/Fg, so a control that set its own colors (e.g. a HeaderBack header) keeps them.
         // Call at the END of a control's init (after all children exist).
         public static void Apply(Control root)
         {
@@ -102,6 +104,10 @@ namespace TimberDraw
                     case ComboBox cb: cb.BackColor = Surface; cb.ForeColor = Fg; break;
                     case ListBox lb: lb.BackColor = Surface; lb.ForeColor = Fg; break;
                     case TreeView tv: tv.BackColor = Surface; tv.ForeColor = Fg; break;
+                    // A GroupBox CAPTION only honors ForeColor when it is set LOCALLY (the visual-
+                    // styles renderer ignores ambient inheritance), so dark mode must set it or the
+                    // captions paint navy-on-near-black. Light mode keeps the stock themed caption.
+                    case GroupBox gb: if (IsDark) gb.ForeColor = Fg; break;
                     case Button b:
                         if (IsDark)
                         {
@@ -111,7 +117,6 @@ namespace TimberDraw
                             b.FlatAppearance.BorderColor = Border;
                         }
                         break;
-                    default: c.BackColor = Bg; c.ForeColor = Fg; break;
                 }
                 if (c.HasChildren) ApplyChildren(c);
             }

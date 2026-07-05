@@ -11,6 +11,7 @@ namespace TimberDraw.Browser
         public FrameBrowserView()
         {
             InitializeComponent();
+            ThemeWpf.Apply(this);   // feed the shared Theme palette into the Td* XAML resources
             DataContext = _vm;
         }
 

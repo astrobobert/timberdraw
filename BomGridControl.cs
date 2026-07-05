@@ -9,37 +9,21 @@ using DataTable = System.Data.DataTable;    // disambiguate from Autodesk.AutoCA
 
 namespace TimberDraw
 {
-    // The BOM palette control: a sortable DataGridView of the per-timber piece tally (TBom -> BuildBomTable).
+    // The BOM grid: a sortable DataGridView of the per-timber piece tally (TBom -> BuildBomTable).
     // Rows are read-only + multi-select; selecting rows HIGHLIGHTS the matching solids in model space by their
-    // entity handle (Entity.Highlight under a document lock -- the proven from-palette pattern). Refresh
-    // re-reads the model; Export writes the tally to CSV.
+    // entity handle (Entity.Highlight under a document lock -- the proven from-palette pattern). Grid only --
+    // the Output tab (OutputTabControl) supplies the toolbar and calls RefreshFromModel / ExportCsv. Styled
+    // by the shared Theme (follows AutoCAD's COLORTHEME instead of being hardwired dark).
     public class BomGridControl : UserControl
     {
         private readonly DataGridView _grid;
         private readonly List<ObjectId> _highlighted = new List<ObjectId>();
         private bool _loading;
 
-        // Palette / dark-mode colors (match ApplyDarkMode elsewhere; blue selection -- never green).
-        private static readonly Color Bg     = Color.FromArgb(45, 45, 48);
-        private static readonly Color Input  = Color.FromArgb(55, 55, 60);
-        private static readonly Color Fg     = Color.FromArgb(240, 240, 240);
-        private static readonly Color Accent = Color.FromArgb(0, 70, 200);   // blue (colorblind-safe)
-
         public BomGridControl()
         {
-            BackColor = Bg;
-            ForeColor = Fg;
-
-            var bar = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                Height = 30,
-                FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight,
-                Padding = new Padding(4, 3, 4, 3),
-                BackColor = Bg
-            };
-            bar.Controls.Add(MakeButton("Refresh", Refresh_Click));
-            bar.Controls.Add(MakeButton("Export CSV", Export_Click));
+            BackColor = Theme.Bg;
+            ForeColor = Theme.Fg;
 
             _grid = new DataGridView
             {
@@ -53,37 +37,12 @@ namespace TimberDraw
                 MultiSelect = true,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells,
                 AutoGenerateColumns = true,
-                BackgroundColor = Input,
                 BorderStyle = BorderStyle.None,
-                EnableHeadersVisualStyles = false
             };
-            _grid.DefaultCellStyle.BackColor = Input;
-            _grid.DefaultCellStyle.ForeColor = Fg;
-            _grid.DefaultCellStyle.SelectionBackColor = Accent;
-            _grid.DefaultCellStyle.SelectionForeColor = Fg;
-            _grid.ColumnHeadersDefaultCellStyle.BackColor = Bg;
-            _grid.ColumnHeadersDefaultCellStyle.ForeColor = Fg;
-            _grid.GridColor = Color.FromArgb(70, 70, 75);
+            Theme.ApplyGrid(_grid);
             _grid.SelectionChanged += Grid_SelectionChanged;
 
             Controls.Add(_grid);
-            Controls.Add(bar);
-        }
-
-        private Button MakeButton(string text, EventHandler onClick)
-        {
-            var b = new Button
-            {
-                Text = text,
-                AutoSize = true,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(60, 60, 65),
-                ForeColor = Fg,
-                Margin = new Padding(2, 0, 2, 0)
-            };
-            b.FlatAppearance.BorderColor = Color.FromArgb(70, 70, 75);
-            b.Click += onClick;
-            return b;
         }
 
         // Bind a freshly built table. Clears any existing highlight and the initial auto-selection.
@@ -104,7 +63,8 @@ namespace TimberDraw
             _loading = false;
         }
 
-        private void Refresh_Click(object sender, EventArgs e)
+        // Re-read the piece tally from the model (the Output toolbar's Refresh).
+        public void RefreshFromModel()
         {
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null) return;
@@ -113,10 +73,11 @@ namespace TimberDraw
                 using (doc.LockDocument())
                     LoadData(ManagedCommands.BuildBomTable(doc.Database));
             }
-            catch (Exception ex) { MessageBox.Show("BOM refresh failed: " + ex.Message); }
+            catch (Exception ex) { Dialogs.Info("BOM refresh failed: " + ex.Message); }
         }
 
-        private void Export_Click(object sender, EventArgs e)
+        // Write the current tally to a CSV (the Output toolbar's Export).
+        public void ExportCsv()
         {
             if (!(_grid.DataSource is DataTable t) || t.Rows.Count == 0) return;
             using (var dlg = new SaveFileDialog
@@ -130,7 +91,7 @@ namespace TimberDraw
             {
                 if (dlg.ShowDialog() != DialogResult.OK) return;
                 try { ManagedCommands.WritePieceCsv(t, dlg.FileName); }
-                catch (Exception ex) { MessageBox.Show("Export failed: " + ex.Message); }
+                catch (Exception ex) { Dialogs.Info("Export failed: " + ex.Message); }
             }
         }
 

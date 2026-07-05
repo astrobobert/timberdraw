@@ -24,7 +24,7 @@ namespace TimberDraw
         private static TimberPaletteControl _assembly;
         private static JoinPaletteControl _joints;
         private static Browser.FrameBrowserView _browser;
-        private static BomGridControl _bom;
+        private static OutputTabControl _output;
 
         // Show the shell and land on a tab. Frame refreshes its freeze gate on every
         // show (TFreeze may have run since); Browser reloads its list on re-show --
@@ -42,7 +42,7 @@ namespace TimberDraw
         public static void LoadBom(System.Data.DataTable table)
         {
             ShowSet();
-            _bom.LoadData(table);
+            _output.Bom.LoadData(table);
             _ps.Activate((int)Tab.Output);
         }
 
@@ -70,7 +70,7 @@ namespace TimberDraw
             _assembly  = new TimberPaletteControl();
             _joints    = new JoinPaletteControl();
             _browser   = new Browser.FrameBrowserView();
-            _bom       = new BomGridControl();
+            _output    = new OutputTabControl();
 
             var browserHost = new System.Windows.Forms.Integration.ElementHost
             {
@@ -82,7 +82,7 @@ namespace TimberDraw
             _ps.Add("Assembly", _assembly);
             _ps.Add("Joints",   _joints);
             _ps.Add("Browser",  browserHost);
-            _ps.Add("Output",   _bom);
+            _ps.Add("Output",   _output);
 
             _ps.MinimumSize = new System.Drawing.Size(560, 680);
             _ps.Style = PaletteSetStyles.ShowCloseButton | PaletteSetStyles.ShowPropertiesMenu
