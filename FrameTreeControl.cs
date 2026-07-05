@@ -329,8 +329,8 @@ namespace TimberDraw
                 if (n.Tag is TimberLeaf)
                 {
                     bool sel = _selLeaves.Contains(n);
-                    n.BackColor = sel ? System.Drawing.SystemColors.Highlight : System.Drawing.Color.Empty;
-                    n.ForeColor = sel ? System.Drawing.SystemColors.HighlightText : System.Drawing.Color.Empty;
+                    n.BackColor = sel ? Theme.Accent : System.Drawing.Color.Empty;
+                    n.ForeColor = sel ? System.Drawing.Color.Black : System.Drawing.Color.Empty;
                 }
         }
 

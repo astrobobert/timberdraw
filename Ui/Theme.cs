@@ -1,7 +1,6 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
-using AcadApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace TimberDraw
 {
@@ -9,9 +8,13 @@ namespace TimberDraw
     // control factories route through here -- no surface declares its own palette. Colorblind
     // rule (durable): NEVER green as an indicator; the accent is blue, notices are blue.
     //
-    // Theme follows AutoCAD's COLORTHEME sysvar (0 = dark, 1 = light), read ONCE, lazily, the
-    // first time any Theme member is touched. Changing the AutoCAD theme takes effect the next
-    // session -- there is no live re-theme.
+    // The palette is ALWAYS DARK (Robert's call after the Phase B walk-through) -- it does not
+    // follow AutoCAD's COLORTHEME. IsDark stays as the single switch so a future light theme
+    // is a one-line change. Two durable WinForms rules learned the hard way:
+    //  - NEVER rely on ambient color inheritance: the AutoCAD palette host repaints hosted
+    //    controls, and any surface without an explicitly pinned BackColor collapses to light.
+    //  - GroupBox cannot be themed (the visual-styles renderer paints its frame/caption via
+    //    UxTheme, ignoring control colors) -- use flat header sections (PaneRows.HeaderCell).
     public static class Theme
     {
         private static bool _init;
@@ -51,15 +54,12 @@ namespace TimberDraw
             {
                 Text = text,
                 Height = 26,
-                FlatStyle = IsDark ? FlatStyle.Flat : FlatStyle.System,
+                FlatStyle = FlatStyle.Flat,
                 Font = Base,
+                BackColor = Color.FromArgb(60, 60, 65),
+                ForeColor = Fg,
             };
-            if (IsDark)
-            {
-                b.BackColor = Color.FromArgb(60, 60, 65);
-                b.ForeColor = Fg;
-                b.FlatAppearance.BorderColor = Border;
-            }
+            b.FlatAppearance.BorderColor = Border;
             if (onClick != null) b.Click += onClick;
             return b;
         }
@@ -81,9 +81,12 @@ namespace TimberDraw
             TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(Pad, 0, 0, 0),
         };
 
-        // Walk a control tree and apply the palette. Only INPUT controls, buttons, and grids are
-        // touched explicitly -- labels, checkboxes, group boxes, and containers inherit the root's
-        // ambient Bg/Fg, so a control that set its own colors (e.g. a HeaderBack header) keeps them.
+        // Walk a control tree and apply the palette. Everything gets an EXPLICIT color -- never
+        // rely on ambient inheritance (the AutoCAD palette host repaints hosted controls, and an
+        // un-pinned surface collapses to light). Inputs get flat single-line borders: the default
+        // Fixed3D bevel is painted by Windows in the non-client area and ignores BackColor (the
+        // "white outline" look). A control that set its own colors first (e.g. a HeaderBack
+        // header) keeps them -- labels/checkboxes are left to inherit from their PINNED parent.
         // Call at the END of a control's init (after all children exist).
         public static void Apply(Control root)
         {
@@ -100,23 +103,36 @@ namespace TimberDraw
                 switch (c)
                 {
                     case DataGridView g: ApplyGrid(g); continue;
-                    case TextBox t: t.BackColor = Surface; t.ForeColor = Fg; break;
-                    case ComboBox cb: cb.BackColor = Surface; cb.ForeColor = Fg; break;
-                    case ListBox lb: lb.BackColor = Surface; lb.ForeColor = Fg; break;
-                    case TreeView tv: tv.BackColor = Surface; tv.ForeColor = Fg; break;
-                    // A GroupBox CAPTION only honors ForeColor when it is set LOCALLY (the visual-
-                    // styles renderer ignores ambient inheritance), so dark mode must set it or the
-                    // captions paint navy-on-near-black. Light mode keeps the stock themed caption.
-                    case GroupBox gb: if (IsDark) gb.ForeColor = Fg; break;
-                    case Button b:
-                        if (IsDark)
-                        {
-                            b.FlatStyle = FlatStyle.Flat;
-                            b.BackColor = Color.FromArgb(60, 60, 65);
-                            b.ForeColor = Fg;
-                            b.FlatAppearance.BorderColor = Border;
-                        }
+                    case TextBox t:
+                        t.BackColor = Surface; t.ForeColor = Fg;
+                        t.BorderStyle = BorderStyle.FixedSingle;
                         break;
+                    case ComboBox cb:
+                        cb.BackColor = Surface; cb.ForeColor = Fg;
+                        cb.FlatStyle = FlatStyle.Flat;
+                        break;
+                    case ListBox lb:
+                        lb.BackColor = Surface; lb.ForeColor = Fg;
+                        lb.BorderStyle = BorderStyle.FixedSingle;
+                        break;
+                    case TreeView tv:
+                        tv.BackColor = Surface; tv.ForeColor = Fg;
+                        tv.BorderStyle = BorderStyle.FixedSingle;
+                        break;
+                    // GroupBox is a legacy straggler (new UI uses flat header sections): pin its
+                    // interior + set ForeColor LOCALLY (the visual-styles caption renderer ignores
+                    // ambient inheritance). Its etched frame stays system-drawn -- don't use it.
+                    case GroupBox gb: gb.BackColor = Bg; gb.ForeColor = Fg; break;
+                    case Button b:
+                        b.FlatStyle = FlatStyle.Flat;
+                        b.BackColor = Color.FromArgb(60, 60, 65);
+                        b.ForeColor = Fg;
+                        b.FlatAppearance.BorderColor = Border;
+                        break;
+                    case SplitContainer sc: sc.BackColor = Bg; break;
+                    // Pin every container explicitly (Panel covers FlowLayoutPanel and
+                    // TableLayoutPanel too; the PaneRows separator panel repaints its line anyway).
+                    case Panel p: p.BackColor = Bg; break;
                 }
                 if (c.HasChildren) ApplyChildren(c);
             }
@@ -152,13 +168,7 @@ namespace TimberDraw
         {
             if (_init) return;
             _init = true;
-            try
-            {
-                // COLORTHEME: 0 = dark UI, 1 = light UI. Absent/odd values fall back to light.
-                object v = AcadApp.GetSystemVariable("COLORTHEME");
-                _dark = Convert.ToInt32(v) == 0;
-            }
-            catch { _dark = false; }
+            _dark = true;   // always dark; flip here (or read COLORTHEME) to bring light back
         }
     }
 }

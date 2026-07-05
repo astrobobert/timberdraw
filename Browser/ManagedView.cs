@@ -59,16 +59,23 @@ namespace TimberDraw.Browser
 
         // Grip-highlight the rows' timbers in the drawing (pickfirst set) -- selection feedback
         // with NO view change (Robert's call: highlight on select, zoom only on demand). An empty
-        // selection clears the highlight.
+        // selection clears the highlight. Hardened: SetImpliedSelection silently fails (or throws
+        // into the message pump, invisibly) while the editor is mid-command, so skip that pass --
+        // the next quiescent click highlights normally. Same busy-skip philosophy as the BOM grid.
         public static void Highlight(List<ObjectId> ids)
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;
             if (doc == null) return;
-            var live = new List<ObjectId>();
-            if (ids != null)
-                foreach (ObjectId id in ids)
-                    if (!id.IsNull && !id.IsErased) live.Add(id);
-            doc.Editor.SetImpliedSelection(live.ToArray());
+            try
+            {
+                if (System.Convert.ToInt32(Application.GetSystemVariable("CMDACTIVE")) != 0) return;
+                var live = new List<ObjectId>();
+                if (ids != null)
+                    foreach (ObjectId id in ids)
+                        if (!id.IsNull && !id.IsErased) live.Add(id);
+                doc.Editor.SetImpliedSelection(live.ToArray());
+            }
+            catch { /* editor busy / transient interop failure -- skip this highlight pass */ }
         }
 
         // Zoom the view to one timber (double-click) -- ZOOM Object on the pickfirst selection

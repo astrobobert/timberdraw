@@ -151,14 +151,14 @@ namespace TimberDraw
                 // Format event renders each through the converter so a mapping converter can show display
                 // text (e.g. "2"/"3") while SelectedItem -> Commit still passes the stored value.
                 // Editors are rebuilt on every Bind -- after the one-time Theme.Apply walk -- so
-                // theme them here (a ComboBox never inherits ambient colors; Flat in dark mode
-                // because the standard renderer ignores BackColor for the closed portion).
+                // theme them here (a ComboBox never inherits ambient colors; Flat because the
+                // standard renderer ignores BackColor for the closed portion).
                 var combo = new ComboBox
                 {
                     Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList,
                     Margin = new Padding(0, 1, 1, 1), FormattingEnabled = true,
                     BackColor = Theme.Surface, ForeColor = Theme.Fg,
-                    FlatStyle = Theme.IsDark ? FlatStyle.Flat : FlatStyle.Standard
+                    FlatStyle = FlatStyle.Flat
                 };
                 combo.Format += (s, e) => e.Value = Display(row, e.ListItem);
                 combo.Items.AddRange(items);
@@ -171,6 +171,7 @@ namespace TimberDraw
             {
                 Dock = DockStyle.Fill, Margin = new Padding(0, 1, 1, 1),
                 BackColor = Theme.Surface, ForeColor = Theme.Fg,
+                BorderStyle = BorderStyle.FixedSingle,   // flat -- the 3D bevel ignores BackColor
                 Text = mixed ? "" : Display(row, val)
             };
             txt.Leave += (s, e) => CommitText(row, txt);
