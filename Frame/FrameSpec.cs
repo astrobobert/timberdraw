@@ -101,6 +101,17 @@ namespace TimberDraw
             return b;
         }
 
+        // Append the FIRST wall line (letter A, spanning the frame) and derive its bay cells.
+        // Offered only while the tree has no walls -- growth after that is Insert Wall
+        // Before/After on an existing wall. Returns the wall.
+        public WallSpec AddWall()
+        {
+            WallSpec w = WallSpec.NewDefault("A", right: false, sep: Span);
+            Walls.Add(w);
+            SyncBays();
+            return w;
+        }
+
         // Remove a bent and re-derive the bay cells. The interval that collapses is dropped per wall.
         public bool RemoveBent(BentSpec b)
         {

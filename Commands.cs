@@ -12,9 +12,6 @@ namespace TimberDraw
 {
 	public class Commands : Autodesk.AutoCAD.Runtime.IExtensionApplication
 	{
-		internal static PaletteSet ps = null;
-		private static FrameTreeControl psTreeControl = null;   // the hosted tree (for re-show freeze refresh)
-
 		void IExtensionApplication.Initialize()
         {
             JointFactory.RegisterDefaults();
@@ -428,74 +425,33 @@ namespace TimberDraw
 			return FrameSpecStore.FromJson(System.IO.File.ReadAllText(path));
 		}
 
-		// TDraw now opens the Frame TREE editor (FrameSpec instance model). The flat Frame
-		// params panel is parked behind TFrameFlat; the legacy member-by-member palette
-		// behind TDrawLegacy.
+		// TDraw -- opens the shell on the Frame tab (the FrameSpec tree editor). The tree
+		// opens EMPTY (start a frame with New, or Load a .framespec); re-invoking TDraw
+		// never discards in-progress work. The flat Frame params panel is parked behind
+		// TFrameFlat; the legacy member-by-member palette behind TDrawLegacy.
 		[CommandMethod("TDraw")]
 		public static void ShowPalette()
 		{
-			bool created = ps == null;
-			if (created) {
-				// Fresh GUID (was 4C1F7BB9-...-C16F49539CC5): AutoCAD caches a PaletteSet's title + dock
-				// state by GUID and restores the cached title on load, so the old "Draw A Frame" name stuck
-				// even after the constructor string changed. A new GUID forces the "Timber Draw" name.
-				ps = new PaletteSet("Timber Draw", "TimberDraw", new Guid("B345069B-D53E-40D4-A388-3146E3DB7080"));
-				psTreeControl = new FrameTreeControl();
-				ps.Add("Frame", psTreeControl);
-                //ps.Icon = TimberDraw.My.Resources.Resources.Icon1;
-				ps.MinimumSize = new System.Drawing.Size(260, 680);
-				ps.Style = PaletteSetStyles.ShowCloseButton | PaletteSetStyles.ShowPropertiesMenu | PaletteSetStyles.ShowAutoHideButton;
-			}
-			ps.Visible = true;
-			// Always-fresh start: each TDraw re-show restarts from a fresh typed seed (ResetToSeed also
-			// refreshes the freeze gate). On first creation FrameTreeControl_Load already seeds -- skip
-			// the double-seed. Auto-hide show/hide does NOT route through here, so it never resets.
-			if (!created) psTreeControl?.ResetToSeed();
+			Shell.Show(Shell.Tab.Frame);
 		}
 
-		// TPanel -- the managed-timber assembly palette (sticky sections + verb buttons +
-		// orientation presets). Drives the TPlace/TSpan/TJoin/TFit/TScarf/TScan/TMove/TRotate
-		// commands via SendStringToExecute. Separate PaletteSet from TDraw's tree editor.
-		internal static PaletteSet psPanel = null;
-		private static TimberPaletteControl psPanelControl = null;   // the hosted assembly control
+		// TPanel -- opens the shell on the Assembly tab (sticky sections + verb buttons +
+		// orientation presets; the Joints pane is the neighboring tab). The verbs drive the
+		// TPlace/TSpan/TJoin/TFit/TScarf/TScan commands via SendStringToExecute.
 		[CommandMethod("TPanel")]
 		public static void ShowTimberPanel()
 		{
-			if (psPanel == null) {
-				psPanel = new PaletteSet("Timber Edit", "TimberAssembly", new Guid("4C1F7BB9-5371-4673-B579-C16F49539CC8"));
-				psPanelControl = new TimberPaletteControl();
-				psPanel.Add("Assembly", psPanelControl);
-				psPanel.Add("Joints", new JoinPaletteControl());   // the element-stack joinery pane (facade over the cutters)
-				psPanel.MinimumSize = new System.Drawing.Size(260, 520);
-				psPanel.Style = PaletteSetStyles.ShowCloseButton | PaletteSetStyles.ShowPropertiesMenu | PaletteSetStyles.ShowAutoHideButton;
-			}
-			psPanel.Visible = true;
+			Shell.Show(Shell.Tab.Assembly);
 			Application.DocumentManager.MdiActiveDocument?.Editor.WriteMessage(
 				"\nTimberDraw build " + BuildStamp() + " -- TPanel ready.");
 		}
 
-		// TBrowse -- Frame Browser (Phase 3 WPF pilot). A bound list of the active drawing's managed
-		// timbers (+ node count + filter) with select-to-zoom. WPF UserControl wrapped in a WinForms
-		// ElementHost (PaletteSet hosts WinForms controls). Additive pilot -- separate from TPanel.
-		internal static PaletteSet psBrowse = null;
-		private static TimberDraw.Browser.FrameBrowserView browserView = null;
+		// TBrowse -- opens the shell on the Browser tab (the WPF assign + review surface:
+		// bound list of managed timbers, select-to-highlight, double-click zooms).
 		[CommandMethod("TBrowse")]
 		public static void ShowFrameBrowser()
 		{
-			if (psBrowse == null) {
-				psBrowse = new PaletteSet("Frame Browser", "FrameBrowser", new Guid("4C1F7BB9-5371-4673-B579-C16F49539CCA"));
-				browserView = new TimberDraw.Browser.FrameBrowserView();
-				var host = new System.Windows.Forms.Integration.ElementHost {
-					Dock = System.Windows.Forms.DockStyle.Fill,
-					Child = browserView
-				};
-				psBrowse.Add("Frame", host);
-				psBrowse.MinimumSize = new System.Drawing.Size(320, 400);
-				psBrowse.Style = PaletteSetStyles.ShowCloseButton | PaletteSetStyles.ShowPropertiesMenu | PaletteSetStyles.ShowAutoHideButton;
-			} else {
-				browserView?.Reload();
-			}
-			psBrowse.Visible = true;
+			Shell.Show(Shell.Tab.Browser);
 		}
 
 		// Build timestamp of the loaded DLL (its file write time) -- so a stale NETLOAD is obvious.
@@ -718,7 +674,7 @@ namespace TimberDraw
 
         internal const string RegenMapKey = "TRegenMap";
 
-        // Writes the full (oldHandle → newHandle) map to NOM["TRegenMap"] so TimberTag
+        // Writes the full (oldHandle -> newHandle) map to NOM["TRegenMap"] so TimberTag
         // can update every stale SS entry after TRegenTimber completes.
         // Format: one Text TypedValue per pair, value = "oldHex:newHex".
         // Overwrites any entry from a previous call.

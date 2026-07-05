@@ -42,8 +42,8 @@ namespace TimberDraw
                 ed.WriteMessage("\nNo managed timbers found -- nothing to BOM.");
                 return;
             }
-            ShowBomPalette(table);
-            ed.WriteMessage($"\nBOM: {table.Rows.Count} pieces -- see the Timber BOM palette.");
+            Shell.LoadBom(table);
+            ed.WriteMessage($"\nBOM: {table.Rows.Count} pieces -- see the Output tab.");
         }
 
         // The per-timber PIECE TALLY as a typed DataTable (bound by BomGridControl -> sortable columns). The
@@ -93,26 +93,6 @@ namespace TimberDraw
             sb.AppendLine(Csv(t.Columns.Cast<DataColumn>().Select(c => (object)c.ColumnName).ToArray()));
             foreach (DataRow r in t.Rows) sb.AppendLine(Csv(r.ItemArray));
             File.WriteAllText(path, sb.ToString(), Encoding.UTF8);
-        }
-
-        // ---- BOM palette (dockable, reused across TBom invocations; mirrors the TDraw / TPanel idiom) ----
-        internal static PaletteSet _bomPs;
-        private static BomGridControl _bomControl;
-
-        private static void ShowBomPalette(DataTable table)
-        {
-            if (_bomPs == null)
-            {
-                _bomPs = new PaletteSet("Timber BOM", "TimberBom",
-                    new Guid("A7C3F210-9E44-4B6D-8F12-6D5E4C3B2A10"));
-                _bomControl = new BomGridControl();
-                _bomPs.Add("BOM", _bomControl);
-                _bomPs.MinimumSize = new System.Drawing.Size(560, 400);
-                _bomPs.Style = PaletteSetStyles.ShowCloseButton | PaletteSetStyles.ShowAutoHideButton
-                             | PaletteSetStyles.ShowPropertiesMenu;
-            }
-            _bomControl.LoadData(table);
-            _bomPs.Visible = true;
         }
 
         // Classify this timber's joinery. Geometry gives, per joint id, whether the timber has a male (union)

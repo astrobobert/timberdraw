@@ -65,10 +65,10 @@ namespace TimberDraw
         {
             SetupMenu();
             WireEvents();
-            ResetToSeed();   // always-fresh typed seed + BuildTree + RefreshFrozenState
+            ResetToEmpty();   // open EMPTY -- the user starts a frame (New) or loads one (Load)
 
             // Re-render distance cells when the drawing's units change (DistanceConverter formats via
-            // LUNITS/LUPREC). Reset to a fresh seed when the active drawing changes (the start is
+            // LUNITS/LUPREC). Reset to the empty start when the active drawing changes (the start is
             // deterministic + drawing-clean). Drop both handlers with the control to avoid dangling subs.
             AcadApp.SystemVariableChanged += OnSysVarChanged;
             AcadApp.DocumentManager.DocumentActivated += OnDocumentActivated;
@@ -84,17 +84,28 @@ namespace TimberDraw
             if (e.Name == "LUNITS" || e.Name == "LUPREC") BindGrid();   // re-format distances per units
         }
 
-        // Switching drawings restarts the tree from a fresh seed (the always-fresh-start contract).
+        // Switching drawings restarts the tree from the empty start (drawing-clean contract).
         private void OnDocumentActivated(object sender, Autodesk.AutoCAD.ApplicationServices.DocumentCollectionEventArgs e)
         {
             if (e.Document == null) return;   // last document closed -> nothing to reflect
-            try { ResetToSeed(); } catch { /* best-effort; activation can fire mid-init */ }
+            try { ResetToEmpty(); } catch { /* best-effort; activation can fire mid-init */ }
         }
 
-        // The single start/reset path. Deterministic + drawing-clean: NO Settings restore -- every
-        // TDraw invocation and every document switch starts from a fresh typed seed, intentionally
-        // DISCARDING in-progress work (use Save/Load .framespec to keep a frame). Persist keeps
-        // FrameSpecJson current as the active-frame-tag signal sibling commands (TGrid) read.
+        // The open / doc-switch start state: an EMPTY tree. No auto-seed -- the user starts a frame
+        // explicitly (New seeds the typed starter; right-click Add Bent also works) or loads a
+        // .framespec. Deliberately does NOT Persist: FrameSpecJson (the active-frame-tag signal
+        // sibling commands like TGrid read) keeps the last real frame until a new spec exists.
+        public void ResetToEmpty()
+        {
+            _spec = new FrameSpec();
+            _currentPath = null;
+            propPane.Clear();
+            BuildTree();
+            RefreshFrozenState();   // empty gate: Draw/Freeze disabled until the tree has content
+        }
+
+        // The New-button path: the fully-typed, immediately-generatable starter seed (two KingPost
+        // bents + walls A-E). Persist keeps FrameSpecJson current as the active-frame-tag signal.
         public void ResetToSeed()
         {
             _spec = FrameSpec.NewSeeded();
@@ -125,8 +136,25 @@ namespace TimberDraw
         // the palette is (re)shown. The authoritative lock is DrawFrame's runtime guard; this is the UI.
         public void RefreshFrozenState()
         {
+            // Empty tree (the open / doc-switch start state): nothing to draw or freeze yet.
+            if (SpecIsEmpty)
+            {
+                ButtonDraw.Enabled = false;
+                ButtonFreeze.Enabled = false;
+                ButtonFreeze.Text = "Freeze";
+                return;
+            }
             var doc = AcadApp.DocumentManager.MdiActiveDocument;
-            if (doc == null) return;
+            if (doc == null)
+            {
+                // Zero-document state: nothing can draw or freeze. A defined state matters here --
+                // the empty branch above may have disabled the buttons, and without this a New/Load
+                // in a doc-less session would leave them stuck. Document activation re-runs this.
+                ButtonDraw.Enabled = false;
+                ButtonFreeze.Enabled = false;
+                ButtonFreeze.Text = "Freeze";
+                return;
+            }
             bool frozen;
             try { frozen = FrameRegistry.IsFrozen(doc.Database, FrameTagSafe()); }
             catch { return; }   // leave the buttons as-is if the frame can't be read
@@ -134,6 +162,11 @@ namespace TimberDraw
             ButtonFreeze.Enabled = !frozen;   // one-way; nothing to do once frozen
             ButtonFreeze.Text = frozen ? "Frozen" : "Freeze";
         }
+
+        // Empty = no structural content yet (the start state). A spec becomes non-empty the
+        // moment a bent or wall exists, whether via New's starter seed, Load, or right-click.
+        private bool SpecIsEmpty =>
+            _spec == null || (_spec.Bents.Count == 0 && _spec.Walls.Count == 0);
 
         // Freeze (the BREAK): lock this frame's parametric generator. Afterward Draw refuses to re-emit
         // and the skeleton timbers carry on as the managed-editor truth -- geometry is untouched, only
@@ -355,6 +388,10 @@ namespace TimberDraw
                         if (n.Tag != null && expanded.Contains(n.Tag)) n.Expand();
             }
             finally { _building = false; }
+
+            // Re-apply the empty gate: the first Add Bent (right-click) or a Load flips the tree
+            // non-empty without passing through ResetToSeed, and Draw/Freeze must follow.
+            RefreshFrozenState();
         }
 
         private void TreeView_AfterCheck(object sender, TreeViewEventArgs e)
@@ -567,9 +604,20 @@ namespace TimberDraw
             _menu.Items.Clear();
             object tag = treeView.SelectedNode?.Tag;
 
-            // Menus only on Bent/Wall element nodes -- Insert Before/After (split the gap or extend at an
-            // end) + Remove (kept >= 1 so the tree always has a node to grow from). Root, the Bents/Walls
-            // containers, and timber leaves get no menu.
+            // First-element affordances (the empty start state): the root and the Bents/Walls
+            // containers offer the initial Add so the tree can grow incrementally without the
+            // New starter seed. Once an element exists, Insert Before/After takes over.
+            if (tag is FrameSpec || ReferenceEquals(tag, _bentsTag) || ReferenceEquals(tag, _wallsTag))
+            {
+                if (_spec.Bents.Count == 0 && !ReferenceEquals(tag, _wallsTag))
+                    _menu.Items.Add(new ToolStripMenuItem("Add Bent", null, (s, a) => AddFirstBent()));
+                if (_spec.Walls.Count == 0 && !ReferenceEquals(tag, _bentsTag))
+                    _menu.Items.Add(new ToolStripMenuItem("Add Wall", null, (s, a) => AddFirstWall()));
+            }
+
+            // Menus otherwise only on Bent/Wall element nodes -- Insert Before/After (split the gap or
+            // extend at an end) + Remove (kept >= 1 so the tree always has a node to grow from).
+            // Timber leaves get no menu.
             if (tag is BentSpec bent)
             {
                 _menu.Items.Add(new ToolStripMenuItem("Insert Bent Before", null, (s, a) => InsertBentCmd(bent, true)));
@@ -730,6 +778,21 @@ namespace TimberDraw
             BuildTree();
         }
 
+        // The first bent / first wall of an empty tree (the root/container menu items). No
+        // distance prompt -- there is nothing to measure from yet; separations come with the
+        // second element via Insert Before/After.
+        private void AddFirstBent()
+        {
+            BentSpec nb = _spec.AddBent();
+            Persist(); BuildTree(); SelectByTag(nb);
+        }
+
+        private void AddFirstWall()
+        {
+            WallSpec nw = _spec.AddWall();
+            Persist(); BuildTree(); SelectByTag(nw);
+        }
+
         private void InsertBentCmd(BentSpec sel, bool before)
         {
             double gap = _spec.GapForBentInsert(sel, before, out bool interior);
@@ -872,11 +935,13 @@ namespace TimberDraw
                 + grid.ColX.Count + " cols x " + grid.BentZ.Count + " bents).");
         }
 
-        // Clear the frame tree and start a fresh frame project: the typed starter seed (two KingPost
-        // bents + Walls A/E). Confirms first since it discards the current frame (Save first to keep it).
+        // Start a fresh frame project: the typed starter seed (two KingPost bents + Walls A-E).
+        // Confirms first when it would discard work (Save first to keep it); from the empty
+        // start state it just seeds.
         private void NewFrame()
         {
-            if (MessageBox.Show("Start a new frame project? The current frame will be cleared (Save first if you want to keep it).",
+            if (!SpecIsEmpty && MessageBox.Show(
+                    "Start a new frame project? The current frame will be cleared (Save first if you want to keep it).",
                     "TimberDraw", MessageBoxButtons.OKCancel) != DialogResult.OK)
                 return;
 

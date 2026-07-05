@@ -158,8 +158,8 @@ namespace TimberDraw
 
                 s.Save();
 
-                // Reopen the TDraw palette so the UI picks up the new Settings values.
-                Commands.ps = null;
+                // Show the TDraw palette (shell Frame tab). Legacy path: the tree editor no
+                // longer restores from these Settings, so this is just a courtesy re-show.
                 Commands.ShowPalette();
             }
         }
