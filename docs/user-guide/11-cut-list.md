@@ -8,13 +8,16 @@ model is right, the list is right.
 
 ## 11.1 The grid
 
-> **Figure 11-1 — The Timber BOM palette for the quick-start frame.**
-> *[capture: the Timber BOM palette docked beside the model, quick-start frame
+> **Figure 11-1 — The Output tab for the quick-start frame.**
+> *[capture: the Output tab docked beside the model, quick-start frame
 > loaded, a few rows visible; annotate the column groups (identity / stock /
 > joinery) in blue.]*
 
-Type `TBom`. The **Timber BOM** palette opens with one row per timber. Click any
-column header to sort. The columns, left to right:
+Type `TBom` — or just open the palette's **Output** tab: the BOM loads itself
+the first time the tab is shown. One row per timber; click any column header
+to sort. The tab's bottom bar carries **Refresh / Export CSV** plus the shop
+and scribe commands (Chapters 12–13), so everything that leaves the model
+lives in one place. The columns, left to right:
 
 | Column | Meaning |
 |---|---|
@@ -36,7 +39,7 @@ in the model**. Sort by Label first if you're chasing one timber; sort by Type +
 W + D to see families group together.
 
 > **Figure 11-2 — Two rows selected, two braces lit in the model.**
-> *[capture: BOM palette with two brace rows selected and both braces
+> *[capture: Output tab with two brace rows selected and both braces
 > highlighted; use the selection highlight as-is, callouts in blue.]*
 
 ## 11.3 Reading it right
@@ -54,8 +57,10 @@ W + D to see families group together.
 
 ## 11.4 Refresh and export
 
-The model doesn't push updates into an open palette — after editing timbers,
-click **Refresh** to re-read. **Export** writes the current table to CSV
+The grid keeps itself honest for the big movers: it re-tallies on its own when
+you **switch drawings** and when **joinery replaces a timber** (a cut redraws
+the solid under the hood). After other edits — placements, re-sections, moves —
+click **Refresh** to re-read. **Export CSV** writes the current table out
 (column order as shown), ready for a spreadsheet or the sawyer's email.
 
 ---

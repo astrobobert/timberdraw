@@ -67,12 +67,13 @@ does this install*, while the cut-mark answers *what do I cut*.
 A hand-placed timber starts unaddressed. `TAssign` puts it in the frame's
 bookkeeping:
 
-1. Select the timbers (or send them over from the Frame Browser's rows —
-   Chapter 8.4).
+1. Select the rows on the **Browser** tab (Chapter 8.4) — the one assign
+   surface — or run `TAssign` and pick in the model.
 2. Give the target: a **bent** (a free post standing on a grid intersection
    takes the intersection itself, e.g. `2C`), a **wall + bay**, or a **floor
-   level**. With the assembly palette's Assembly pane set, the target is taken
-   from the pane silently; otherwise the command line prompts.
+   level**. From the Browser the target comes from its Frame / Kind / Owner /
+   Bay fields and **Assign**; from the command line, the prompts walk you
+   through the same choice.
 
 Assigned timbers get labels in the same grammar (`J-A-1`), appear in the
 grid's derivation, and group correctly in the BOM, shop maps, and scribe

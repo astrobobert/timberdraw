@@ -9,17 +9,17 @@ this chapter has to say.
 ## 6.1 What freezing does
 
 > **Figure 6-1 — Before and after the gate.**
-> *[capture: two shots of the TDraw button row — Draw enabled with "Freeze",
-> then Draw refused with the button reading "Frozen"; blue callout on the
-> changed button.]*
+> *[capture: two shots of the Frame tab's action bar — Generate Frame enabled
+> with "Freeze", then refused with the button reading "Frozen"; blue callout on
+> the changed button.]*
 
 Run `TFreeze` (default frame tag `A`), or click **Freeze** on the frame editor.
 Geometry does not change — the timbers were already managed solids. What flips
 is the **gate**:
 
-- The generator locks. **Draw refuses** (`"frame A is frozen -- the parametric
-  generator is locked"`), so nothing can ever re-emit the skeleton over your
-  hand work.
+- The generator locks. **Generate refuses** (`"frame A is frozen -- the
+  parametric generator is locked"`), so nothing can ever re-emit the skeleton
+  over your hand work.
 - The frame's recipe (bent type, seed parameters, placement) stays stored on
   the frame — a record of where the skeleton came from, kept for a future
   re-seed feature.
@@ -45,8 +45,8 @@ tag) and rebuild — deliberately, not by accident.
 - infill and floors (`TPlace`, `TJoist`, ... — Chapter 8),
 - any per-timber change you want to keep (`TSection`, `TFit`, `TScarf`).
 
-While the palette can still re-Draw, treat the model as disposable. The moment
-you would be upset to lose an edit, you should already have frozen.
+While the palette can still re-Generate, treat the model as disposable. The
+moment you would be upset to lose an edit, you should already have frozen.
 
 ---
 

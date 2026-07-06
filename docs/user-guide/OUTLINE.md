@@ -51,7 +51,7 @@ The one required reading chapter. Figures over prose.
 
 ### 4. Quick Start: A Frame in Fifteen Minutes
 The whole pipeline once, no options explained -- forward pointers to each chapter.
-1. `TDraw` -> seed a 2-bent king-post frame -> Draw.
+1. `TDraw` -> New + right-click Add Bent (x2, KingPost) -> Generate Frame.
 2. `TFreeze` -- lock it in.
 3. `TJointAll` -- cut the girt-to-post joinery in one pass.
 4. `TBom` -- the cut list appears.
@@ -64,16 +64,19 @@ Screenshot per step; end with the burned-timber photo if we have one.
 ## Part 2 -- Designing a Frame (the Recipe)
 
 ### 5. The Frame Editor (`TDraw`)
-- The four panes: tree, properties, description, button row. Figure: annotated palette screenshot.
+- The three panes of the Frame tab: tree, properties, bottom action bar (one tabbed palette
+  overall: Frame/Assembly/Joints/Browser/Output, always dark). Figure: annotated screenshot.
+- The empty start: New / Load / right-click grow; the tree resets on drawing switch.
 - The instance model: Bents x Walls (A-E lettering, ridge line) x Bays; member toggles.
 - The five bent types (KingPost, QueenPost, HammerBeam, KingPostTruss, QueenPostTruss) --
   one elevation figure each, naming the members with glossary terms.
-- Frame-level params: span, eave height, pitch, frame length, bent spacing/bay schedule.
+- Frame-level params: span, eave height, pitch (rise:12); per-bent Separation is the bay schedule.
+- Brace solve-for: Foot/Head/Angle checkboxes, two inputs drive the derived third.
 - Recipe params that survive regeneration: Girt Drop, per-bay floor-girt Height, eave girt height,
   common-rafter tails (plumb/square cut), braces-follow-their-head. Table: param -> what it moves.
 - Roof: commons vs purlins, spacing modes, sizes.
-- Draw / re-Draw semantics: regenerating replaces the skeleton until the freeze; hand edits to a
-  pre-freeze skeleton are clobbered (that's what the freeze is for).
+- Generate / re-Generate semantics: regenerating replaces the skeleton until the freeze; hand
+  edits to a pre-freeze skeleton are clobbered (that's what the freeze is for).
 - `TRoughIn` as the command-line equivalent (verify: present as primary path or alternate).
 
 ### 6. The Break: `TFreeze`
@@ -181,9 +184,8 @@ Bridge chapter -- full detail lives in the timberscribe repo's own guide.
 
 ### A. Command Reference
 Every command, one line each, grouped: Frame design / Grid + labels / Editor verbs / Joinery /
-Output / Utility (`TVer`, `TPickFace`, `TScribeProbe`) / Parked-legacy (`TFrameFlat`,
-`TDrawLegacy`, `TRegenTimber`, `TFrame`/`TFrameQP`/`TFrameHB`/`TFrameKPT`/`TFrameQPT`,
-`TFrameSave`/`TFrameLoad`, `TSave`/`TLoad`) -- legacy marked "not for new drawings".
+Output / Utility (`TVer`, `TPickFace`, `TScribeProbe`) / a "Removed" note for the deleted
+legacy pipeline commands (July 2026).
 
 ### B. Glossary
 Generated from `GLOSSARY.md` (single source of truth -- do not fork the content; transclude or
@@ -208,7 +210,7 @@ origin upper-left, inches.
 1. **Format/toolchain:** markdown chapters in `docs/user-guide/` (one file per chapter, images in
    `docs/user-guide/img/`) rendered by GitHub as-is? Or single-page HTML/PDF for the shop?
    Recommendation: markdown per chapter now; PDF export later.
-2. **The worked example frame:** exact seed for the quick-start frame (proposal: 2 king-post
+2. **The worked example frame:** exact recipe for the quick-start frame (proposal: 2 king-post
    bents, 16' span, 12' eave, 8:12, one bay) so screenshots are reproducible.
 3. **Screenshots:** who captures (AutoCAD theme, background color, resolution standard)?
    Proposal: light background, consistent SE isometric, blue/yellow annotation only.

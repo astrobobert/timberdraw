@@ -6,23 +6,27 @@ generator-made or hand-placed.
 
 ---
 
-## 8.1 The assembly palette (`TPanel`)
+## 8.1 The Assembly tab (`TPanel`)
 
-> **Figure 8-1 — The assembly palette.**
-> *[capture: TPanel; blue callouts on: the section tree with a leaf selected
-> (sticky section), the verb buttons, the UCS orientation buttons, the
-> Assembly pane target boxes.]*
+> **Figure 8-1 — The Assembly tab.**
+> *[capture: Assembly tab; blue callouts on: the section tree with a leaf
+> selected (sticky section), the Brace spec checkboxes, and the labeled verb
+> groups in the bottom action bar.]*
 
-`TPanel` opens the assembly palette:
+`TPanel` opens the palette on its **Assembly** tab:
 
 - **Sections as a tree** — member types (Post, Girt, ...) with each
   cross-section (W x D) as a leaf. Selecting a leaf makes it the **sticky
   section**: the placement verbs stop asking for dimensions until you pick a
-  different leaf.
-- **Verb buttons** fire the commands below — same commands, typed or clicked.
-- **Orientation buttons** fire the UCS presets.
-- **The Assembly pane** holds the current assignment target for `TAssign`
-  (Chapter 7.3).
+  different leaf. Add / Update / Remove maintain the catalog beside it.
+- **The Brace spec** — Foot / Head / Angle with checkboxes: the two checked
+  are the inputs, the third derives (`TJoin` knees use these legs).
+- **The bottom action bar** carries every verb in labeled groups: **UCS
+  preset** (Plan / Bent / Wall), **Build timbers** (Place / Span / Brace /
+  Joist), **Shape timber** (Fit / Scarf / Section), **Position** (Move /
+  Rotate), and **Connectivity** (Scan). Same commands, typed or clicked.
+
+Assigning addresses lives on the **Browser** tab (8.4) — one surface for it.
 
 **UCS presets:** `TUcsPlan` / `TUcsBent` / `TUcsWall` orient your working
 plane for placement — plan, a bent's cross plane, a wall's long plane. The
@@ -68,10 +72,14 @@ move command. Two cautions:
 - **`TScan`** rescans every managed timber for **face coincidence** and marks
   the derived connection nodes — the model's own report of what touches what.
   Run it after moving or fitting to see the connectivity you actually have.
-- **`TBrowse`** opens the frame browser: every timber in a filterable list.
+- **`TBrowse`** opens the **Browser** tab: every timber in a filterable list,
+  grouped Frame -> Bent/Wall -> Bay and sorted by type within each group.
   Selecting rows **highlights** the solids (the view doesn't jump);
-  double-click **zooms** to one. Rows can be sent to `TAssign` — the browser
-  is the assign-and-review surface for labeling sessions.
+  double-click **zooms** to one. The stacked fields below the list are both
+  the review and the assign surface: a selected row loads its section and
+  address; **Apply** re-sections, **Assign** addresses the selection through
+  `TAssign` (Frame / Kind / Owner / Bay). The list re-reads itself when the
+  drawing changes or joinery replaces a timber.
 
 > **Figure 8-4 — The frame browser with three joists selected and highlighted.**
 > *[capture: TBrowse beside the model; three rows selected, the matching

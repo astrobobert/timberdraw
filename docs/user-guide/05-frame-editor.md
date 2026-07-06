@@ -2,36 +2,41 @@
 
 The frame editor is where the **recipe** lives (Chapter 3.2): the structure of
 the frame as bents, walls, and bays, with member sizes and toggles. Press
-**Draw** and the generator emits the skeleton; change anything and Draw again —
-until the freeze.
+**Generate Frame** and the generator emits the skeleton; change anything and
+Generate again — until the freeze.
 
 ---
 
-## 5.1 The four panes
+## 5.1 The Frame tab
 
 > **Figure 5-1 — The frame editor, annotated.**
-> *[capture: TDraw palette with the quick-start frame; blue callouts numbering
-> the four panes: 1 tree, 2 properties, 3 description, 4 button row.]*
+> *[capture: Frame tab with the quick-start frame; blue callouts numbering
+> the three panes: 1 tree, 2 properties, 3 action bar.]*
 
-`TDraw` opens a palette with four panes:
+`TDraw` opens the TimberDraw palette on its **Frame** tab (the same palette
+carries Assembly, Joints, Browser, and Output — each chapter lands on its own
+tab). The Frame tab is three panes:
 
 1. **The tree** — the frame's structure: bents and bays alternating, each with
    its member folders.
 2. **The properties pane** — every editable value for whatever is selected in
    the tree, in worked order with section headers. Distances accept framer
    input (`12'`, `12'-6"`, `9 1/2`).
-3. **The description pane** — what the selected item and its parameters mean.
-4. **The button row** — Draw, Freeze, and the template Save / Save As / Load.
+3. **The action bar** — **Generate Frame** on its own row, the template row
+   (**New / Save / Save As / Load**), and **Set Default / Freeze / Redraw
+   Grid**.
 
-The palette opens with a **fresh two-bent king-post seed every time** (and on
-every drawing switch). To keep a design across sessions, save it as a named
-template (below) — the drawn frame itself is never lost; only the palette
-restarts.
+The tree opens **empty every time** (and on every drawing switch) — a frame
+starts with **New**, a loaded template, or a right-click **Add Bent** on the
+frame node. To keep a design across sessions, save it as a named template
+(below) — the drawn frame itself is never lost; only the palette restarts.
 
 ## 5.2 Building the structure
 
-- **Right-click in the tree** to add: **Add Bent** / **Add Bay** (they
-  alternate; a bay may lead or trail the frame).
+- **Right-click to grow.** An empty tree's frame node offers **Add Bent** /
+  **Add Wall** (the first elements); after that, right-click a bent or wall
+  for **Insert Before / After** and **Remove**. The bays between bents follow
+  automatically.
 - Select a bent and set its **Bent Type** — KingPost, QueenPost, HammerBeam,
   KingPostTruss, QueenPostTruss. Setting the type fills the bent's folder with
   all of its timbers as **checkboxes**, all checked; uncheck a timber to drop
@@ -49,11 +54,11 @@ catalog. The interior wall count and roles follow the bent type — a hammer-bea
 frame carries more lines than a king-post frame. You mostly notice walls when
 assigning free timbers (Chapter 7) and reading labels.
 
-## 5.3 Parameters that survive re-Draw
+## 5.3 Parameters that survive re-Generate
 
-Frame-level: **Span**, **Eave Height**, **Pitch**, frame length / bent
-separations. Member-level (the recipe params — set them once, they hold through
-every re-Draw):
+Frame-level: **Span**, **Eave Height**, **Pitch** (shown as rise:12); the
+frame's length is the sum of the per-bent **Separation** values. Member-level
+(the recipe params — set them once, they hold through every re-Generate):
 
 | Parameter | What it moves |
 |---|---|
@@ -65,17 +70,22 @@ every re-Draw):
 
 Roof framing per bay: **commons or purlins**, count or spacing mode, sizes.
 
+**Braces solve for two of three.** A brace's rows are **Foot / Head / Angle**
+with a checkbox on each label: the two checked rows are your inputs, the third
+goes read-only and derives (check a third and the oldest drops out — the same
+mechanic as the Assembly tab's Brace spec). Length is always reported.
+
 **Per-type defaults:** with a member selected, its right-click **Save as
 default** stores that member type's sizes and checkboxes — new elements of the
 same type seed from it.
 
-## 5.4 Draw, re-Draw, and templates
+## 5.4 Generate, re-Generate, and templates
 
-**Draw** emits the whole frame as managed timbers, standing Z-up, at the
-current UCS origin — with the structural grid beneath and every stick labeled.
-Drawing again **replaces** this frame's timbers (other frames and unmanaged
-solids are untouched). Hand edits to a pre-freeze skeleton do not survive a
-re-Draw; that is what the freeze is for (Chapter 6).
+**Generate Frame** emits the whole frame as managed timbers, standing Z-up, at
+the current UCS origin — with the structural grid beneath and every stick
+labeled. Generating again **replaces** this frame's timbers (other frames and
+unmanaged solids are untouched). Hand edits to a pre-freeze skeleton do not
+survive a re-Generate; that is what the freeze is for (Chapter 6).
 
 **Save / Save As / Load** manage named `.framespec` templates — your barn
 starter, your saltbox. Loading one replaces the palette's spec; Draw makes it

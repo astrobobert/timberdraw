@@ -30,19 +30,20 @@ Two rules follow:
 
 > **Figure 3-2 — The one-way pipeline.**
 > *[capture or diagram: three panels left to right — the TDraw tree editor
-> ("recipe"), the emitted frame ("skeleton"), a padlock over the Draw button
-> ("frozen"). Arrow between each; the last arrow labeled "TFreeze — one way".]*
+> ("recipe"), the emitted frame ("skeleton"), a padlock over the Generate Frame
+> button ("frozen"). Arrow between each; the last arrow labeled "TFreeze — one way".]*
 
 You do not model a frame stick by stick. You edit a **recipe** — the frame spec in
 the `TDraw` tree editor (bents, walls, bays, member sizes) — and the generator
-emits the whole **skeleton** of managed timbers each time you press **Draw**.
+emits the whole **skeleton** of managed timbers each time you press **Generate
+Frame**.
 
-While the recipe is live, re-drawing *replaces* the skeleton. That is the point:
-change the span, press Draw, get a new frame. But it also means hand edits to a
-pre-freeze skeleton are thrown away on the next Draw.
+While the recipe is live, re-generating *replaces* the skeleton. That is the point:
+change the span, Generate, get a new frame. But it also means hand edits to a
+pre-freeze skeleton are thrown away on the next Generate.
 
 When the skeleton is right, you **freeze** (`TFreeze`, or the Freeze button on the
-palette). The freeze is one-way: the generator locks, the Draw button refuses, and
+palette). The freeze is one-way: the generator locks, Generate refuses, and
 from then on the timbers themselves are the only truth. After the break there is
 no difference between a timber the generator made and one you placed by hand —
 every verb works the same on both.

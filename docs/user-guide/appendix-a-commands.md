@@ -1,16 +1,16 @@
 # Appendix A. Command Reference
 
-Every command, one line, grouped by job. Legacy commands are for drawings made
-by the old parametric pipeline — **not for new work**.
+Every command, one line, grouped by job. The palette openers (`TDraw`,
+`TPanel`, `TBrowse`, `TBom`) all land on their tab of the **one TimberDraw
+palette** — Frame / Assembly / Joints / Browser / Output.
 
 ## Frame design
 
 | Command | One line |
 |---|---|
-| `TDraw` | Open the frame editor (tree + properties + Draw/Freeze/templates). Ch. 5 |
+| `TDraw` | Open the Frame tab (tree + properties + Generate/Freeze/templates). Ch. 5 |
 | `TRoughIn` | Command-line alternate: emit one bent of the configured type at a picked point. Ch. 5 |
 | `TFreeze` | The break: lock the frame's generator, one-way. Ch. 6 |
-| `TFrameSave` / `TFrameLoad` | Write / redraw the frame graph as a `.tframe` JSON file. |
 
 ## Grid + labels
 
@@ -24,7 +24,7 @@ by the old parametric pipeline — **not for new work**.
 
 | Command | One line |
 |---|---|
-| `TPanel` | Open the assembly palette (sticky sections + verbs + UCS presets). Ch. 8 |
+| `TPanel` | Open the Assembly tab (sticky sections + brace spec + the verb bar). Ch. 8 |
 | `TPlace` | Place one timber of the sticky section. Ch. 8 |
 | `TSpan` | Fill the gap between two picked timbers. Ch. 8 |
 | `TJoin` | Connect two picked faces (square filler or mitered knee). Ch. 8 |
@@ -33,7 +33,7 @@ by the old parametric pipeline — **not for new work**.
 | `TScarf` | Split a timber in two with a scarf splice. Ch. 8 |
 | `TJoist` | Place a row of floor joists in a bay. Ch. 8 |
 | `TScan` | Rescan face coincidence; mark connection nodes. Ch. 8 |
-| `TBrowse` | The frame browser: filter, highlight, zoom, send to TAssign. Ch. 8 |
+| `TBrowse` | Open the Browser tab: filter, highlight, zoom, re-section, assign. Ch. 8 |
 | `TUcsPlan` / `TUcsBent` / `TUcsWall` | UCS presets for comfortable placement. Ch. 8 |
 
 ## Joinery
@@ -58,7 +58,7 @@ by the old parametric pipeline — **not for new work**.
 
 | Command | One line |
 |---|---|
-| `TBom` | The cut-list palette; rows highlight solids; CSV export. Ch. 11 |
+| `TBom` | Open the Output tab (the cut list); rows highlight solids; CSV export. Ch. 11 |
 | `TShop` / `TShopClear` | Build / remove the shop-map set on the TM Shop layout. Ch. 12 |
 | `TScribe` | Export `.tsj` scribe files for selected timbers. Ch. 13 |
 | `TScribeAll` | Export the whole frame (clears the folder first). Ch. 13 |
@@ -71,12 +71,11 @@ by the old parametric pipeline — **not for new work**.
 | `TVer` | Print the loaded build (the am-I-stale check). Ch. 2 |
 | `TPickFace` | Debug: pick and report one analytic face. |
 
-## Legacy (parked — not for new drawings)
+## Removed
 
-| Command | One line |
-|---|---|
-| `TDrawLegacy` | The old flat parametric palette. |
-| `TFrameFlat` | The old frame-params palette. |
-| `TFrame` / `TFrameQP` / `TFrameHB` / `TFrameKPT` / `TFrameQPT` | Draw a single legacy bent graph per type. |
-| `TRegenTimber` | Legacy parametric regeneration (old XData pipeline drawings only). |
-| `TSave` / `TLoad` | Legacy `.tproj` palette-state files. |
+The legacy parametric pipeline's commands (`TDrawLegacy`, `TFrameFlat`,
+`TRegenTimber`, `TFrame`/`TFrameQP`/`TFrameHB`/`TFrameKPT`/`TFrameQPT`,
+`TFrameSave`/`TFrameLoad`, `TSave`/`TLoad`) were **removed in July 2026**.
+Drawings made by that pipeline still open — but they are edited with the
+managed verbs like everything else; per-timber parametric regeneration is
+gone with it.

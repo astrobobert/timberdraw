@@ -12,28 +12,35 @@ drawing, World UCS.
 
 ## Step 1 — Design: `TDraw`
 
-Type `TDraw`. The frame editor palette opens, already seeded with a fresh
-two-bent king-post frame — exactly what we want.
+Type `TDraw`. The TimberDraw palette opens on its **Frame** tab with an empty
+tree — a frame starts deliberately, not from a canned seed. Build ours:
 
-Select the frame node at the top of the tree and set, in the properties pane:
+1. Click **New**.
+2. Right-click the frame node and **Add Bent**; set its **Bent Type** to
+   KingPost (the wall lines appear with it).
+3. Right-click that bent and **Insert Bent After** — the second bent, and with
+   it the bay between them.
+
+Then select the frame node at the top of the tree and set, in the properties
+pane:
 
 - **Span**: 16'
 - **Eave Height**: 12'
 - **Pitch**: 8:12
 
 > **Figure 4-1 — The frame editor with the quick-start values entered.**
-> *[capture: TDraw palette, frame node selected, the three edited values
-> visible; annotate the four panes (tree / properties / description / buttons)
+> *[capture: Frame tab, frame node selected, the three edited values
+> visible; annotate the three panes (tree / properties / action bar)
 > in blue.]*
 
-The palette starts from this fresh seed every time it opens — saving named
+The tree opens empty every time (and on every drawing switch) — saving named
 templates and everything else the editor can do is Chapter 5.
 
-## Step 2 — Draw
+## Step 2 — Generate
 
-Click **Draw**. The frame lands at the current UCS origin: managed timbers
-standing Z-up, with the structural grid flat beneath them and a label on every
-stick.
+Click **Generate Frame**. The frame lands at the current UCS origin: managed
+timbers standing Z-up, with the structural grid flat beneath them and a label
+on every stick.
 
 Orbit around it. Posts at the corners, tie girts, king posts, rafters, braces —
 about two dozen timbers, each one already carrying its address (`P-1A`,
@@ -43,13 +50,13 @@ about two dozen timbers, each one already carrying its address (`P-1A`,
 > *[capture: SE isometric of the full frame with grid bubbles visible; yellow
 > highlight on one post, blue callout showing its label.]*
 
-While the palette is live you can change a value and click Draw again — the
+While the spec is live you can change a value and Generate again — the
 skeleton is *replaced* each time. That stops being true after the next step.
 
 ## Step 3 — Freeze: `TFreeze`
 
 Click **Freeze** on the palette (or run `TFreeze`; frame tag `A` is the
-default). The generator locks — Draw now refuses — and from here on the timbers
+default). The generator locks — Generate now refuses — and from here on the timbers
 are edited directly, never regenerated. This is one-way (Chapter 6 explains why
 that's a feature).
 
@@ -73,12 +80,13 @@ Chapter 10.
 
 ## Step 5 — The cut list: `TBom`
 
-Type `TBom`. A grid palette opens with one row per timber: label, size, length,
-joinery tally. Click a row and the matching solid highlights in the model.
-**Export** writes the tally to CSV.
+Type `TBom` (or just click the palette's **Output** tab — the BOM loads itself
+the first time you look). One row per timber: label, size, length, joinery
+tally. Click a row and the matching solid highlights in the model.
+**Export CSV** writes the tally out.
 
-> **Figure 4-4 — The BOM grid with one row selected and its timber highlighted.**
-> *[capture: BOM palette beside the model; selected row + highlighted solid
+> **Figure 4-4 — The Output tab with one row selected and its timber highlighted.**
+> *[capture: Output tab beside the model; selected row + highlighted solid
 > both visible.]*
 
 ## Step 6 — Shop drawings: `TShop`

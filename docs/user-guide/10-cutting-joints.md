@@ -17,7 +17,9 @@ an identity, and cutting it again *replaces* it rather than doubling up.
 Open `TPanel` and switch to the **Joints** tab.
 
 1. **Pick pair** (`TJoinPick`) — pick the timber being jointed first (the
-   strut / brace / rafter), then the host it beds into.
+   strut / brace / rafter), then the host it beds into. The button itself is
+   the readout: it reads **Pick pair** when empty and **Pick (Brace, Post)**
+   while holding one.
 2. A **fresh pair cuts immediately** with the current connection type and
    parameters — so once the recipe is set, you just pick pair after pair.
 3. If the pair **already carries a joint**, its saved settings load into the
