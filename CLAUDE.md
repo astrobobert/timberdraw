@@ -64,7 +64,11 @@ Frame lifecycle (`Commands.cs`): `TDraw` (tree editor palette), `TRoughIn` (gene
 `TFreeze` (one-way break), `TGrid` (redraw the structural grid), `TPanel` (assembly palette),
 `TBrowse` (frame browser: assign + review surface; highlight on select, double-click zooms),
 `TBom` (BOM grid palette), `TVer` (build stamp), `TFrameSave`/`TFrameLoad` (frame JSON).
-Parked/legacy: `TFrameFlat`, `TDrawLegacy`, `TRegenTimber`, `TFrame`/`TFrameQP`/`TFrameHB`/`TFrameKPT`/`TFrameQPT`, `TSave`/`TLoad`.
+RETIRED 2026-07-06 (Phase C, Robert's disposition): `TFrameFlat`, `TDrawLegacy`, `TRegenTimber`,
+`TFrame`/`TFrameQP`/`TFrameHB`/`TFrameKPT`/`TFrameQPT`, `TFrameSave`/`TFrameLoad`, `TSave`/`TLoad` --
+commands + their UI deleted (ProjectFile.cs, UserControl1, FrameControl, FrameStore). `TPickFace`
+kept (debug). The legacy generator internals (`Bent\`/`Bay\`/`Kpost\`/..., `TimberFactory`,
+`Joints\`) remain as DEAD CODE pending the deep purge -- nothing invokes them.
 
 Editor verbs (`Managed\ManagedTimber.cs` unless noted):
 
@@ -187,7 +191,9 @@ closed.
 ## Architecture
 
 ### Entry Point
-`Commands.cs` -- registers the `TDraw` AutoCAD command, opens the palette containing `UserControl1`. Main class is `TimberDraw.Commands`.
+`Commands.cs` -- registers the frame-lifecycle commands; `TDraw` opens the tabbed shell (`Ui\Shell.cs`)
+on the Frame tab. Main class is `TimberDraw.Commands`. (The legacy `UserControl1` palette was
+deleted in Phase C, 2026-07-06.)
 
 ### Global State: `Module1.cs`
 A `static` class that holds all current bent parameters as shared state:
@@ -737,14 +743,11 @@ Stubs: all others (return ObjectId.Null; implement in Phase 2 member migration).
 
 ### Commands (legacy parametric path)
 
-| Command | Description |
-|---|---|
-| `TDraw` | Opens TimberDraw palette (now the frame tree editor; `TDrawLegacy` opens the old flat palette) |
-| `TSave` | Saves current palette state to `.tproj` file |
-| `TLoad` | Loads `.tproj`, restores palette |
-| `TRegenTimber` | Picks a timber, prompts Width/Depth, calls TimberFactory.Regenerate() |
+RETIRED 2026-07-06 (Phase C): `TSave`/`TLoad`, `TDrawLegacy`, and `TRegenTimber` are deleted.
+The sections below describe the surviving DEAD-CODE internals only (TimberFactory etc. --
+no command reaches them; kept until the deep purge).
 
-`TRegenTimber` works for all member types that have a `DrawContext` xrecord:
+`TRegenTimber` (deleted) worked for all member types that have a `DrawContext` xrecord:
 BentGirt, FloorBentGirt, PostLeft, PostRight, KPost, BentBrace, BayBrace,
 KPRafterLeft/Right, KPStrutLeft/Right, KPVertStrutLeft/Right,
 QPPostLeft/Right, QPRafterLeft/Right, QPStrutLeft/Right, QPUpperGirt,

@@ -24,44 +24,12 @@ namespace TimberDraw
 			Properties.Settings.Default.Save();
 		}
 
-		// -----------------------------------------------------------------------
-		// TFrame -- node/edge frame-graph core (Milestone 1).
-		// Builds a King Post bent as a graph of nodes + member edges and renders
-		// plain solid-box bodies that mate at shared nodes. No joinery -- fully
-		// separate from the TDraw path. Uses current Module1 params when set,
-		// otherwise sensible test defaults so it runs standalone.
-		// -----------------------------------------------------------------------
-		[CommandMethod("TFrame")]
-		public static void DrawFrame()
-		{
-			KPBentParams p = ReadKPParams();
-			// Sync globals (harmless; useful if any reused helper reads them).
-			Module1.Span = p.Span; Module1.EaveHt = p.EaveHt; Module1.Pitch = p.Pitch;
-			Module1.Beta = p.Beta; Module1.Make3D = p.Make3D;
-
-			FrameGraph g = KingPostBentGraph.Build(p);
-			FrameRenderer.Draw(g);
-
-			Application.DocumentManager.MdiActiveDocument?.Editor.WriteMessage(
-				"\nTFrame: drew " + g.Edges.Count + " members across " + g.Nodes.Count + " nodes.");
-		}
-
-		// Geometry-first Queen Post test command: renders an all-QP frame from the live
-		// palette plus QP defaults. No settings/UI yet -- the FrameSpec/tree integration is
-		// a later step.
-		[CommandMethod("TFrameQP")]
-		public static void DrawQueenFrame()
-		{
-			KPBentParams p = ReadQPParams();
-			Module1.Span = p.Span; Module1.EaveHt = p.EaveHt; Module1.Pitch = p.Pitch;
-			Module1.Beta = p.Beta; Module1.Make3D = p.Make3D;
-
-			FrameGraph g = KingPostBentGraph.BuildQueen(p);
-			FrameRenderer.Draw(g);
-
-			Application.DocumentManager.MdiActiveDocument?.Editor.WriteMessage(
-				"\nTFrameQP: drew " + g.Edges.Count + " members across " + g.Nodes.Count + " nodes.");
-		}
+		// RETIRED 2026-07-06 (Phase C, Robert's disposition): the frame-graph bring-up test
+		// commands TFrame / TFrameQP / TFrameHB / TFrameKPT / TFrameQPT, the .tframe dump pair
+		// TFrameSave / TFrameLoad, the parked palettes TFrameFlat / TDrawLegacy, the .tproj pair
+		// TSave / TLoad (ProjectFile.cs deleted), and the legacy regen command TRegenTimber.
+		// The tree editor (TDraw) + managed verbs cover all of it. The legacy generator
+		// internals (Bent\/Bay\/... , TimberFactory) remain as dead code pending the deep purge.
 
 		// Queen Post params: the King Post live values plus QP-specific defaults (geometry-
 		// first; no dedicated settings yet). Queen posts reuse the post section, the straining
@@ -75,22 +43,6 @@ namespace TimberDraw
 			p.QueenW        = p.PostW;   p.QueenD      = p.PostD;
 			p.UpperGirtW    = p.GirtW;   p.UpperGirtD  = p.GirtD;
 			return p;
-		}
-
-		// Geometry-first Hammer Beam test command (divisor 4): renders an all-HB frame from
-		// the live palette plus HB defaults. No settings/UI yet.
-		[CommandMethod("TFrameHB")]
-		public static void DrawHammerFrame()
-		{
-			KPBentParams p = ReadHBParams();
-			Module1.Span = p.Span; Module1.EaveHt = p.EaveHt; Module1.Pitch = p.Pitch;
-			Module1.Beta = p.Beta; Module1.Make3D = p.Make3D;
-
-			FrameGraph g = KingPostBentGraph.BuildHammer(p);
-			FrameRenderer.Draw(g);
-
-			Application.DocumentManager.MdiActiveDocument?.Editor.WriteMessage(
-				"\nTFrameHB: drew " + g.Edges.Count + " members across " + g.Nodes.Count + " nodes.");
 		}
 
 		// Hammer Beam params: King Post live values plus HB-specific defaults (geometry-first;
@@ -108,36 +60,6 @@ namespace TimberDraw
 			p.HPostW = p.PostW;  p.HPostD = p.PostD;
 			p.CollarW = p.GirtW; p.CollarD = p.GirtD;
 			return p;
-		}
-
-		// Geometry-first truss test commands. Full-span tie at the eave, rafters seated on it,
-		// central posts re-based onto the tie. 30'x20', 12:12 test size for readability.
-		[CommandMethod("TFrameKPT")]
-		public static void DrawKingPostTrussFrame()
-		{
-			KPBentParams p = ReadKPParams();
-			p.Span = 360.0; p.EaveHt = 240.0; p.Pitch = 1.0;
-			Module1.Span = p.Span; Module1.EaveHt = p.EaveHt; Module1.Pitch = p.Pitch;
-			Module1.Beta = p.Beta; Module1.Make3D = p.Make3D;
-
-			FrameGraph g = KingPostBentGraph.BuildKingPostTruss(p);
-			FrameRenderer.Draw(g);
-			Application.DocumentManager.MdiActiveDocument?.Editor.WriteMessage(
-				"\nTFrameKPT: drew " + g.Edges.Count + " members across " + g.Nodes.Count + " nodes.");
-		}
-
-		[CommandMethod("TFrameQPT")]
-		public static void DrawQueenPostTrussFrame()
-		{
-			KPBentParams p = ReadQPParams();   // QP defaults: HasQueen/HasUpperGirt, QueenOffset
-			p.Span = 360.0; p.EaveHt = 240.0; p.Pitch = 1.0;
-			Module1.Span = p.Span; Module1.EaveHt = p.EaveHt; Module1.Pitch = p.Pitch;
-			Module1.Beta = p.Beta; Module1.Make3D = p.Make3D;
-
-			FrameGraph g = KingPostBentGraph.BuildQueenPostTruss(p);
-			FrameRenderer.Draw(g);
-			Application.DocumentManager.MdiActiveDocument?.Editor.WriteMessage(
-				"\nTFrameQPT: drew " + g.Edges.Count + " members across " + g.Nodes.Count + " nodes.");
 		}
 
 		// TRoughIn -- Phase 2 ROUGH-IN: build the parametric bent graph (type from the RoughInType
@@ -290,41 +212,9 @@ namespace TimberDraw
 			}
 		}
 
-		// Builds a graph from the live palette values and writes it to a .tframe JSON
-		// file -- the persisted node/edge "database". The file is the source of truth:
-		// TFrameLoad reproduces the drawing from it alone.
-		[CommandMethod("TFrameSave")]
-		public static void SaveFrame()
-		{
-			Document doc = Application.DocumentManager.MdiActiveDocument;
-			FrameGraph g = KingPostBentGraph.Build(ReadKPParams());
-			string path = FramePath(doc);
-			System.IO.File.WriteAllText(path, FrameStore.ToJson(g));
-			doc?.Editor.WriteMessage("\nTFrameSave: wrote " + g.Nodes.Count + " nodes, "
-				+ g.Edges.Count + " edges to " + path);
-		}
-
-		// Renders a frame purely from a stored .tframe file (no params, no generator)
-		// -- proves the graph database fully describes the drawing.
-		[CommandMethod("TFrameLoad")]
-		public static void LoadFrame()
-		{
-			Document doc = Application.DocumentManager.MdiActiveDocument;
-			string path = FramePath(doc);
-			if (!System.IO.File.Exists(path))
-			{
-				doc?.Editor.WriteMessage("\nTFrameLoad: no file at " + path);
-				return;
-			}
-			FrameGraph g = FrameStore.FromJson(System.IO.File.ReadAllText(path));
-			FrameRenderer.Draw(g);
-			doc?.Editor.WriteMessage("\nTFrameLoad: rendered " + g.Edges.Count
-				+ " members from " + path);
-		}
-
-		// Reads the live King Post palette values from Settings -- the same source the
-		// TDraw KP path uses. UserControl1 flushes each textbox edit to Settings on
-		// leave/validate, so changes take effect immediately without a prior TDraw.
+		// Reads the King Post seed values from Settings. (The legacy palettes that edited
+		// these fields are retired -- the recipe UI is the tree editor; these Settings now
+		// only seed fresh FrameSpecs and the TRoughIn path.)
 		internal static KPBentParams ReadKPParams()
 		{
 			var s = TimberDraw.Properties.Settings.Default;
@@ -389,15 +279,6 @@ namespace TimberDraw
 			return list.ToArray();
 		}
 
-		// .tframe path: next to the active drawing, or temp if the drawing is unsaved.
-		private static string FramePath(Document doc)
-		{
-			string dir = "";
-			try { dir = System.IO.Path.GetDirectoryName(doc?.Name ?? ""); } catch { }
-			if (string.IsNullOrEmpty(dir)) dir = System.IO.Path.GetTempPath();
-			return System.IO.Path.Combine(dir, "frame.tframe");
-		}
-
 		// .framespec path: the FrameSpec instance model, next to the active drawing.
 		private static string FrameSpecPath(Document doc)
 		{
@@ -427,8 +308,7 @@ namespace TimberDraw
 
 		// TDraw -- opens the shell on the Frame tab (the FrameSpec tree editor). The tree
 		// opens EMPTY (start a frame with New, or Load a .framespec); re-invoking TDraw
-		// never discards in-progress work. The flat Frame params panel is parked behind
-		// TFrameFlat; the legacy member-by-member palette behind TDrawLegacy.
+		// never discards in-progress work.
 		[CommandMethod("TDraw")]
 		public static void ShowPalette()
 		{
@@ -474,203 +354,9 @@ namespace TimberDraw
 				"\nTimberDraw build " + BuildStamp() + ".");
 		}
 
-		// Parked flat Frame params panel (the pre-tree FrameControl).
-		internal static PaletteSet psFlat = null;
-		[CommandMethod("TFrameFlat")]
-		public static void ShowFlatFramePalette()
-		{
-			if (psFlat == null) {
-				psFlat = new PaletteSet("TimberDraw (Flat)", "TimberDrawFlat", new Guid("4C1F7BB9-5371-4673-B579-C16F49539CC7"));
-				FrameControl frameForm = new();
-				psFlat.Add("Frame", frameForm);
-				psFlat.MinimumSize = new System.Drawing.Size(225, 680);
-				psFlat.Style = PaletteSetStyles.ShowCloseButton | PaletteSetStyles.ShowPropertiesMenu | PaletteSetStyles.ShowAutoHideButton;
-			}
-			psFlat.Visible = true;
-		}
-
-		// Parked legacy palette (member-by-member, joinery-first draw path).
-		internal static PaletteSet psLegacy = null;
-		[CommandMethod("TDrawLegacy")]
-		public static void ShowLegacyPalette()
-		{
-			if (psLegacy == null) {
-				psLegacy = new PaletteSet("TimberDraw (Legacy)", "TimberDrawLegacy", new Guid("4C1F7BB9-5371-4673-B579-C16F49539CC6"));
-				UserControl1 myForm = new();
-				psLegacy.Add("TimberDraw", myForm);
-				psLegacy.MinimumSize = new System.Drawing.Size(225, 680);
-				psLegacy.Style = PaletteSetStyles.ShowCloseButton | PaletteSetStyles.ShowPropertiesMenu | PaletteSetStyles.ShowAutoHideButton;
-			}
-			psLegacy.Visible = true;
-		}
-
-        // -----------------------------------------------------------------------
-        // TRegenTimber -- Phase 2/3 parametric regeneration command
-        //
-        // Interactive mode (no pending params):
-        //   Select a timber solid -> enter new Width -> enter new Depth
-        //
-        // Automated mode (TimberTag Regen button):
-        //   TimberTag writes a "TRegenPending" Xrecord to NamedObjectsDictionary
-        //   with handle + new dimensions + joint types, then calls SendStringToExecute.
-        //   This command reads those params, clears the entry, and runs regen
-        //   without any user prompts.
-        // -----------------------------------------------------------------------
-        [CommandMethod("TRegenTimber")]
-        public static void RegenTimber()
-        {
-            Document doc = Application.DocumentManager.MdiActiveDocument;
-            Editor ed = doc.Editor;
-            Database db = doc.Database;
-
-            // --- Check for pending regen written by TimberTag ---
-            PendingRegenParams pending = ReadAndClearPending(db);
-            if (pending.Found)
-            {
-                ObjectId pendId = Module1.GetObjectIdFromHandle(pending.TimberHandle);
-                if (pendId.IsNull)
-                {
-                    ed.WriteMessage("\nTRegenTimber: pending timer handle not found in drawing.");
-                    return;
-                }
-                Module1.DataStructure xd2 = Module1.GetXdata(pendId);
-                try
-                {
-                    ObjectId newId = TimberFactory.Regenerate(pending.TimberHandle,
-                        pending.Width, pending.Depth,
-                        pending.JointNear, pending.JointFar);
-                    WriteRegenResult(db, newId);
-                    ed.WriteMessage(
-                        "\nRegenerated " + xd2.Type + " " + xd2.BentNumber + xd2.Designation
-                        + " as " + pending.Width + "x" + pending.Depth + ".");
-                }
-                catch (NotImplementedException nie)
-                {
-                    ed.WriteMessage("\n" + nie.Message);
-                }
-                catch (System.Exception ex)
-                {
-                    ed.WriteMessage("\nRegenerate failed: " + ex.Message);
-                }
-                return;
-            }
-
-            // --- Interactive mode ---
-            var sopts = new PromptEntityOptions("\nSelect a timber solid to regenerate: ");
-            sopts.SetRejectMessage("\nMust select a 3D solid.");
-            sopts.AddAllowedClass(typeof(Solid3d), true);
-            PromptEntityResult er = ed.GetEntity(sopts);
-            if (er.Status != PromptStatus.OK) return;
-
-            Module1.DataStructure xd = Module1.GetXdata(er.ObjectId);
-            if (string.IsNullOrEmpty(xd.Type))
-            {
-                ed.WriteMessage("\nSelected entity has no TimberDraw xdata. Select a timber drawn by TDraw.");
-                return;
-            }
-
-            ed.WriteMessage("\nTimber: " + xd.Type + " " + xd.BentNumber + xd.Designation
-                            + "  current size " + xd.Width + "x" + xd.Depth);
-
-            var wopts = new PromptDoubleOptions("\nNew Width [" + xd.Width + "\"]: ") { AllowNone = true };
-            wopts.DefaultValue = xd.Width;
-            PromptDoubleResult wr = ed.GetDouble(wopts);
-            if (wr.Status != PromptStatus.OK && wr.Status != PromptStatus.None) return;
-            double newWidth = (wr.Status == PromptStatus.None) ? xd.Width : wr.Value;
-
-            var dopts = new PromptDoubleOptions("\nNew Depth [" + xd.Depth + "\"]: ") { AllowNone = true };
-            dopts.DefaultValue = xd.Depth;
-            PromptDoubleResult dr = ed.GetDouble(dopts);
-            if (dr.Status != PromptStatus.OK && dr.Status != PromptStatus.None) return;
-            double newDepth = (dr.Status == PromptStatus.None) ? xd.Depth : dr.Value;
-
-            // Joint-type prompts: Enter keeps the current type.
-            string curNear = string.IsNullOrEmpty(xd.JointNear) ? "Tenon" : xd.JointNear;
-            string curFar  = string.IsNullOrEmpty(xd.JointFar)  ? "Tenon" : xd.JointFar;
-
-            var jnopts = new PromptKeywordOptions(
-                "\nNear joint [Tenon/Shoulder/Butt] <" + curNear + ">: ");
-            jnopts.Keywords.Add("Tenon");
-            jnopts.Keywords.Add("Shoulder");
-            jnopts.Keywords.Add("Butt");
-            jnopts.AllowNone = true;
-            PromptResult jnr = ed.GetKeywords(jnopts);
-            if (jnr.Status != PromptStatus.OK && jnr.Status != PromptStatus.None) return;
-            string newJointNear = (jnr.Status == PromptStatus.None) ? curNear : jnr.StringResult;
-
-            var jfopts = new PromptKeywordOptions(
-                "\nFar joint  [Tenon/Shoulder/Butt] <" + curFar + ">: ");
-            jfopts.Keywords.Add("Tenon");
-            jfopts.Keywords.Add("Shoulder");
-            jfopts.Keywords.Add("Butt");
-            jfopts.AllowNone = true;
-            PromptResult jfr = ed.GetKeywords(jfopts);
-            if (jfr.Status != PromptStatus.OK && jfr.Status != PromptStatus.None) return;
-            string newJointFar = (jfr.Status == PromptStatus.None) ? curFar : jfr.StringResult;
-
-            Handle timberHandle = er.ObjectId.Handle;
-            try
-            {
-                ObjectId newId = TimberFactory.Regenerate(timberHandle, newWidth, newDepth,
-                    newJointNear, newJointFar);
-                WriteRegenResult(db, newId);
-                ed.WriteMessage("\nRegenerated " + xd.Type + " " + xd.BentNumber + xd.Designation
-                                + " as " + newWidth + "x" + newDepth
-                                + "  near:" + newJointNear + " far:" + newJointFar + ".");
-            }
-            catch (NotImplementedException nie)
-            {
-                ed.WriteMessage("\n" + nie.Message);
-            }
-            catch (System.Exception ex)
-            {
-                ed.WriteMessage("\nRegenerate failed: " + ex.Message);
-            }
-        }
-
-        // -----------------------------------------------------------------------
-        // Helpers for cross-plugin pending-regen handshake via NamedObjectsDictionary
-        // -----------------------------------------------------------------------
-
-        internal const string PendingKey = "TRegenPending";
-        internal const string ResultKey  = "TRegenResult";
-
-        internal struct PendingRegenParams
-        {
-            public bool   Found;
-            public Handle TimberHandle;
-            public double Width;
-            public double Depth;
-            public string JointNear;
-            public string JointFar;
-        }
-
-        // Write the new timber's handle to NOM["TRegenResult"] so TimberTag's
-        // OnRegenCommandEnded can refresh its display using the new entity instead
-        // of the erased old one.  Overwrites any stale entry from a previous call.
-        internal static void WriteRegenResult(Database db, ObjectId newId)
-        {
-            if (newId.IsNull) return;
-            using (Transaction tr = db.TransactionManager.StartTransaction())
-            {
-                DBDictionary nod = (DBDictionary)tr.GetObject(
-                    db.NamedObjectsDictionaryId, OpenMode.ForWrite);
-                if (nod.Contains(ResultKey))
-                {
-                    DBObject old = tr.GetObject(nod.GetAt(ResultKey), OpenMode.ForWrite);
-                    old.Erase();
-                    nod.Remove(ResultKey);
-                }
-                Xrecord xrec = new Xrecord
-                {
-                    Data = new ResultBuffer(
-                        new TypedValue((int)DxfCode.Text, newId.Handle.ToString()))
-                };
-                nod.SetAt(ResultKey, xrec);
-                tr.AddNewlyCreatedDBObject(xrec, true);
-                tr.Commit();
-            }
-        }
+        // (TFrameFlat / TDrawLegacy / TRegenTimber lived here until Phase C -- see the
+        // retirement note at the top of the class. WriteRegenMap below survives only because
+        // the dead-but-compiling TimberFactory still names it; both go in the deep purge.)
 
         internal const string RegenMapKey = "TRegenMap";
 
@@ -702,39 +388,5 @@ namespace TimberDraw
             }
         }
 
-        internal static PendingRegenParams ReadAndClearPending(Database db)
-        {
-            var result = new PendingRegenParams();
-            using (Transaction tr = db.TransactionManager.StartTransaction())
-            {
-                DBDictionary nod = (DBDictionary)tr.GetObject(
-                    db.NamedObjectsDictionaryId, OpenMode.ForRead);
-                if (!nod.Contains(PendingKey))
-                {
-                    tr.Abort();
-                    return result;
-                }
-                nod.UpgradeOpen();
-                Xrecord xrec = (Xrecord)tr.GetObject(nod.GetAt(PendingKey), OpenMode.ForRead);
-                TypedValue[] vals = xrec.Data.AsArray();
-                // expected layout: Text(handle) Real(w) Real(d) Text(jn) Text(jf)
-                if (vals.Length >= 5)
-                {
-                    result.Found = true;
-                    result.TimberHandle = new Handle(
-                        System.Convert.ToInt64((string)vals[0].Value, 16));
-                    result.Width     = (double)vals[1].Value;
-                    result.Depth     = (double)vals[2].Value;
-                    result.JointNear = (string)vals[3].Value;
-                    result.JointFar  = (string)vals[4].Value;
-                }
-                // clear the entry
-                xrec.UpgradeOpen();
-                xrec.Erase();
-                nod.Remove(PendingKey);
-                tr.Commit();
-            }
-            return result;
-        }
 	}
 }
