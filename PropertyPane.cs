@@ -20,6 +20,12 @@ namespace TimberDraw
         // Raised (deferred to the message loop) after a successful edit; arg = the descriptor's Name.
         public event Action<string> ValueCommitted;
 
+        // Optional solve-for toggles (the brace two-of-three mechanic): the host returns a checked
+        // state for rows whose LABEL should render as a CHECKBOX, null for a plain label. Toggles
+        // raise RowCheckToggled (deferred -- the handler typically re-Binds, disposing the sender).
+        public Func<string, bool?> RowChecked;
+        public event Action<string, bool> RowCheckToggled;
+
         public PropertyPane()
         {
             AutoScroll = true;
@@ -119,7 +125,32 @@ namespace TimberDraw
         private void AddSeparator() => PaneRows.AddSeparator(_table);
 
         private void AddRow(DisplayRow row)
-            => PaneRows.AddParamRow(_table, PaneRows.RowLabel(row.Label, 6, subtle: row.ReadOnly), BuildEditor(row));
+        {
+            string name = row.Cells[0].pd.Name;
+            bool? chk = RowChecked?.Invoke(name);
+            Control label;
+            if (chk.HasValue)
+            {
+                var cb = new CheckBox
+                {
+                    Text = row.Label, Checked = chk.Value,
+                    Dock = DockStyle.Fill, Height = Theme.RowH,
+                    ForeColor = row.ReadOnly ? Theme.SubtleFg : Theme.Fg,
+                    TextAlign = ContentAlignment.MiddleLeft,
+                    Padding = new Padding(4, 0, 0, 0), Margin = new Padding(0),
+                };
+                cb.CheckedChanged += (s, e) =>
+                {
+                    if (_loading) return;
+                    bool v = cb.Checked;
+                    if (IsHandleCreated) BeginInvoke((Action)(() => RowCheckToggled?.Invoke(name, v)));
+                    else RowCheckToggled?.Invoke(name, v);
+                };
+                label = cb;
+            }
+            else label = PaneRows.RowLabel(row.Label, 6, subtle: row.ReadOnly);
+            PaneRows.AddParamRow(_table, label, BuildEditor(row));
+        }
 
         private Control BuildEditor(DisplayRow row)
         {

@@ -110,6 +110,15 @@ namespace TimberDraw
             treeView.AfterCheck  += TreeView_AfterCheck;
             treeView.NodeMouseClick += TreeView_NodeMouseClick;
             propPane.ValueCommitted += HandlePropChange;
+            // Brace rows render their labels as the solve-for checkboxes -- ONLY on brace leaves
+            // (a strut's Angle row keeps its plain label).
+            propPane.RowChecked = name =>
+            {
+                if (name != "Foot" && name != "Head" && name != "Angle") return null;
+                if (!(treeView.SelectedNode?.Tag is TimberLeaf tl) || !IsBraceRole(tl.Timber.Role)) return null;
+                return _braceMask.Contains(name);
+            };
+            propPane.RowCheckToggled += OnBraceMaskToggle;
             ButtonDraw.Click   += (s, e) => DrawFrame();
             ButtonNew.Click    += (s, e) => NewFrame();
             ButtonSave.Click   += (s, e) => SaveSpec(false);
@@ -276,6 +285,48 @@ namespace TimberDraw
             => role == "Brace" || role == "FloorBrace" || role == "EaveBrace"
                || role == "QueenBrace" || role == "CollarBrace"
                || role == "RidgeBrace" || role == "QueenGirtBrace" || role == "HPostGirtBrace";
+
+        // Brace solve-for mask (the Assembly-tab mechanic): exactly TWO of Foot/Head/Angle are the
+        // inputs; the third is derived + read-only. Session-sticky and shared across brace leaves
+        // (the VALUES stay per member); insertion order = the Assembly rule, checking a third drops
+        // the oldest. Angle convention follows the Assembly tab: tan(angle) = head / foot.
+        private static readonly List<string> _braceMask = new List<string> { "Foot", "Head" };
+
+        // Keep exactly two checked: checking a third drops the oldest; unchecking one of two is
+        // refused (you switch by CHECKING the third) -- BindGrid re-renders the refused box checked.
+        private void OnBraceMaskToggle(string name, bool on)
+        {
+            if (on && !_braceMask.Contains(name))
+            {
+                _braceMask.Add(name);
+                while (_braceMask.Count > 2) _braceMask.RemoveAt(0);
+            }
+            foreach (TreeNode ln in _selLeaves)
+                if (ln.Tag is TimberLeaf tl && IsBraceRole(tl.Timber.Role))
+                    RecomputeBrace(tl.Timber.Size);
+            Persist();
+            BindGrid();
+        }
+
+        // Derive the masked-out value from the two active ones (the Assembly RecomputeBrace rules);
+        // Length always follows. Angle clamps to (0.1, 89.9) and rounds to 0.01.
+        private static void RecomputeBrace(MemberSize s)
+        {
+            bool f = _braceMask.Contains("Foot"), h = _braceMask.Contains("Head");
+            if (f && h)
+                s.Angle = System.Math.Round(Math.Atan2(s.Head, s.Foot) * 180.0 / Math.PI, 2);
+            else
+            {
+                s.Angle = ClampRoundAngle(s.Angle);
+                double t = Math.Tan(s.Angle * Math.PI / 180.0);
+                if (f) s.Head = s.Foot * t;
+                else   s.Foot = s.Head / t;
+            }
+            s.Length = Math.Sqrt(s.Foot * s.Foot + s.Head * s.Head);
+        }
+
+        private static double ClampRoundAngle(double v)
+            => System.Math.Round(Math.Max(0.1, Math.Min(89.9, v)), 2);
 
         // --------------------------------------------------- group-layer isolation
         private string FrameTagSafe() => string.IsNullOrWhiteSpace(_spec.FrameTag) ? "A" : _spec.FrameTag.Trim();
@@ -555,28 +606,13 @@ namespace TimberDraw
             // Leaf edits: the descriptor Name is the canonical label (Width/Foot/Head/Label/...).
             if (_selLeaves.Count > 0)
             {
-                if (name == "Foot" || name == "Head")   // legs edited -> recompute Angle + Length
+                if (name == "Foot" || name == "Head" || name == "Angle")
                 {
+                    // Brace solve-for: the two mask-active inputs drive the derived third (the
+                    // Assembly-tab mechanic). Struts' Angle edits pass through untouched.
                     foreach (TreeNode ln in _selLeaves)
                         if (ln.Tag is TimberLeaf tl && IsBraceRole(tl.Timber.Role))
-                        {
-                            MemberSize s = tl.Timber.Size;
-                            s.Length = Math.Sqrt(s.Foot * s.Foot + s.Head * s.Head);
-                            s.Angle = Math.Atan2(s.Foot, s.Head) * 180.0 / Math.PI;
-                        }
-                    BindGrid();   // re-render the derived rows
-                }
-                else if (name == "Angle")   // angle edited -> keep Head, recompute Foot + Length
-                {                            // (same three-field feel as the Assembly tab's Brace spec)
-                    foreach (TreeNode ln in _selLeaves)
-                        if (ln.Tag is TimberLeaf tl && IsBraceRole(tl.Timber.Role))
-                        {
-                            MemberSize s = tl.Timber.Size;
-                            double a = Math.Max(0.1, Math.Min(89.9, s.Angle));
-                            s.Angle = a;
-                            s.Foot = s.Head * Math.Tan(a * Math.PI / 180.0);
-                            s.Length = Math.Sqrt(s.Foot * s.Foot + s.Head * s.Head);
-                        }
+                            RecomputeBrace(tl.Timber.Size);
                     BindGrid();   // re-render the derived rows
                 }
                 else if (name == "Name")
@@ -987,11 +1023,13 @@ namespace TimberDraw
             {
                 case "Brace": case "QueenBrace": case "CollarBrace": case "EaveBrace": case "FloorBrace":
                 case "RidgeBrace": case "QueenGirtBrace": case "HPostGirtBrace":
-                    // The same three-field spec as the Assembly tab's Brace group: Foot/Head/Angle
-                    // all editable (Angle keeps Head, recomputes Foot); Length stays reported.
-                    rows.Add(new Row(s, "Foot", "Foot", "Size", false));
-                    rows.Add(new Row(s, "Head", "Head", "Size", false));
-                    rows.Add(new Row(s, "Angle", "Angle", "Size", false));
+                    // The Assembly-tab solve-for mechanic: the two mask-checked rows are the inputs,
+                    // the third is derived + read-only; Length stays reported. The labels render as
+                    // checkboxes via propPane.RowChecked.
+                    s.Angle = System.Math.Round(s.Angle, 2);   // normalize legacy full-precision angles
+                    rows.Add(new Row(s, "Foot",  "Foot",  "Size", !_braceMask.Contains("Foot")));
+                    rows.Add(new Row(s, "Head",  "Head",  "Size", !_braceMask.Contains("Head")));
+                    rows.Add(new Row(s, "Angle", "Angle", "Size", !_braceMask.Contains("Angle")));
                     rows.Add(new Row(s, "Length", "Length", "Size", true));   // reported
                     rows.Add(new Row(s, "Place", "Placement", "Size", false));
                     break;
