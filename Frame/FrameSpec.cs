@@ -51,24 +51,24 @@ namespace TimberDraw
                 else Walls[0].Separation = value;
             }
         }
-        // The along-building dimension -- the twin of Span on the bent axis. The authoritative length
-        // is the sum of the bent separations; setting it writes Bent 1's separation (the clean 2-bent
-        // case), and per-bent Separation stays editable. Purely derived from the bents (which always
-        // persist their Separation), so it needs no seed/serialization the way Span does.
-        [Category("1 Geometry"), DisplayName("Length")]
+        // The along-building dimension -- the twin of Span on the bent axis: the sum of the bent
+        // separations (the bay lengths). READ-ONLY reporting (Robert's call: typing here only wrote
+        // Bent 1's separation, surprising with 3+ bents) -- edit per-bent Separation instead. Purely
+        // derived from the bents (which always persist their Separation), so no seed/serialization.
+        [Category("1 Geometry"), DisplayName("Combined Bay Length")]
         public double Length
         {
             get { double s = 0; if (Bents != null) foreach (BentSpec b in Bents) s += b.Separation; return s; }
-            set { if (Bents != null && Bents.Count > 0) Bents[0].Separation = value; }
         }
         [Category("1 Geometry"), DisplayName("Eave Height")]
         public double EaveHt { get; set; }
         // Stored as rise/run. The UI edits it as rise-per-12 ("rise : 12"): entered value / 12.
+        // The getter rounds to 0.01 so the /12 round-trip never shows float noise (6.0000000001).
         [Browsable(false)] public double Pitch { get; set; }
         [Category("1 Geometry"), DisplayName("Pitch (rise : 12)")]
         public double PitchRise
         {
-            get => Pitch * 12.0;
+            get => System.Math.Round(Pitch * 12.0, 2);
             set => Pitch = value / 12.0;
         }
         // Vestigial 2D/3D switch (legacy DrawElement path). The managed emitter always builds 3D solids;
