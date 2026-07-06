@@ -17,6 +17,32 @@
             <Setter Property="BorderBrush" Value="{DynamicResource TdBorder}"/>
         </Style>
 
+        <!-- Rows: selection = accent with BLACK text (the app-wide convention; the system
+             highlight washed the labels out), hover = header tone. Selected wins over hover
+             (trigger order: last matching setter takes the property). -->
+        <Style TargetType="ListViewItem">
+            <Setter Property="Foreground" Value="{DynamicResource TdFg}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListViewItem">
+                        <Border x:Name="Bd" Background="Transparent" Padding="2,1">
+                            <GridViewRowPresenter Content="{TemplateBinding Content}"
+                                                  Columns="{TemplateBinding GridView.ColumnCollection}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource TdHeader}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource TdAccent}"/>
+                                <Setter Property="Foreground" Value="Black"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Buttons: the same flat dark look as the WinForms tabs (the default WPF chrome
              stays light no matter what Background is set, so the template is replaced).
              Pressed = accent with black text, matching the grid-selection convention. -->
@@ -198,12 +224,13 @@
                         </DataTemplate>
                     </GroupStyle.HeaderTemplate>
                 </GroupStyle>
-                <!-- Level 1: Owner header (Bent N / Wall X). -->
+                <!-- Level 1: Owner header (Bent N / Wall X). Accent like every other heading;
+                     weight + indent carry the hierarchy. -->
                 <GroupStyle>
                     <GroupStyle.HeaderTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
-                                       Margin="14,3,0,1" Foreground="{DynamicResource TdFg}"/>
+                                       Margin="14,3,0,1" Foreground="{DynamicResource TdAccent}"/>
                         </DataTemplate>
                     </GroupStyle.HeaderTemplate>
                 </GroupStyle>
@@ -212,7 +239,7 @@
                     <GroupStyle.HeaderTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Name}" FontStyle="Italic"
-                                       Margin="28,1,0,1" Foreground="{DynamicResource TdSubtle}">
+                                       Margin="28,1,0,1" Foreground="{DynamicResource TdAccent}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Style.Triggers>

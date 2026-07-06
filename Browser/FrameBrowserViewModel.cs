@@ -291,6 +291,8 @@ namespace TimberDraw.Browser
                 c = a.OwnerRank.CompareTo(b.OwnerRank);                    if (c != 0) return c;
                 c = a.OwnerKey.CompareTo(b.OwnerKey);                      if (c != 0) return c;
                 c = a.BayRank.CompareTo(b.BayRank);                        if (c != 0) return c;
+                // Within a group: alphabetical by type, then grid order within a type.
+                c = string.CompareOrdinal(a.Type ?? "", b.Type ?? "");     if (c != 0) return c;
                 return a.GridSeq.CompareTo(b.GridSeq);
             });
             foreach (FrameBrowserItem it in rows)
