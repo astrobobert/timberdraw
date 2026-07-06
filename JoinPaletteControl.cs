@@ -18,8 +18,7 @@ namespace TimberDraw
     public class JoinPaletteControl : UserControl
     {
         private readonly ComboBox _cmbType = new ComboBox();
-        private readonly Button _btnPick = new Button();
-        private readonly Label _lblPair = new Label();
+        private readonly Button _btnPick = new Button();          // its text carries the held pair: Pick (Brace, Post)
         private readonly Label _lblStatus = new Label();          // last apply result / diagnostic
         private readonly Panel _stackHost = new Panel();          // scroll host for the grid
         private readonly TableLayoutPanel _grid = PaneRows.MakeGrid();   // the shared 2-col row idiom
@@ -61,12 +60,11 @@ namespace TimberDraw
 
             // Actions cluster at the BOTTOM (Pick pair / Apply full-span + the defaults row) --
             // the look every tab follows now.
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 7, Padding = new Padding(Theme.Pad) };
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 6, Padding = new Padding(Theme.Pad) };
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));   // type selector
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 22));   // pair label
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));   // element grid
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));   // status line
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));   // pick pair
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));   // pick pair (button text names the held pair)
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));   // apply
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));   // defaults (set / reset)
 
@@ -77,8 +75,6 @@ namespace TimberDraw
 
             _btnPick.Dock = DockStyle.Fill; _btnPick.Text = "Pick pair";
             _btnPick.Click += (s, e) => Send("TJoinPick");
-
-            _lblPair.Dock = DockStyle.Fill; _lblPair.TextAlign = ContentAlignment.MiddleLeft; _lblPair.Text = "Picked: (none)";
 
             _lblStatus.Dock = DockStyle.Fill; _lblStatus.TextAlign = ContentAlignment.MiddleLeft;
             _lblStatus.AutoEllipsis = true; _lblStatus.Text = "";
@@ -105,12 +101,11 @@ namespace TimberDraw
             defaultsRow.Controls.Add(_btnResetDefault, 1, 0);
 
             layout.Controls.Add(_cmbType, 0, 0);
-            layout.Controls.Add(_lblPair, 0, 1);
-            layout.Controls.Add(_stackHost, 0, 2);
-            layout.Controls.Add(_lblStatus, 0, 3);
-            layout.Controls.Add(_btnPick, 0, 4);
-            layout.Controls.Add(_btnApply, 0, 5);
-            layout.Controls.Add(defaultsRow, 0, 6);
+            layout.Controls.Add(_stackHost, 0, 1);
+            layout.Controls.Add(_lblStatus, 0, 2);
+            layout.Controls.Add(_btnPick, 0, 3);
+            layout.Controls.Add(_btnApply, 0, 4);
+            layout.Controls.Add(defaultsRow, 0, 5);
             Controls.Add(layout);
 
             BuildGrid();   // the stable union grid, once
@@ -386,7 +381,10 @@ namespace TimberDraw
             if (!IsHandleCreated) { return; }
             BeginInvoke(new Action(() =>
             {
-                _lblPair.Text = JoinSession.HasPair ? "Picked: pair set" : "Picked: (none)";
+                // The Pick button IS the pair readout (Robert's call): it names the held pair.
+                _btnPick.Text = JoinSession.HasPair
+                    ? "Pick (" + JoinSession.AName + ", " + JoinSession.BName + ")"
+                    : "Pick pair";
                 SetStatus(JoinSession.LastDiag);
                 LoadExistingJoint();
             }));

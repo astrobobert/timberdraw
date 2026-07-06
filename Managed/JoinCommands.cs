@@ -16,6 +16,7 @@ namespace TimberDraw
         public static ObjectId AId, BId;
         public static ManagedTimber.TFrame A, B;
         public static bool HasPair;
+        public static string AName = "", BName = "";   // picked types ("Brace", "Post"), for the pane's Pick button
         public static ConnectionType Active;     // the connection type shown in the pane (live, edited values)
         public static string LoadedState;        // a picked pair's existing-joint state for the pane to load (else null)
         public static string LastDiag;           // the last apply result / reason, for the pane's status line
@@ -61,11 +62,24 @@ namespace TimberDraw
                     ManagedTimber.ReadJointSpecs(bId).TryGetValue(existing, out loaded);
             }
             JoinSession.LoadedState = loaded;
+            JoinSession.AName = TypeName(aId);   // read here, in the command context -- the pane
+            JoinSession.BName = TypeName(bId);   // shows them on its Pick button
             JoinSession.SetPair(aId, a, bId, b, loaded != null ? "loaded the existing joint's settings" : null);
             // A FRESH pair: cut the configured joint instantly (set up the params, then just pick pair after pair).
             // An existing-joint pair instead loads its saved settings (above) -- don't clobber them with a default cut.
             if (existing == 0) ApplyHeldPair(ed, db);
             else ed.WriteMessage("\nJoints: existing joint loaded -- tweak + Apply to re-cut, or Pick pair for another.");
+        }
+
+        // A picked timber's display type from its XData ("Post", "Brace"...), for the pane's Pick button.
+        private static string TypeName(ObjectId id)
+        {
+            try
+            {
+                string t = Module1.GetXdata(id)?.Type;
+                return string.IsNullOrEmpty(t) ? "timber" : t;
+            }
+            catch { return "timber"; }
         }
 
         // The joint id present in BOTH frames' GEOMETRY (the joint between this pair), across every feature kind --

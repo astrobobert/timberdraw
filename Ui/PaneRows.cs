@@ -5,9 +5,10 @@ namespace TimberDraw
 {
     // The ONE property-row idiom, shared by PropertyPane (the Frame tab's grid) and the Joints
     // pane's union grid: a 2-column TableLayoutPanel docked to the top of an auto-scrolling host,
-    // bold header rows on Theme.HeaderBack, label + typed-editor rows at Theme.LabelW/RowH, and
+    // accent header rows, label + typed-editor rows at Theme.LabelW/RowH, and
     // painted separators. Each consumer keeps its own binding/commit semantics -- this is layout
-    // and styling only, so the two grids can never drift apart visually again.
+    // and styling only, so the two grids can never drift apart visually again. Section headers
+    // are ACCENT TEXT with no filled band (the one header idiom, every tab).
     internal static class PaneRows
     {
         // The 2-col grid, ready to dock into a scroll host.
@@ -38,11 +39,13 @@ namespace TimberDraw
             Padding = new Padding(Theme.Pad, 0, 0, 2), Margin = new Padding(0),
         };
 
-        // A bold section-header CHECKBOX (the Joints pane's element-enable rows).
+        // A bold section-header CHECKBOX (the Joints pane's element-enable rows) -- same accent
+        // no-band look as HeaderCell; the checkbox glyph is what says "clickable". Disabled rows
+        // gray out via the system renderer as before.
         public static CheckBox HeaderCheck(string text) => new CheckBox
         {
             Text = text, Dock = DockStyle.Fill, Height = 22,
-            BackColor = Theme.HeaderBack, ForeColor = Theme.Fg, Font = Theme.Header,
+            BackColor = Theme.Bg, ForeColor = Theme.Accent, Font = Theme.Header,
             TextAlign = ContentAlignment.MiddleLeft,
             Padding = new Padding(2, 0, 0, 0), Margin = new Padding(0),
         };

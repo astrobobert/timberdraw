@@ -74,18 +74,14 @@ namespace TimberDraw
             Text = text, AutoSize = true, Font = Base, ForeColor = Fg,
         };
 
-        public static Label HeaderLabel(string text) => new Label
-        {
-            Text = text, AutoSize = false, Height = 20, Dock = DockStyle.Top,
-            Font = Header, BackColor = HeaderBack, ForeColor = Fg,
-            TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(Pad, 0, 0, 0),
-        };
+        // (No HeaderLabel factory here: PaneRows.HeaderCell is the ONE section-header idiom --
+        // accent text, no band -- so headers can never drift apart or get mistaken for buttons.)
 
         // Walk a control tree and apply the palette. Everything gets an EXPLICIT color -- never
         // rely on ambient inheritance (the AutoCAD palette host repaints hosted controls, and an
         // un-pinned surface collapses to light). Inputs get flat single-line borders: the default
         // Fixed3D bevel is painted by Windows in the non-client area and ignores BackColor (the
-        // "white outline" look). A control that set its own colors first (e.g. a HeaderBack
+        // "white outline" look). A control that set its own colors first (e.g. an accent section
         // header) keeps them -- labels/checkboxes are left to inherit from their PINNED parent.
         // Call at the END of a control's init (after all children exist).
         public static void Apply(Control root)
