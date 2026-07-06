@@ -198,7 +198,7 @@ namespace TimberDraw
         {
             object tag = n?.Tag;
             if (tag is FrameSpec fs)
-                return new FilteredView(fs, new[] { "FrameTag", "Span", "Length", "EaveHt", "PitchRise" });
+                return new FilteredView(fs, new[] { "FrameTag", "Span", "EaveHt", "PitchRise" });
             if (ReferenceEquals(tag, _bentsTag)) return BentRoster();
             if (ReferenceEquals(tag, _wallsTag)) return WallRoster();
             if (tag is BentSpec b) return new FilteredView(b, BentNodeProps(b));

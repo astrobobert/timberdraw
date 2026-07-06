@@ -51,15 +51,9 @@ namespace TimberDraw
                 else Walls[0].Separation = value;
             }
         }
-        // The along-building dimension -- the twin of Span on the bent axis: the sum of the bent
-        // separations (the bay lengths). READ-ONLY reporting (Robert's call: typing here only wrote
-        // Bent 1's separation, surprising with 3+ bents) -- edit per-bent Separation instead. Purely
-        // derived from the bents (which always persist their Separation), so no seed/serialization.
-        [Category("1 Geometry"), DisplayName("Combined Bay Length")]
-        public double Length
-        {
-            get { double s = 0; if (Bents != null) foreach (BentSpec b in Bents) s += b.Separation; return s; }
-        }
+        // NOTE: there is deliberately NO frame-level Length property (Robert's call, 2026-07-06:
+        // the sum-of-separations readout was meaningless) -- the along-building dimension lives
+        // per-bent as Separation, which the bents always persist.
         [Category("1 Geometry"), DisplayName("Eave Height")]
         public double EaveHt { get; set; }
         // Stored as rise/run. The UI edits it as rise-per-12 ("rise : 12"): entered value / 12.

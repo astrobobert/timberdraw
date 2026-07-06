@@ -27,13 +27,15 @@ namespace TimberDraw
             return grid;
         }
 
-        // A bold section-header LABEL (PropertyPane's category rows).
+        // A bold section-header LABEL (PropertyPane's category rows + the Assembly tab's flat
+        // sections). Accent text on the plain background -- NO filled band, so a header can never
+        // be mistaken for a button (Robert's Assembly-tab call; matches the Browser's group headers).
         public static Label HeaderCell(string text) => new Label
         {
-            Text = text, Dock = DockStyle.Fill, Height = 20,
-            BackColor = Theme.HeaderBack, ForeColor = Theme.Fg, Font = Theme.Header,
-            TextAlign = ContentAlignment.MiddleLeft,
-            Padding = new Padding(Theme.Pad, 0, 0, 0), Margin = new Padding(0),
+            Text = text, Dock = DockStyle.Fill, Height = 22,
+            BackColor = Theme.Bg, ForeColor = Theme.Accent, Font = Theme.Header,
+            TextAlign = ContentAlignment.BottomLeft,
+            Padding = new Padding(Theme.Pad, 0, 0, 2), Margin = new Padding(0),
         };
 
         // A bold section-header CHECKBOX (the Joints pane's element-enable rows).

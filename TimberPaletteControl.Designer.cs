@@ -86,25 +86,25 @@ namespace TimberDraw
             treeSections = new TreeView
             {
                 Location = new Point(8, 24),
-                Size = new Size(GW - 16, 184),
+                Size = new Size(GW - 16, 368),   // doubled (Robert: the selector needed the room)
                 HideSelection = false,
                 ShowLines = true,
                 ShowRootLines = true
             };
             // Stacked data entry: Type, then W, then D -- each label left, field on its own row.
-            txtType  = new TextBox { Location = new Point(48, 216), Size = new Size(174, 22) };
-            txtWidth = new TextBox { Location = new Point(48, 244), Size = new Size(60, 22) };
-            txtDepth = new TextBox { Location = new Point(48, 272), Size = new Size(60, 22) };
-            btnAdd    = Btn("Add",     8, 304, 70);
-            btnUpdate = Btn("Update", 82, 304, 70);
-            btnRemove = Btn("Remove", 156, 304, 70);
-            groupSection = Section("Section", GW, 342);
+            txtType  = new TextBox { Location = new Point(48, 400), Size = new Size(174, 22) };
+            txtWidth = new TextBox { Location = new Point(48, 428), Size = new Size(60, 22) };
+            txtDepth = new TextBox { Location = new Point(48, 456), Size = new Size(60, 22) };
+            btnAdd    = Btn("Add",     8, 488, 70);
+            btnUpdate = Btn("Update", 82, 488, 70);
+            btnRemove = Btn("Remove", 156, 488, 70);
+            groupSection = Section("Section", GW, 526);
             groupSection.Controls.Add(treeSections);
-            groupSection.Controls.Add(Cap("Type", 12, 219));
+            groupSection.Controls.Add(Cap("Type", 12, 403));
             groupSection.Controls.Add(txtType);
-            groupSection.Controls.Add(Cap("W", 12, 247));
+            groupSection.Controls.Add(Cap("W", 12, 431));
             groupSection.Controls.Add(txtWidth);
-            groupSection.Controls.Add(Cap("D", 12, 275));
+            groupSection.Controls.Add(Cap("D", 12, 459));
             groupSection.Controls.Add(txtDepth);
             groupSection.Controls.Add(btnAdd);
             groupSection.Controls.Add(btnUpdate);
@@ -125,7 +125,9 @@ namespace TimberDraw
             groupBrace.Controls.Add(txtHead);
             groupBrace.Controls.Add(txtAngle);
 
-            // ---- Bottom action bar: every verb, full-span rows (the Joints-tab look) ----
+            // ---- Bottom action bar: every verb in LABELED groups (Robert's ask), rows regrouped
+            //      so each caption is honest: UCS presets / verbs that CREATE timbers / verbs that
+            //      reshape ONE timber / placement moves / node scan. ----
             btnPlan   = Theme.Button("Plan");
             btnBent   = Theme.Button("Bent");
             btnWall   = Theme.Button("Wall");
@@ -140,10 +142,15 @@ namespace TimberDraw
             btnRotate = Theme.Button("Rotate");
             btnScan   = Theme.Button("Scan");
             Panel bar = ActionBar.Build(
-                ActionBar.Row(btnPlan, btnBent, btnWall),        // UCS presets
-                ActionBar.Row(btnPlace, btnSpan, btnJoin),
-                ActionBar.Row(btnFit, btnScarf, btnJoist),
-                ActionBar.Row(btnSection, btnMove, btnRotate),
+                ActionBar.Caption("UCS preset"),
+                ActionBar.Row(btnPlan, btnBent, btnWall),
+                ActionBar.Caption("Build timbers"),
+                ActionBar.Row(btnPlace, btnSpan, btnJoin, btnJoist),
+                ActionBar.Caption("Shape timber"),
+                ActionBar.Row(btnFit, btnScarf, btnSection),
+                ActionBar.Caption("Position"),
+                ActionBar.Row(btnMove, btnRotate),
+                ActionBar.Caption("Connectivity"),
                 ActionBar.Row(btnScan));
 
             // ---- Footer: build stamp (so a stale NETLOAD is obvious) ----
