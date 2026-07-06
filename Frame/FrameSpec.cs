@@ -76,7 +76,7 @@ namespace TimberDraw
         [Browsable(false)] public bool Make3D { get; set; }
         // Frame-wide centering is RETIRED from the UI -- the default now lives per Bent + per Bay (each carries
         // its own OffsetType/BraceCentering). Kept here as a hidden field ONLY to seed fresh bents/bays
-        // (NewSeeded / NewFromSettings) and to migrate old saves (FromJson seeds each bent/bay from it).
+        // (NewFromSettings) and to migrate old saves (FromJson seeds each bent/bay from it).
         [Browsable(false)]
         public int OffsetType { get; set; }
 
@@ -320,46 +320,6 @@ namespace TimberDraw
             return s;
         }
 
-        // The fresh-start seed: a fully-typed, immediately-generatable starter. Two KingPost bents
-        // (so there is ONE bay = a full module: eave/floor girts + ridge + roof option) and both eaves
-        // (Walls A + E, the A/E shape NewFromSettings uses). Each bent is typed exactly as the tree does
-        // when a Bent Type is set -- RebuildTimbers() for the factory defaults, then TypeDefaults.Apply
-        // to overlay the user's saved KingPost template, if any. The user grows it via Insert
-        // Before/After. (The start path is now always-fresh: see FrameTreeControl.ResetToSeed.)
-        public static FrameSpec NewSeeded()
-        {
-            KPBentParams p = Commands.ReadKPParams();
-            var s = new FrameSpec
-            {
-                FrameTag = "",   // unnamed -> "Frame (set name)"; grouping falls back to "A"
-                EaveHt = p.EaveHt, Pitch = p.Pitch,
-                Make3D = p.Make3D, OffsetType = p.OffsetType
-            };
-            s._span = p.Span;
-
-            for (int i = 0; i < 2; i++)
-            {
-                BentSpec b = BentSpec.NewDefault();   // Separation seeded from BaySpacings[0]
-                b.Name = (i + 1).ToString();          // "Bent " prefixed at display
-                b.BentType = "KingPost";
-                b.RebuildTimbers();                   // factory defaults for the type
-                TypeDefaults.Apply(b);                // overlay the saved KingPost default, if any
-                s.Bents.Add(b);
-            }
-            // Five longitudinal lines A-E for the KingPost frame: A/E eave posts, B/D vstrut lines, C
-            // king-post/ridge line. Lettered dense sequential; x anchored to the bent members (B/D at a
-            // placeholder quarter-span until the grid derives the exact vstrut x). Separations are the
-            // x-gaps and sum to Span. The Center line (C) owns the ridge; B/D are addressing-only.
-            double hs = p.Span / 2.0;
-            double vstrutX = p.Span / 4.0;   // placeholder vstrut x (precise anchoring is the grid step)
-            s.Walls.Add(WallSpec.NewDefault("A", right: false, sep: vstrutX,      role: BayRole.Eave));
-            s.Walls.Add(WallSpec.NewDefault("B", right: false, sep: hs - vstrutX, role: BayRole.Vstrut));
-            s.Walls.Add(WallSpec.NewDefault("C", right: false, sep: hs - vstrutX, role: BayRole.Center));
-            s.Walls.Add(WallSpec.NewDefault("D", right: false, sep: vstrutX,      role: BayRole.Vstrut));
-            s.Walls.Add(WallSpec.NewDefault("E", right: true,  sep: 0.0,          role: BayRole.Eave));
-            s.SyncBays();   // two bents -> one bay per wall (catalog per each wall's role)
-            return s;
-        }
 
         // Migrate a LEGACY frame (two eave walls A/E, the ridge + roof carried only by Wall A) to the
         // materialized A-E line model: derive the five anchored lines, move the ridge to the Center line

@@ -52,26 +52,30 @@ namespace TimberDraw
             this.split.Panel2.Controls.Add(this.propPane);
             this.split.Panel2.AutoScroll = true;
 
-            this.ButtonDraw   = new Button { Name = "ButtonDraw",   Text = "Generate Frame", Location = new Point(6, 6),  Size = new Size(248, 30) };
-            this.ButtonNew    = new Button { Name = "ButtonNew",    Text = "New",        Location = new Point(6, 40),   Size = new Size(54, 26) };
-            this.ButtonSave   = new Button { Name = "ButtonSave",   Text = "Save",       Location = new Point(64, 40),  Size = new Size(54, 26) };
-            this.ButtonSaveAs = new Button { Name = "ButtonSaveAs", Text = "Save As",    Location = new Point(122, 40), Size = new Size(64, 26) };
-            this.ButtonLoad   = new Button { Name = "ButtonLoad",   Text = "Load",       Location = new Point(190, 40), Size = new Size(54, 26) };
-            this.ButtonSetDefault = new Button { Name = "ButtonSetDefault", Text = "Set as Default", Location = new Point(6, 70), Size = new Size(120, 26) };
-            // Freeze: the one-way break -- locks this frame's parametric generator (Draw stops re-emitting)
-            // and hands the skeleton timbers to the managed editor. Mirrors TPanel's Freeze button.
-            this.ButtonFreeze = new Button { Name = "ButtonFreeze", Text = "Freeze", Location = new Point(132, 70), Size = new Size(116, 26) };
-            // Grid: redraw the structural grid from the drawing's managed timbers (fires TGrid).
-            this.ButtonGrid = new Button { Name = "ButtonGrid", Text = "Redraw Grid", Location = new Point(6, 100), Size = new Size(248, 26) };
-            this.panelButtons = new Panel { Name = "panelButtons", Dock = DockStyle.Bottom, Height = 134 };
-            this.panelButtons.Controls.Add(this.ButtonDraw);
-            this.panelButtons.Controls.Add(this.ButtonNew);
-            this.panelButtons.Controls.Add(this.ButtonSave);
-            this.panelButtons.Controls.Add(this.ButtonSaveAs);
-            this.panelButtons.Controls.Add(this.ButtonLoad);
-            this.panelButtons.Controls.Add(this.ButtonSetDefault);
-            this.panelButtons.Controls.Add(this.ButtonFreeze);
-            this.panelButtons.Controls.Add(this.ButtonGrid);
+            // The bottom action bar: full-span rows (the Joints-tab look). Generate is the hero
+            // row; New/Save/Save As/Load manage the recipe; Set Default / Freeze (the one-way
+            // break) / Redraw Grid (fires TGrid) round it out.
+            this.ButtonDraw   = Theme.Button("Generate Frame");
+            this.ButtonDraw.Name = "ButtonDraw";
+            this.ButtonNew    = Theme.Button("New");
+            this.ButtonNew.Name = "ButtonNew";
+            this.ButtonSave   = Theme.Button("Save");
+            this.ButtonSave.Name = "ButtonSave";
+            this.ButtonSaveAs = Theme.Button("Save As");
+            this.ButtonSaveAs.Name = "ButtonSaveAs";
+            this.ButtonLoad   = Theme.Button("Load");
+            this.ButtonLoad.Name = "ButtonLoad";
+            this.ButtonSetDefault = Theme.Button("Set Default");
+            this.ButtonSetDefault.Name = "ButtonSetDefault";
+            this.ButtonFreeze = Theme.Button("Freeze");
+            this.ButtonFreeze.Name = "ButtonFreeze";
+            this.ButtonGrid   = Theme.Button("Redraw Grid");
+            this.ButtonGrid.Name = "ButtonGrid";
+            this.panelButtons = ActionBar.Build(
+                ActionBar.Row(this.ButtonDraw),
+                ActionBar.Row(this.ButtonNew, this.ButtonSave, this.ButtonSaveAs, this.ButtonLoad),
+                ActionBar.Row(this.ButtonSetDefault, this.ButtonFreeze, this.ButtonGrid));
+            this.panelButtons.Name = "panelButtons";
 
             this.Controls.Add(this.split);
             this.Controls.Add(this.panelButtons);

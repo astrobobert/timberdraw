@@ -105,9 +105,6 @@ namespace TimberDraw.Browser
             // labels/groups appear without a manual Refresh. Runs on the AutoCAD UI thread.
             ManagedAssembly.Applied += Refresh;
 
-            // Follow the shared assign target (the Assembly tab's two-box is the same state).
-            AssemblyTarget.Changed += OnTargetChanged;
-
             // Group the list Frame -> Owner -> Bay (the structural grid): the default view over Timbers
             // gets three PropertyGroupDescriptions. Bents are owners with empty Bay sub-groups (the XAML
             // collapses those headers -> flat); walls nest by bay. Grouping persists across filter
@@ -143,22 +140,14 @@ namespace TimberDraw.Browser
                     EditD = _selected.D.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
                     // REVIEW: show the picked timber's CURRENT assembly in the (editable) fields.
-                    // An unassigned timber leaves the fields as they are, ready to assign. A review
-                    // click stays LOCAL (guarded) -- only a real edit or an Assign writes the shared
-                    // AssemblyTarget, so browsing can never clobber a target configured on the
-                    // Assembly tab.
-                    _asmLoading = true;
-                    try
-                    {
-                        if (!string.IsNullOrEmpty(_selected.Frame)) AsmFrame = _selected.Frame;
-                        if (!string.IsNullOrEmpty(_selected.Bent))
-                        { AsmKind = "Bent"; AsmOwner = _selected.Bent; AsmBay = ColumnOf(_selected); }
-                        else if (!string.IsNullOrEmpty(_selected.Wall))
-                        { AsmKind = "Wall"; AsmOwner = _selected.Wall; AsmBay = _selected.Bay; }
-                        else if (!string.IsNullOrEmpty(_selected.Floor))
-                        { AsmKind = "Floor"; AsmOwner = _selected.Floor; AsmBay = ""; }
-                    }
-                    finally { _asmLoading = false; }
+                    // An unassigned timber leaves the fields as they are, ready to assign.
+                    if (!string.IsNullOrEmpty(_selected.Frame)) AsmFrame = _selected.Frame;
+                    if (!string.IsNullOrEmpty(_selected.Bent))
+                    { AsmKind = "Bent"; AsmOwner = _selected.Bent; AsmBay = ColumnOf(_selected); }
+                    else if (!string.IsNullOrEmpty(_selected.Wall))
+                    { AsmKind = "Wall"; AsmOwner = _selected.Wall; AsmBay = _selected.Bay; }
+                    else if (!string.IsNullOrEmpty(_selected.Floor))
+                    { AsmKind = "Floor"; AsmOwner = _selected.Floor; AsmBay = ""; }
                 }
                 ApplyCommand.RaiseCanExecuteChanged();
                 AssignCommand.RaiseCanExecuteChanged();
@@ -188,17 +177,14 @@ namespace TimberDraw.Browser
             if (_selected != null) ManagedView.ZoomAndHighlight(_selected.Id);
         }
 
-        // ---- assembly (assign the selected rows: Frame -> Bent / Wall+Bay / Floor). Backed by
-        // the SHARED AssemblyTarget: the Assembly tab's two-box is the same state -- an EDIT or
-        // an Assign on either surface keeps both in step, while a review click stays local. ----
+        // ---- assembly (assign the selected rows: Frame -> Bent / Wall+Bay / Floor). This is
+        // THE assign surface -- the Assembly tab carries no assign controls. ----
         public System.Collections.Generic.List<string> AsmKinds { get; } = new() { "Bent", "Wall", "Floor" };
 
-        private bool _asmLoading;   // suppress the target echo while painting an incoming change
+        private string _asmFrame = "A";
+        public string AsmFrame { get => _asmFrame; set => Set(ref _asmFrame, value); }
 
-        private string _asmFrame = AssemblyTarget.Frame;
-        public string AsmFrame { get => _asmFrame; set { if (Set(ref _asmFrame, value)) PushTarget(); } }
-
-        private string _asmKind = AssemblyTarget.Kind;
+        private string _asmKind = "Bent";
         public string AsmKind
         {
             get => _asmKind;
@@ -207,7 +193,6 @@ namespace TimberDraw.Browser
                 if (!Set(ref _asmKind, value)) return;
                 Raise(nameof(AsmExtraEnabled));
                 Raise(nameof(AsmExtraLabel));
-                PushTarget();
             }
         }
         // The second grid coordinate: a Bent owner takes a COLUMN letter (intersection 2C), a Wall a
@@ -225,37 +210,15 @@ namespace TimberDraw.Browser
             return i > 0 && tail.Length >= 1 && tail.Length <= 2 ? tail : "";
         }
 
-        private string _asmOwner = AssemblyTarget.Owner;
+        private string _asmOwner = "1";
         public string AsmOwner
         {
             get => _asmOwner;
-            set { if (Set(ref _asmOwner, value)) { AssignCommand.RaiseCanExecuteChanged(); PushTarget(); } }
+            set { if (Set(ref _asmOwner, value)) AssignCommand.RaiseCanExecuteChanged(); }
         }
 
-        private string _asmBay = AssemblyTarget.Bay;
-        public string AsmBay { get => _asmBay; set { if (Set(ref _asmBay, value)) PushTarget(); } }
-
-        // Write this row into the shared AssemblyTarget (skipped while painting an incoming change).
-        private void PushTarget()
-        {
-            if (_asmLoading) return;
-            AssemblyTarget.Set(_asmFrame, _asmKind, _asmOwner, AsmExtraEnabled ? _asmBay : "", this);
-        }
-
-        // Another surface (the Assembly tab's two-box) changed the shared target: follow it.
-        private void OnTargetChanged(object source)
-        {
-            if (ReferenceEquals(source, this)) return;
-            _asmLoading = true;
-            try
-            {
-                AsmFrame = AssemblyTarget.Frame;
-                if (AsmKinds.Contains(AssemblyTarget.Kind)) AsmKind = AssemblyTarget.Kind;
-                AsmOwner = AssemblyTarget.Owner;
-                AsmBay = AssemblyTarget.Bay;
-            }
-            finally { _asmLoading = false; }
-        }
+        private string _asmBay = "";
+        public string AsmBay { get => _asmBay; set => Set(ref _asmBay, value); }
 
         // Hand the selected rows + target to TAssign (via ManagedView.Assign -> ManagedAssembly
         // stash -> command context). The Applied event refreshes the rows when it completes.
@@ -265,9 +228,6 @@ namespace TimberDraw.Browser
             if (_selectedMany.Count > 0) foreach (FrameBrowserItem it in _selectedMany) ids.Add(it.Id);
             else if (_selected != null) ids.Add(_selected.Id);
             if (ids.Count == 0) return;
-            // Assign is an explicit gesture: converge the shared target on what is being assigned
-            // (a review click alone never writes it -- see SelectedItem).
-            AssemblyTarget.Set(_asmFrame, _asmKind, _asmOwner, AsmExtraEnabled ? _asmBay : "", this);
             ManagedView.Assign(ids, (_asmFrame ?? "").Trim(), _asmKind, (_asmOwner ?? "").Trim(),
                                AsmExtraEnabled ? (_asmBay ?? "").Trim() : "");
         }

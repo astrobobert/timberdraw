@@ -19,10 +19,8 @@
     </UserControl.Resources>
     <DockPanel LastChildFill="True" Margin="6" TextElement.Foreground="{DynamicResource TdFg}">
 
-        <!-- Header: status + refresh -->
+        <!-- Header: status line -->
         <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="0,0,0,6">
-            <Button DockPanel.Dock="Right" Content="Refresh" Padding="10,2"
-                    Command="{Binding RefreshCommand}"/>
             <TextBlock Text="{Binding Status}" VerticalAlignment="Center" Foreground="{DynamicResource TdSubtle}"/>
         </DockPanel>
 
@@ -32,65 +30,56 @@
             <TextBox Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"/>
         </DockPanel>
 
-        <!-- Property editor: re-section the selected timber, write back + regenerate -->
+        <!-- Bottom action row: full-span buttons (the shared bottom-bar idiom). -->
+        <UniformGrid DockPanel.Dock="Bottom" Columns="3" Margin="0,6,0,0">
+            <Button Content="Refresh" Margin="2" Padding="0,4" Command="{Binding RefreshCommand}"/>
+            <Button Content="Apply"   Margin="2" Padding="0,4" Command="{Binding ApplyCommand}"/>
+            <Button Content="Assign"  Margin="2" Padding="0,4" Command="{Binding AssignCommand}"/>
+        </UniformGrid>
+
+        <!-- Property editor + assign target: fully STACKED labeled rows, one edit box per
+             row, never side by side. Selecting a single row LOADS its current section +
+             assembly here (the review side); Apply re-sections, Assign addresses the timber
+             (Frame > Bent / Wall+Bay / Floor via TAssign). -->
         <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource TdBorder}" BorderThickness="0,1,0,0"
                 Padding="0,6,0,0" Margin="0,6,0,0">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="52"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Type" VerticalAlignment="Center" Margin="0,0,6,4"/>
-                <TextBox   Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,4"
+                <TextBox   Grid.Row="0" Grid.Column="1" Margin="0,0,0,4"
                            Text="{Binding EditType, UpdateSourceTrigger=PropertyChanged}"/>
-
                 <TextBlock Grid.Row="1" Grid.Column="0" Text="W" VerticalAlignment="Center" Margin="0,0,6,4"/>
-                <TextBox   Grid.Row="1" Grid.Column="1" Margin="0,0,8,4"
+                <TextBox   Grid.Row="1" Grid.Column="1" Margin="0,0,0,4"
                            Text="{Binding EditW, UpdateSourceTrigger=PropertyChanged}"/>
-                <TextBlock Grid.Row="1" Grid.Column="2" Text="D" VerticalAlignment="Center" Margin="0,0,6,4"/>
-                <TextBox   Grid.Row="1" Grid.Column="3" Margin="0,0,0,4"
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="D" VerticalAlignment="Center" Margin="0,0,6,4"/>
+                <TextBox   Grid.Row="2" Grid.Column="1" Margin="0,0,0,4"
                            Text="{Binding EditD, UpdateSourceTrigger=PropertyChanged}"/>
 
-                <Button Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4" Content="Apply"
-                        HorizontalAlignment="Right" Padding="14,2"
-                        Command="{Binding ApplyCommand}"/>
-            </Grid>
-        </Border>
-
-        <!-- Assembly: assign the selected row(s) to Frame > Bent / Wall+Bay / Floor (TAssign).
-             Selecting a single row LOADS its current assembly here (the review side). -->
-        <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource TdBorder}" BorderThickness="0,1,0,0"
-                Padding="0,6,0,0" Margin="0,6,0,0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="34"/>
-                    <ColumnDefinition Width="70"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="40"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="Frame" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                <TextBox   Grid.Column="1" Margin="0,0,6,0"
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Frame" VerticalAlignment="Center" Margin="0,0,6,4"/>
+                <TextBox   Grid.Row="3" Grid.Column="1" Margin="0,0,0,4"
                            Text="{Binding AsmFrame, UpdateSourceTrigger=PropertyChanged}"/>
-                <ComboBox  Grid.Column="2" Margin="0,0,6,0"
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Kind" VerticalAlignment="Center" Margin="0,0,6,4"/>
+                <ComboBox  Grid.Row="4" Grid.Column="1" Margin="0,0,0,4"
                            ItemsSource="{Binding AsmKinds}" SelectedItem="{Binding AsmKind}"/>
-                <TextBox   Grid.Column="3" Margin="0,0,6,0"
+                <TextBlock Grid.Row="5" Grid.Column="0" Text="Owner" VerticalAlignment="Center" Margin="0,0,6,4"/>
+                <TextBox   Grid.Row="5" Grid.Column="1" Margin="0,0,0,4"
                            Text="{Binding AsmOwner, UpdateSourceTrigger=PropertyChanged}"/>
-                <TextBlock Grid.Column="4" Text="{Binding AsmExtraLabel}" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                <TextBox   Grid.Column="5" Margin="0,0,6,0" IsEnabled="{Binding AsmExtraEnabled}"
+                <TextBlock Grid.Row="6" Grid.Column="0" Text="{Binding AsmExtraLabel}" VerticalAlignment="Center" Margin="0,0,6,4"/>
+                <TextBox   Grid.Row="6" Grid.Column="1" Margin="0,0,0,4" IsEnabled="{Binding AsmExtraEnabled}"
                            Text="{Binding AsmBay, UpdateSourceTrigger=PropertyChanged}"/>
-                <Button    Grid.Column="6" Content="Assign" Padding="10,2"
-                           Command="{Binding AssignCommand}"/>
             </Grid>
         </Border>
 

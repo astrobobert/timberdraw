@@ -59,12 +59,14 @@ namespace TimberDraw
             BackColor = Theme.Bg;
             ForeColor = Theme.Fg;
 
+            // Actions cluster at the BOTTOM (Pick pair / Apply full-span + the defaults row) --
+            // the look every tab follows now.
             var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 7, Padding = new Padding(Theme.Pad) };
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));   // type selector
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));   // pick button
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 22));   // pair label
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));   // element grid
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));   // status line
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));   // pick pair
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));   // apply
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));   // defaults (set / reset)
 
@@ -103,10 +105,10 @@ namespace TimberDraw
             defaultsRow.Controls.Add(_btnResetDefault, 1, 0);
 
             layout.Controls.Add(_cmbType, 0, 0);
-            layout.Controls.Add(_btnPick, 0, 1);
-            layout.Controls.Add(_lblPair, 0, 2);
-            layout.Controls.Add(_stackHost, 0, 3);
-            layout.Controls.Add(_lblStatus, 0, 4);
+            layout.Controls.Add(_lblPair, 0, 1);
+            layout.Controls.Add(_stackHost, 0, 2);
+            layout.Controls.Add(_lblStatus, 0, 3);
+            layout.Controls.Add(_btnPick, 0, 4);
             layout.Controls.Add(_btnApply, 0, 5);
             layout.Controls.Add(defaultsRow, 0, 6);
             Controls.Add(layout);

@@ -91,8 +91,8 @@ namespace TimberDraw
             try { ResetToEmpty(); } catch { /* best-effort; activation can fire mid-init */ }
         }
 
-        // The open / doc-switch start state: an EMPTY tree. No auto-seed -- the user starts a frame
-        // explicitly (New seeds the typed starter; right-click Add Bent also works) or loads a
+        // The start state everywhere (open, doc-switch, AND the New button): an EMPTY tree.
+        // No seed exists anymore -- grow via right-click Add Bent / Add Wall or Load a
         // .framespec. Deliberately does NOT Persist: FrameSpecJson (the active-frame-tag signal
         // sibling commands like TGrid read) keeps the last real frame until a new spec exists.
         public void ResetToEmpty()
@@ -102,18 +102,6 @@ namespace TimberDraw
             propPane.Clear();
             BuildTree();
             RefreshFrozenState();   // empty gate: Draw/Freeze disabled until the tree has content
-        }
-
-        // The New-button path: the fully-typed, immediately-generatable starter seed (two KingPost
-        // bents + walls A-E). Persist keeps FrameSpecJson current as the active-frame-tag signal.
-        public void ResetToSeed()
-        {
-            _spec = FrameSpec.NewSeeded();
-            _currentPath = null;
-            propPane.Clear();
-            Persist();
-            BuildTree();
-            RefreshFrozenState();   // reflect the active frame's freeze gate
         }
 
         private void WireEvents()
@@ -393,7 +381,7 @@ namespace TimberDraw
             finally { _building = false; }
 
             // Re-apply the empty gate: the first Add Bent (right-click) or a Load flips the tree
-            // non-empty without passing through ResetToSeed, and Draw/Freeze must follow.
+            // non-empty, and Draw/Freeze must follow.
             RefreshFrozenState();
         }
 
@@ -567,7 +555,7 @@ namespace TimberDraw
             // Leaf edits: the descriptor Name is the canonical label (Width/Foot/Head/Label/...).
             if (_selLeaves.Count > 0)
             {
-                if (name == "Foot" || name == "Head")   // recompute the reported Length/Angle rows
+                if (name == "Foot" || name == "Head")   // legs edited -> recompute Angle + Length
                 {
                     foreach (TreeNode ln in _selLeaves)
                         if (ln.Tag is TimberLeaf tl && IsBraceRole(tl.Timber.Role))
@@ -576,7 +564,20 @@ namespace TimberDraw
                             s.Length = Math.Sqrt(s.Foot * s.Foot + s.Head * s.Head);
                             s.Angle = Math.Atan2(s.Foot, s.Head) * 180.0 / Math.PI;
                         }
-                    BindGrid();   // re-render the reported Length/Angle rows
+                    BindGrid();   // re-render the derived rows
+                }
+                else if (name == "Angle")   // angle edited -> keep Head, recompute Foot + Length
+                {                            // (same three-field feel as the Assembly tab's Brace spec)
+                    foreach (TreeNode ln in _selLeaves)
+                        if (ln.Tag is TimberLeaf tl && IsBraceRole(tl.Timber.Role))
+                        {
+                            MemberSize s = tl.Timber.Size;
+                            double a = Math.Max(0.1, Math.Min(89.9, s.Angle));
+                            s.Angle = a;
+                            s.Foot = s.Head * Math.Tan(a * Math.PI / 180.0);
+                            s.Length = Math.Sqrt(s.Foot * s.Foot + s.Head * s.Head);
+                        }
+                    BindGrid();   // re-render the derived rows
                 }
                 else if (name == "Name")
                 {
@@ -853,16 +854,16 @@ namespace TimberDraw
                 + grid.ColX.Count + " cols x " + grid.BentZ.Count + " bents).");
         }
 
-        // Start a fresh frame project: the typed starter seed (two KingPost bents + Walls A-E).
-        // Confirms first when it would discard work (Save first to keep it); from the empty
-        // start state it just seeds.
+        // Start a fresh frame project: an UN-SEEDED empty tree (Robert's call) -- grow it with
+        // right-click Add Bent / Add Wall, or Load a .framespec. Confirms first when it would
+        // discard work (Save first to keep it).
         private void NewFrame()
         {
             if (!SpecIsEmpty && !Dialogs.Confirm(
                     "Start a new frame project? The current frame will be cleared (Save first if you want to keep it)."))
                 return;
 
-            ResetToSeed();
+            ResetToEmpty();
         }
 
         // "Set as Default" saves the SELECTED bent/bay (a node, or a timber leaf via its owner) as the
@@ -986,10 +987,12 @@ namespace TimberDraw
             {
                 case "Brace": case "QueenBrace": case "CollarBrace": case "EaveBrace": case "FloorBrace":
                 case "RidgeBrace": case "QueenGirtBrace": case "HPostGirtBrace":
+                    // The same three-field spec as the Assembly tab's Brace group: Foot/Head/Angle
+                    // all editable (Angle keeps Head, recomputes Foot); Length stays reported.
                     rows.Add(new Row(s, "Foot", "Foot", "Size", false));
                     rows.Add(new Row(s, "Head", "Head", "Size", false));
+                    rows.Add(new Row(s, "Angle", "Angle", "Size", false));
                     rows.Add(new Row(s, "Length", "Length", "Size", true));   // reported
-                    rows.Add(new Row(s, "Angle", "Angle", "Size", true));     // reported
                     rows.Add(new Row(s, "Place", "Placement", "Size", false));
                     break;
                 case "Strut":

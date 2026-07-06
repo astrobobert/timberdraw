@@ -5,9 +5,10 @@ using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace TimberDraw
 {
-    // The Output tab: everything that leaves the model in one place -- one verb toolbar (the
-    // BOM's Refresh / Export CSV plus the Shop and Scribe commands, fired like every other
-    // palette verb via SendStringToExecute) over the BOM grid.
+    // The Output tab: everything that leaves the model in one place -- the BOM grid over one
+    // bottom action bar (the BOM's Refresh / Export CSV plus the Shop and Scribe commands,
+    // fired like every other palette verb via SendStringToExecute). The grid auto-loads on
+    // first activation (Shell.EnsureBomLoaded), so the tab never opens empty.
     internal class OutputTabControl : UserControl
     {
         private readonly BomGridControl _bom = new BomGridControl();
@@ -17,31 +18,24 @@ namespace TimberDraw
 
         public OutputTabControl()
         {
-            var bar = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                Height = 32,
-                FlowDirection = FlowDirection.LeftToRight,
-                Padding = new Padding(4, 3, 4, 3),
-            };
-            bar.Controls.Add(Tool("Refresh",    (s, e) => _bom.RefreshFromModel()));
-            bar.Controls.Add(Tool("Export CSV", (s, e) => _bom.ExportCsv()));
-            bar.Controls.Add(Tool("Shop",       (s, e) => Send("TShop")));
-            bar.Controls.Add(Tool("Shop Clear", (s, e) => Send("TShopClear")));
-            bar.Controls.Add(Tool("Scribe",     (s, e) => Send("TScribe")));
-            bar.Controls.Add(Tool("Scribe All", (s, e) => Send("TScribeAll")));
+            Panel bar = ActionBar.Build(
+                ActionBar.Row(Tool("Refresh",    (s, e) => _bom.RefreshFromModel()),
+                              Tool("Export CSV", (s, e) => _bom.ExportCsv())),
+                ActionBar.Row(Tool("Shop",       (s, e) => Send("TShop")),
+                              Tool("Shop Clear", (s, e) => Send("TShopClear")),
+                              Tool("Scribe",     (s, e) => Send("TScribe")),
+                              Tool("Scribe All", (s, e) => Send("TScribeAll"))));
 
             _bom.Dock = DockStyle.Fill;
             Controls.Add(_bom);
             Controls.Add(bar);
+            _bom.BringToFront();   // fill takes what the bottom bar leaves
             Theme.Apply(this);
         }
 
         private static Button Tool(string text, EventHandler onClick)
         {
             Button b = Theme.Button(text);
-            b.AutoSize = true;
-            b.Margin = new Padding(2, 0, 2, 0);
             b.Click += onClick;
             return b;
         }

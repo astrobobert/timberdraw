@@ -63,6 +63,9 @@ namespace TimberDraw
             _loading = false;
         }
 
+        // True once a tally is loaded (Shell auto-loads the Output tab on first activation).
+        public bool HasData => _grid.DataSource is DataTable t && t.Rows.Count > 0;
+
         // Re-read the piece tally from the model (the Output toolbar's Refresh).
         public void RefreshFromModel()
         {

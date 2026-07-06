@@ -87,6 +87,18 @@ namespace TimberDraw
             _ps.MinimumSize = new System.Drawing.Size(560, 680);
             _ps.Style = PaletteSetStyles.ShowCloseButton | PaletteSetStyles.ShowPropertiesMenu
                       | PaletteSetStyles.ShowAutoHideButton;
+
+            // The Output tab never opens empty: first activation with no tally auto-loads the
+            // BOM from the model ("what happened to BOM?" -- it was an empty grid).
+            _ps.PaletteActivated += (s, e) =>
+            {
+                try
+                {
+                    if (e.Activated != null && e.Activated.Name == "Output" && !_output.Bom.HasData)
+                        _output.Bom.RefreshFromModel();
+                }
+                catch { /* best-effort; a busy editor just leaves the grid for manual Refresh */ }
+            };
             return true;
         }
     }
