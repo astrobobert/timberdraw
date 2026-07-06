@@ -1722,7 +1722,7 @@ namespace TimberDraw
                 {
                     double zn = strut.Z.DotProduct(fb.N);
                     if (System.Math.Abs(zn) < 1e-6) continue;                         // centerline parallel to the face
-                    Point3d Pc = strut.O + strut.Z * ((fb.C - strut.O).DotProduct(fb.N) / zn);   // centerline ∩ plane
+                    Point3d Pc = strut.O + strut.Z * ((fb.C - strut.O).DotProduct(fb.N) / zn);   // centerline-plane intersection
                     Vector3d d = Pc - fb.C;
                     if (System.Math.Abs(d.DotProduct(fb.U)) > fb.UHalf + 1e-6) continue;   // centerline hits inside the face
                     if (System.Math.Abs(d.DotProduct(fb.V)) > fb.VHalf + 1e-6) continue;
