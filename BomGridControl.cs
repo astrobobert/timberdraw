@@ -66,8 +66,23 @@ namespace TimberDraw
         // True once a tally is loaded (Shell auto-loads the Output tab on first activation).
         public bool HasData => _grid.DataSource is DataTable t && t.Rows.Count > 0;
 
+        // Drawing switch (Shell's DocumentActivated hook): the loaded tally and the highlight
+        // ObjectIds belong to the DEPARTED database, so drop the ids WITHOUT touching entities
+        // (never run foreign ObjectIds through the new doc's transaction), then rebuild from the
+        // new drawing -- directly, because the PaletteActivated auto-load only fires on tab
+        // CHANGES and can't cover a doc switch while Output is the visible tab.
+        public void OnDocSwitch(bool hasDoc)
+        {
+            _highlighted.Clear();
+            if (hasDoc) RefreshCore(quiet: true);
+            else { _loading = true; _grid.DataSource = null; _loading = false; }
+        }
+
         // Re-read the piece tally from the model (the Output toolbar's Refresh).
-        public void RefreshFromModel()
+        public void RefreshFromModel() => RefreshCore(quiet: false);
+
+        // quiet: swallow failures silently (doc-switch path -- no modal popups on activation).
+        private void RefreshCore(bool quiet)
         {
             var doc = AcApp.DocumentManager.MdiActiveDocument;
             if (doc == null) return;
@@ -76,7 +91,10 @@ namespace TimberDraw
                 using (doc.LockDocument())
                     LoadData(ManagedCommands.BuildBomTable(doc.Database));
             }
-            catch (Exception ex) { Dialogs.Info("BOM refresh failed: " + ex.Message); }
+            catch (Exception ex)
+            {
+                if (!quiet) Dialogs.Info("BOM refresh failed: " + ex.Message);
+            }
         }
 
         // Write the current tally to a CSV (the Output toolbar's Export).

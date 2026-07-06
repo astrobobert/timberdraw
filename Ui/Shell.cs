@@ -14,6 +14,10 @@ namespace TimberDraw
     // Sizing: this is a big program -- give it the space it needs. Most users
     // run dual screens and park the palette on display 2, so the minimum is the
     // largest any tab wants (BOM's width, Frame's height), not a squeezed panel.
+    //
+    // Drawing switches: the shell owns doc-switch for the Browser and Output tabs
+    // (re-list / re-tally against the new document); the Frame tab subscribes on
+    // its own and resets to the empty start.
     public static class Shell
     {
         // The ONLY source of tab indices (matches the Add order in EnsureCreated).
@@ -99,7 +103,26 @@ namespace TimberDraw
                 }
                 catch { /* best-effort; a busy editor just leaves the grid for manual Refresh */ }
             };
+
+            // Drawing switch: the shell re-syncs the Browser and Output tabs to the newly active
+            // document (the Frame tab handles its own reset -- do not double-reset it). Subscribed
+            // once for the session, matching the controls' create-once lifetime. Best-effort:
+            // activation can fire mid-init, same guard as FrameTreeControl.OnDocumentActivated.
+            AcadApp.DocumentManager.DocumentActivated += (s, e) =>
+            {
+                try { OnDocSwitch(e.Document != null); } catch { }
+            };
             return true;
+        }
+
+        // Re-sync the doc-reading tabs to the newly active drawing. Browser: Reload reads the
+        // ACTIVE document (empty list when there is none). Output: drop the old drawing's
+        // highlight ids and rebuild the tally (or clear it) -- the PaletteActivated auto-load
+        // only fires on tab changes, so it can't cover a switch while Output is visible.
+        private static void OnDocSwitch(bool hasDoc)
+        {
+            _browser.Reload();
+            _output.Bom.OnDocSwitch(hasDoc);
         }
     }
 }
