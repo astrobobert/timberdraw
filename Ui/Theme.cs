@@ -28,6 +28,7 @@ namespace TimberDraw
         public static Color SubtleFg   { get { EnsureInit(); return _dark ? Color.FromArgb(160, 160, 165) : SystemColors.GrayText; } }
         public static Color Border     { get { EnsureInit(); return _dark ? Color.FromArgb(70, 70, 75)    : SystemColors.ControlDark; } }
         public static Color HeaderBack { get { EnsureInit(); return _dark ? Color.FromArgb(62, 62, 68)    : SystemColors.ControlLight; } }
+        public static Color ButtonBack { get { EnsureInit(); return _dark ? Color.FromArgb(60, 60, 65)    : SystemColors.Control; } }
 
         // The one blue. Dark mode lightens it for contrast -- still blue, never green.
         public static Color Accent     { get { EnsureInit(); return _dark ? Color.FromArgb(80, 140, 255)  : Color.FromArgb(0, 70, 200); } }
@@ -56,7 +57,7 @@ namespace TimberDraw
                 Height = 26,
                 FlatStyle = FlatStyle.Flat,
                 Font = Base,
-                BackColor = Color.FromArgb(60, 60, 65),
+                BackColor = ButtonBack,
                 ForeColor = Fg,
             };
             b.FlatAppearance.BorderColor = Border;
@@ -121,7 +122,7 @@ namespace TimberDraw
                     case GroupBox gb: gb.BackColor = Bg; gb.ForeColor = Fg; break;
                     case Button b:
                         b.FlatStyle = FlatStyle.Flat;
-                        b.BackColor = Color.FromArgb(60, 60, 65);
+                        b.BackColor = ButtonBack;
                         b.ForeColor = Fg;
                         b.FlatAppearance.BorderColor = Border;
                         break;

@@ -494,6 +494,11 @@ namespace TimberDraw
             return nid;
         }
 
+        // Raised after RebuildFromFrame replaces a timber's entity (joinery re-cuts erase + redraw,
+        // so the ObjectId AND handle change). List surfaces (Browser, BOM) hold ids/handles and go
+        // silently stale without this -- selecting a re-cut timber just stopped highlighting.
+        public static event System.Action Rebuilt;
+
         // Rebuild a managed timber's solid from a (possibly modified) FRAME, preserving its XData, group
         // layer, and production tag -- so joinery can add Features and re-cut the solid in place. Mirrors
         // RegenerateSection but takes the whole new frame. Returns the new ObjectId (a fresh handle).
@@ -535,6 +540,7 @@ namespace TimberDraw
                 if (nd != null) { nd.TagHandle = tagHandle; Module1.SetXdata(nid, nd); }
             }
             if (!nid.IsNull && jointSpecs.Count > 0) WriteJointSpecsMap(nid, jointSpecs);
+            if (!nid.IsNull) { try { Rebuilt?.Invoke(); } catch { } }   // a listener must never break the cut
             return nid;
         }
 

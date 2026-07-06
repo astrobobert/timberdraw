@@ -19,11 +19,23 @@ namespace TimberDraw
         private readonly DataGridView _grid;
         private readonly List<ObjectId> _highlighted = new List<ObjectId>();
         private bool _loading;
+        private bool _stale;          // a joinery re-cut replaced entities while the tab was hidden
+        private bool _refreshQueued;  // debounce: a batch cut (TJointAll) fires Rebuilt per timber
 
         public BomGridControl()
         {
             BackColor = Theme.Bg;
             ForeColor = Theme.Fg;
+
+            // Joinery re-cuts erase + redraw the solid, so the Handle column goes stale and row
+            // selection stops highlighting. Re-tally when it happens (deferred past the cutting
+            // command) or, if the tab is hidden, on its next show. Only refresh a grid that has
+            // data -- an untouched Output tab keeps its lazy first-activation load.
+            ManagedTimber.Rebuilt += OnTimberRebuilt;
+            VisibleChanged += (s, e) =>
+            {
+                if (Visible && _stale) { _stale = false; RefreshCore(quiet: true); }
+            };
 
             _grid = new DataGridView
             {
@@ -45,10 +57,24 @@ namespace TimberDraw
             Controls.Add(_grid);
         }
 
+        private void OnTimberRebuilt()
+        {
+            if (!HasData) return;   // nothing loaded yet -- the first-activation auto-load covers it
+            if (!Visible || !IsHandleCreated) { _stale = true; return; }
+            if (_refreshQueued) return;
+            _refreshQueued = true;
+            BeginInvoke(new Action(() =>
+            {
+                _refreshQueued = false;
+                RefreshCore(quiet: true);
+            }));
+        }
+
         // Bind a freshly built table. Clears any existing highlight and the initial auto-selection.
         public void LoadData(DataTable table)
         {
             _loading = true;
+            _stale = false;   // any load path un-stales the grid
             ClearHighlight();
             _grid.DataSource = null;
             _grid.DataSource = table;
@@ -176,7 +202,11 @@ namespace TimberDraw
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing) { try { ClearHighlight(); } catch { } }
+            if (disposing)
+            {
+                ManagedTimber.Rebuilt -= OnTimberRebuilt;
+                try { ClearHighlight(); } catch { }
+            }
             base.Dispose(disposing);
         }
     }

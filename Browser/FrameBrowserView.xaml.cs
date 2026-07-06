@@ -7,12 +7,36 @@ namespace TimberDraw.Browser
     public partial class FrameBrowserView : UserControl
     {
         private readonly FrameBrowserViewModel _vm = new();
+        private bool _stale;          // a joinery re-cut replaced entities while this tab was hidden
+        private bool _reloadQueued;   // debounce: a batch cut (TJointAll) fires Rebuilt per timber
 
         public FrameBrowserView()
         {
             InitializeComponent();
             ThemeWpf.Apply(this);   // feed the shared Theme palette into the Td* XAML resources
             DataContext = _vm;
+
+            // Joinery re-cuts ERASE + REDRAW the solid (fresh ObjectId), so held rows go stale and
+            // selection stops highlighting. Re-list when it happens: now if visible (deferred past
+            // the cutting command), on next show otherwise. One shell instance lives the whole
+            // session, so the static subscription is intentional.
+            ManagedTimber.Rebuilt += OnTimberRebuilt;
+            IsVisibleChanged += (s, e) =>
+            {
+                if (IsVisible && _stale) { _stale = false; _vm.Refresh(); }
+            };
+        }
+
+        private void OnTimberRebuilt()
+        {
+            if (!IsVisible) { _stale = true; return; }
+            if (_reloadQueued) return;
+            _reloadQueued = true;
+            Dispatcher.BeginInvoke(new System.Action(() =>
+            {
+                _reloadQueued = false;
+                try { _vm.Refresh(); } catch { /* editor busy -- the next show re-lists */ }
+            }), System.Windows.Threading.DispatcherPriority.Background);
         }
 
         public void Reload() => _vm.Refresh();

@@ -16,6 +16,8 @@ namespace TimberDraw
             root.Resources["TdSubtle"]  = Brush(Theme.SubtleFg);
             root.Resources["TdBorder"]  = Brush(Theme.Border);
             root.Resources["TdAccent"]  = Brush(Theme.Accent);
+            root.Resources["TdButton"]  = Brush(Theme.ButtonBack);
+            root.Resources["TdHeader"]  = Brush(Theme.HeaderBack);
         }
 
         private static SolidColorBrush Brush(System.Drawing.Color c)
