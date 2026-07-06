@@ -65,10 +65,12 @@ namespace TimberDraw
                 // Wall letter. A roof timber (common/purlin) belongs to the wall on its SIDE (the eave-
                 // girt wall), NOT the nearest column -- a purlin sits partway up the slope, so ColLetter
                 // would wrongly snap it to a king-post/vstrut column. Other longitudinal members (eave/
-                // floor girt, ridge) keep the nearest-column letter.
+                // floor girt, ridge) keep the nearest-column letter. A FreeBox bay brace LIVES IN a wall
+                // plane, so it gets that wall's letter too -- unstamped, every bay brace fell into the
+                // Browser's Wall A fallback.
                 string wallTag =
                     (e.Role == "Common" || e.Role == "Purlin") ? grid.SideWall(f.O.X) :
-                    e.Longitudinal                             ? grid.ColLetter(f.O.X) : "";
+                    e.Longitudinal || e.FreeBox                ? grid.ColLetter(f.O.X) : "";
                 // Braces carry only a group symbol (*, **, ..) by size+shape; commons / purlins are
                 // numbered 1..n per (wall, bay) -- restarting each bay; everything else gets its label.
                 string gridLabel =
@@ -77,8 +79,9 @@ namespace TimberDraw
                     e.Role == "Purlin" ? grid.RoofLabel("P", wallTag, e.BayTag) :
                     e.Longitudinal     ? grid.WallBayLabel(e, wallTag) :   // eave/floor/ridge/queen/hammer girts
                                          grid.LabelForEdge(e, f);          // bent members (verticals + ties)
-                // Per-group layer for tree isolation: bent member -> bent layer; longitudinal/roof ->
-                // wall layer; an untagged bay member (bay brace) -> its SIDE wall's layer.
+                // Per-group layer for tree isolation: bent member -> bent layer; longitudinal/roof/
+                // bay-brace -> wall layer (the SideWall fallback below is vestigial now that bay
+                // braces stamp a wall letter; kept for any future untagged bay member).
                 string groupWall = !string.IsNullOrEmpty(wallTag) ? wallTag
                                  : string.IsNullOrEmpty(bentTag) ? grid.SideWall(f.O.X) : "";
                 string groupLayer = ManagedTimber.GroupLayer(frameTag, bentTag, groupWall);

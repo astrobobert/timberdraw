@@ -11,13 +11,13 @@ namespace TimberDraw
         public const int RowH = 32;
         public const int CapH = 18;
 
-        // A small group caption above a row -- subtle grey, no fill, no border: a third visual
-        // tier below section headers (accent) and buttons (bordered fill), never mistaken for
-        // either. Pass to Build interleaved with the rows it names.
+        // A small group caption above a row -- accent like every other heading (Robert's call),
+        // regular weight + small so it still sits below the bold section headers. Pass to Build
+        // interleaved with the rows it names.
         public static Label Caption(string text) => new Label
         {
             Text = text, Dock = DockStyle.Top, Height = CapH,
-            ForeColor = Theme.SubtleFg, BackColor = Theme.Bg, Font = Theme.Base,
+            ForeColor = Theme.Accent, BackColor = Theme.Bg, Font = Theme.Base,
             TextAlign = System.Drawing.ContentAlignment.BottomLeft,
             Padding = new Padding(Theme.Pad, 0, 0, 1), Margin = new Padding(0),
         };
