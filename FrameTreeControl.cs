@@ -838,9 +838,6 @@ namespace TimberDraw
                 return;
             }
 
-            Module1.Span = _spec.Span; Module1.EaveHt = _spec.EaveHt; Module1.Pitch = _spec.Pitch;
-            Module1.Beta = Math.Atan(_spec.Pitch); Module1.Make3D = true;   // managed emitter is always 3D
-
             FrameGraph g = KingPostBentGraph.Build(_spec);
             // Emit MANAGED timbers (editable) instead of legacy solids. Place through the current UCS
             // (graph coords interpreted in the UCS -> WCS) so the frame honors the user's UCS origin +

@@ -18,9 +18,10 @@ public class BoundaryTests
     // identifiers -- they are whole-word matched and Regex.Escaped (see Scan), so an entry with
     // a '.' or '(' stays a harmless literal and never over-matches or throws.
 
-    // Generator (parametric / FrameSpec recipe + bent geometry).
-    private static readonly string[] GeneratorFolders =
-        { "Frame", "Bent", "Bay", "Kpost", "Qpost", "Hbeam", "KpostTruss", "QpostTruss", "Network" };
+    // Generator (parametric / FrameSpec recipe + bent geometry). The legacy generator folders
+    // (Bent/Bay/Kpost/Qpost/Hbeam/*Truss/Network) were deleted in the Phase C deep purge
+    // (2026-07-06) -- Frame\ is the whole generator now.
+    private static readonly string[] GeneratorFolders = { "Frame" };
 
     // Managed-timber editor.
     private const string EditorFolder = "Managed";
@@ -40,19 +41,14 @@ public class BoundaryTests
     // Recipe / generator-only types the editor must not name.
     //
     // RULE: forbid only the RECIPE. Do NOT add shared infrastructure the editor legitimately
-    // uses -- Module1, JointFactory, TimberFactory, the Joints/ generators, or FrameGrid (the
-    // address layer). The boundary is "the editor must not know the recipe exists," not "the
-    // editor must not share geometry primitives."
+    // uses -- Module1 (the xdata layer) or FrameGrid (the address layer). The boundary is
+    // "the editor must not know the recipe exists," not "the editor must not share
+    // geometry primitives."
     private static readonly string[] GeneratorTokens =
     {
         "FrameSpec", "FrameGraph", "FrameEdge", "FrameNode",
         "KingPostBentGraph", "QueenPostBentGraph", "HammerBeamBentGraph", "TrussBentGraph",
-        "KPBent", "QPBent", "HBBent", "KPTruss", "QPTruss",
-        "BentNetwork", "NetworkManager",
         "FrameRegistry", "FrameRecord", "KPBentParams",
-        // the cross-bent pending-mortise queues (generation-time scaffolding)
-        "PendingLeftPostMortises", "PendingRightPostMortises",
-        "PendingLeftRafterMortises", "PendingRightRafterMortises", "PendingKPostMortises",
     };
 
     [Fact]

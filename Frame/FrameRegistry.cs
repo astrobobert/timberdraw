@@ -7,8 +7,7 @@ namespace TimberDraw
     // Per-frame record: the generator's recipe (seed params) + the freeze gate, stored on the FRAME
     // (not on any one timber). There is no frame-group entity, so the record lives in the drawing's
     // NamedObjectsDictionary under "TM_FRAME_<tag>" -- which persists across save/reload, as a frozen
-    // gate must. Mirrors the JSON-in-Xrecord shape of Module1.SaveDrawContext, and the NOD read/write
-    // shape of BentNetwork.
+    // gate must (JSON in a single-Text Xrecord).
     //
     // The Frozen flag is the one-way break: pre-break the generator (TRoughIn) may re-emit the frame;
     // at the break (TFreeze) the parametric palette is locked for this frame and the skeleton timbers

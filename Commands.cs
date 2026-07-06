@@ -14,7 +14,6 @@ namespace TimberDraw
 	{
 		void IExtensionApplication.Initialize()
         {
-            JointFactory.RegisterDefaults();
             ManagedTransformOverrule.Enable();   // native MOVE/ROTATE keep managed frames in lockstep
         }
 
@@ -73,10 +72,6 @@ namespace TimberDraw
 			if (doc == null) return;
 			Editor ed = doc.Editor;
 			Database db = doc.Database;
-
-			// The generator owns the recipe only while it runs: clear the cross-bent scaffolding so a
-			// run never inherits stale pending-mortise handles from a prior run.
-			Module1.ResetCrossBentQueues();
 
 			// One-way gate: once frame A is frozen the parametric phase is over -- never silently
 			// re-emit over its hand edits.
@@ -353,40 +348,6 @@ namespace TimberDraw
 			Application.DocumentManager.MdiActiveDocument?.Editor.WriteMessage(
 				"\nTimberDraw build " + BuildStamp() + ".");
 		}
-
-        // (TFrameFlat / TDrawLegacy / TRegenTimber lived here until Phase C -- see the
-        // retirement note at the top of the class. WriteRegenMap below survives only because
-        // the dead-but-compiling TimberFactory still names it; both go in the deep purge.)
-
-        internal const string RegenMapKey = "TRegenMap";
-
-        // Writes the full (oldHandle -> newHandle) map to NOM["TRegenMap"] so TimberTag
-        // can update every stale SS entry after TRegenTimber completes.
-        // Format: one Text TypedValue per pair, value = "oldHex:newHex".
-        // Overwrites any entry from a previous call.
-        internal static void WriteRegenMap(Database db, List<(Handle Old, Handle New)> map)
-        {
-            if (map == null || map.Count == 0) return;
-            using (Transaction tr = db.TransactionManager.StartTransaction())
-            {
-                DBDictionary nod = (DBDictionary)tr.GetObject(
-                    db.NamedObjectsDictionaryId, OpenMode.ForWrite);
-                if (nod.Contains(RegenMapKey))
-                {
-                    DBObject old = tr.GetObject(nod.GetAt(RegenMapKey), OpenMode.ForWrite);
-                    old.Erase();
-                    nod.Remove(RegenMapKey);
-                }
-                var rb = new ResultBuffer();
-                foreach (var pair in map)
-                    rb.Add(new TypedValue((int)DxfCode.Text,
-                        pair.Old.ToString() + ":" + pair.New.ToString()));
-                Xrecord xrec = new Xrecord { Data = rb };
-                nod.SetAt(RegenMapKey, xrec);
-                tr.AddNewlyCreatedDBObject(xrec, true);
-                tr.Commit();
-            }
-        }
 
 	}
 }

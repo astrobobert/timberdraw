@@ -151,7 +151,7 @@ namespace TimberDraw
         }
 
         // Convert one edge to a TFrame in GRAPH coordinates (+ the per-end cut tags). Returns false
-        // (skip) on a degenerate length. Mirrors FrameRenderer's two geometry branches.
+        // (skip) on a degenerate length.
         public static bool TryEdgeToFrame(FrameGraph g, FrameEdge e,
             out ManagedTimber.TFrame f, out string nearCut, out string farCut)
         {
