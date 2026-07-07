@@ -73,19 +73,19 @@ namespace TimberDraw
             int peakR     = g.AddNode("PeakR", new Point3d(xPeakR, yTopPeak, bentZ));
             int apex      = g.AddNode("Apex",  new Point3d(hs, apexY, bentZ));
 
-            // Posts (no full-width tie girt -- hammer beams replace it); base at grade, or the sill
-            // top when the bent carries a sill.
+            // Posts (no full-width tie girt -- hammer beams replace it); base at y=0, the frame
+            // datum (a sill sits BELOW it).
             if (On("Post:A"))
             g.AddEdge("Post", postBaseL, postTopL, p.PostW, p.PostD, "A").Planes.AddRange(new[]
             {
                 HalfPlane.KeepRightOfX(0), HalfPlane.KeepLeftOfX(p.PostD),
-                HalfPlane.KeepAboveY(p.PostBaseY), HalfPlane.KeepBelowLine(ltP, ltD)
+                HalfPlane.KeepAboveY(0),   HalfPlane.KeepBelowLine(ltP, ltD)
             });
             if (On("Post:E"))
             g.AddEdge("Post", postBaseR, postTopR, p.PostW, p.PostD, "E").Planes.AddRange(new[]
             {
                 HalfPlane.KeepRightOfX(p.Span - p.PostD), HalfPlane.KeepLeftOfX(p.Span),
-                HalfPlane.KeepAboveY(p.PostBaseY),        HalfPlane.KeepBelowLine(rtP, rtD)
+                HalfPlane.KeepAboveY(0),                  HalfPlane.KeepBelowLine(rtP, rtD)
             });
 
             // Rafters: KP recipe (foot -> peak, cut by the king post at xPeakL/xPeakR).

@@ -1047,6 +1047,9 @@ namespace TimberDraw
                 case "EaveGirt":   // bay eave girt: its top elevation (seed EaveHt+1 reveal); lower to drop the girt
                     rows.Add(new Row(s, "Ht", "Height", "Size", false));
                     break;
+                case "Sill":       // sill TOP elevation: 0 = right under the post feet; negative = deeper
+                    rows.Add(new Row(s, "Ht", "Height", "Size", false));
+                    break;
             }
             return rows;
         }

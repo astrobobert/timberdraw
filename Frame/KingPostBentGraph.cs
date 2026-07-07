@@ -53,12 +53,12 @@ namespace TimberDraw
         // Floor girt braces carry their OWN size/legs (from the FloorBrace:A leaf); zero falls back
         // to the bent girt brace values in the builder -- they used to be hard-linked (Robert's bug).
         public double FloorBraceW, FloorBraceD, FloorBraceFoot, FloorBraceHead;
-        // Sill at grade (floor systems phase 3): body Y = 0..SillD (the underside IS the foundation
-        // interface, so EaveHt doesn't move); posts shorten to start at the sill top. W = thickness
-        // along the building (matches the posts), D = vertical depth.
-        public double SillW, SillD;
+        // Sill BELOW grade (floor systems phase 3, Robert's convention 2026-07-07): the post feet
+        // stay the frame datum at Y=0 (full-length posts, grid unchanged); the sill TOP sits at
+        // SillHt (default 0 = under the post feet; negative offsets it deeper), body SillHt-D..SillHt.
+        // W = thickness along the building (matches the posts), D = vertical depth.
+        public double SillW, SillD, SillHt;
         public bool   HasSill;
-        public double PostBaseY => HasSill ? SillD : 0.0;   // where the posts start
         public double GirtDrop;             // tie elevation: tie TOP sits GirtDrop below the rafter-foot line (TOH), min 6"
         public bool   Make3D;
 
@@ -341,6 +341,7 @@ namespace TimberDraw
                 FloorGirtHt = floor?.Ht ?? d.FloorGirtHt,
                 HasSill = b.IsEnabled("Sill:SL"),
                 SillW = sill?.W ?? post?.W ?? d.PostW, SillD = sill?.D ?? post?.W ?? d.PostW,
+                SillHt = sill?.Ht ?? 0.0,   // TOP elevation, verbatim (0 = under the post feet; negative = deeper)
                 GirtDrop = b.GirtDrop                 // tie elevation (>=6"); drives TOG/BOG + everything on them
             };
         }
@@ -379,6 +380,7 @@ namespace TimberDraw
                 FloorGirtW = floor?.W ?? d.GirtW, FloorGirtD = floor?.D ?? d.GirtD,
                 FloorGirtHt = repFloor?.Ht ?? d.FloorGirtHt,
                 SillW = sill?.W ?? repPost?.W ?? d.PostW, SillD = sill?.D ?? repPost?.W ?? d.PostW,
+                SillHt = sill?.Ht ?? 0.0,
                 RidgeW = ridge?.W ?? d.RidgeW, RidgeD = ridge?.D ?? d.RidgeD,
                 CommonMode = y.CommonMode, CommonCount = y.CommonCount, CommonSpacing = y.CommonSpacing,
                 CommonW = y.CommonW, CommonD = y.CommonD,
@@ -423,13 +425,13 @@ namespace TimberDraw
             int kpostBase = g.AddNode("KPostBase", new Point3d(xPeakL, p.TOG, bentZ));
             int apex      = g.AddNode("Apex",      new Point3d(hs, apexY, bentZ));
 
-            // Left post: between x=0 and x=PostD, base at y=0 (or the sill top when the bent carries
-            // a sill -- the post shortens and tenons down into it), top cut by left rafter top line.
+            // Left post: between x=0 and x=PostD, base at y=0 (the frame datum -- a sill sits BELOW
+            // it; the post-foot stub tenon projects down into it), top cut by left rafter top line.
             if (On("Post:A"))
             g.AddEdge("Post", postBaseL, postTopL, p.PostW, p.PostD, "A").Planes.AddRange(new[]
             {
                 HalfPlane.KeepRightOfX(0), HalfPlane.KeepLeftOfX(p.PostD),
-                HalfPlane.KeepAboveY(p.PostBaseY), HalfPlane.KeepBelowLine(ltP, ltD)
+                HalfPlane.KeepAboveY(0),   HalfPlane.KeepBelowLine(ltP, ltD)
             });
 
             // Right post: mirror, top cut by right rafter top line.
@@ -437,7 +439,7 @@ namespace TimberDraw
             g.AddEdge("Post", postBaseR, postTopR, p.PostW, p.PostD, "E").Planes.AddRange(new[]
             {
                 HalfPlane.KeepRightOfX(p.Span - p.PostD), HalfPlane.KeepLeftOfX(p.Span),
-                HalfPlane.KeepAboveY(p.PostBaseY),        HalfPlane.KeepBelowLine(rtP, rtD)
+                HalfPlane.KeepAboveY(0),                  HalfPlane.KeepBelowLine(rtP, rtD)
             });
 
             // Girt: rectangle between post inner faces at girt height.
@@ -653,54 +655,58 @@ namespace TimberDraw
             }
         }
 
-        // Shared in-bent SILL (post-bearing bent types): a full-span rectangle at grade, Y = 0..SillD
-        // (the underside IS the foundation interface), running post OUTER face to post OUTER face --
-        // so every post foot bears on its bent's transverse sill (the mortise lands here). The posts
-        // shorten to start at the sill top (KeepAboveY(PostBaseY) in each builder). Bent-type-agnostic.
+        // Shared in-bent SILL (post-bearing bent types): a full-span rectangle BELOW the frame datum
+        // -- top at SillHt (default 0 = right under the post feet; negative drops it deeper), body
+        // SillHt-D..SillHt, running post OUTER face to post OUTER face so every post foot bears on
+        // its bent's transverse sill (the stub-tenon mortise lands here). The posts stay full length
+        // (feet at y=0 -- the datum + the grid's ground test both hold). Bent-type-agnostic.
         private static void AddSill(FrameGraph g, KPBentParams p, double bentZ,
             Func<string, bool> enabled = null)
         {
             bool On(string key) => enabled == null || enabled(key);
             if (!p.HasSill || !On("Sill:SL")) return;
+            double top = p.SillHt, bot = top - p.SillD;
             g.AddEdge("Sill",
-                g.AddNode("SillL", new Point3d(0, p.SillD, bentZ)),
-                g.AddNode("SillR", new Point3d(p.Span, p.SillD, bentZ)),
+                g.AddNode("SillL", new Point3d(0, top, bentZ)),
+                g.AddNode("SillR", new Point3d(p.Span, top, bentZ)),
                 p.SillW, p.SillD, "SL").Planes.AddRange(new[]
             {
                 HalfPlane.KeepRightOfX(0), HalfPlane.KeepLeftOfX(p.Span),
-                HalfPlane.KeepAboveY(0),   HalfPlane.KeepBelowY(p.SillD)
+                HalfPlane.KeepAboveY(bot), HalfPlane.KeepBelowY(top)
             });
         }
 
-        // Bay-level SILLS (per eave wall): the floor-girt recipe at grade -- longitudinal members
+        // Bay-level SILLS (per eave wall): the floor-girt recipe below grade -- longitudinal members
         // running post face to post face along each wall (the standard LongInset), outside face
-        // flush with the post outside, Y = 0..SillD. They butt the transverse sills' sides; the
-        // post feet bear on the TRANSVERSE sills (corner laps are catalogued future work).
+        // flush with the post outside, top at SillHt (default 0), body SillHt-D..SillHt. They butt
+        // the transverse sills' sides; the post feet bear on the TRANSVERSE sills (corner laps are
+        // catalogued future work).
         private static void AddSillBayMembers(FrameGraph g, KPBentParams p, double zA, double zB,
             bool sillL, bool sillR)
         {
+            double top = p.SillHt, bot = top - p.SillD;
             if (sillL)
             {
                 FrameEdge sl = MakeLongitudinal(g, "Sill",
-                    g.AddNode("SillBayL", new Point3d(0, p.SillD, zA)),
-                    g.AddNode("SillBayL", new Point3d(0, p.SillD, zB)),
+                    g.AddNode("SillBayL", new Point3d(0, top, zA)),
+                    g.AddNode("SillBayL", new Point3d(0, top, zB)),
                     p.SillW, p.SillD, p.PostW, "SL");
                 sl.Planes.Add(HalfPlane.KeepRightOfX(0));
                 sl.Planes.Add(HalfPlane.KeepLeftOfX(p.SillW));
-                sl.Planes.Add(HalfPlane.KeepAboveY(0));
-                sl.Planes.Add(HalfPlane.KeepBelowY(p.SillD));
+                sl.Planes.Add(HalfPlane.KeepAboveY(bot));
+                sl.Planes.Add(HalfPlane.KeepBelowY(top));
             }
 
             if (sillR)
             {
                 FrameEdge sr = MakeLongitudinal(g, "Sill",
-                    g.AddNode("SillBayR", new Point3d(p.Span - p.SillW, p.SillD, zA)),
-                    g.AddNode("SillBayR", new Point3d(p.Span - p.SillW, p.SillD, zB)),
+                    g.AddNode("SillBayR", new Point3d(p.Span - p.SillW, top, zA)),
+                    g.AddNode("SillBayR", new Point3d(p.Span - p.SillW, top, zB)),
                     p.SillW, p.SillD, p.PostW, "SR");
                 sr.Planes.Add(HalfPlane.KeepRightOfX(p.Span - p.SillW));
                 sr.Planes.Add(HalfPlane.KeepLeftOfX(p.Span));
-                sr.Planes.Add(HalfPlane.KeepAboveY(0));
-                sr.Planes.Add(HalfPlane.KeepBelowY(p.SillD));
+                sr.Planes.Add(HalfPlane.KeepAboveY(bot));
+                sr.Planes.Add(HalfPlane.KeepBelowY(top));
             }
         }
 

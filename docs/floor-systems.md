@@ -10,6 +10,14 @@ post OUTER face to outer face (full span) so every post foot bears on its bent's
 longitudinal bay sills run post-to-post between them (corner laps stay future work); the post-foot
 stub tenon is `TJointAll`'s second pass (its own sticky recipe, seeded short + unpegged).
 
+**Amendment (Robert's call at first test, 2026-07-07): sills sit BELOW the frame datum.** Section
+2's "body Z = 0..D, posts shorten" is superseded: the post feet stay the y=0 datum (full-length
+posts -- so the derived grid's ground test, and everything else anchored to grade, is untouched
+by ticking sills on), and the sill body occupies `Ht-D..Ht`, where the leaf's new **Height** field
+is the sill TOP elevation (default 0 = right under the post feet; negative drops it deeper). The
+foundation interface is the sill underside at `Ht-D`. The post-foot stub tenon projects DOWN past
+y=0 into the sill exactly as any end->side tenon does.
+
 Decisions already made (scoping, 2026-07-03):
 - **Design doc first**, then build in phases.
 - **Sills are recipe members** (generator side; posts tenon down into them).

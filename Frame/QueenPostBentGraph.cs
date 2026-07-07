@@ -82,18 +82,18 @@ namespace TimberDraw
             int apex      = g.AddNode("Apex",  new Point3d(hs, apexY, bentZ));
 
             // Left/right post: top cut by the matching rafter top line (same as King Post); base at
-            // grade, or the sill top when the bent carries a sill.
+            // y=0, the frame datum (a sill sits BELOW it).
             if (On("Post:A"))
             g.AddEdge("Post", postBaseL, postTopL, p.PostW, p.PostD, "A").Planes.AddRange(new[]
             {
                 HalfPlane.KeepRightOfX(0), HalfPlane.KeepLeftOfX(p.PostD),
-                HalfPlane.KeepAboveY(p.PostBaseY), HalfPlane.KeepBelowLine(ltP, ltD)
+                HalfPlane.KeepAboveY(0),   HalfPlane.KeepBelowLine(ltP, ltD)
             });
             if (On("Post:E"))
             g.AddEdge("Post", postBaseR, postTopR, p.PostW, p.PostD, "E").Planes.AddRange(new[]
             {
                 HalfPlane.KeepRightOfX(p.Span - p.PostD), HalfPlane.KeepLeftOfX(p.Span),
-                HalfPlane.KeepAboveY(p.PostBaseY),        HalfPlane.KeepBelowLine(rtP, rtD)
+                HalfPlane.KeepAboveY(0),                  HalfPlane.KeepBelowLine(rtP, rtD)
             });
 
             // Girt (tie): rectangle between post inner faces at girt height.

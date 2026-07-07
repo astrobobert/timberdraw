@@ -769,7 +769,8 @@ namespace TimberDraw
                     Add("FloorGirt", "FG", "Floor Girt", WDH(p.GirtW, p.GirtD, p.FloorGirtHt));
                     Add("FloorBrace", "A", "Floor Brace L", WDLA(p.BraceW, p.BraceD, p.BraceLength, p.BraceAngle));
                     Add("FloorBrace", "E", "Floor Brace R", WDLA(p.BraceW, p.BraceD, p.BraceLength, p.BraceAngle));
-                    // Transverse sill at grade (posts shorten + tenon down into it). OFF by default so
+                    // Transverse sill BELOW the post feet (they stay the y=0 datum and stub-tenon down
+                    // into it; the leaf's Height = sill TOP elevation, default 0). OFF by default so
                     // existing recipes generate unchanged. Square at the post width.
                     Add("Sill", "SL", "Sill", WD(p.PostW, p.PostW), enabled: false);
                     break;
@@ -1005,8 +1006,9 @@ namespace TimberDraw
                     Add("FloorGirt", "S", "Floor Girt", WDH(p.GirtW, p.GirtD, p.FloorGirtHt));
                     Add("FloorBrace", "L", "Floor Girt Brace L", Brace());
                     Add("FloorBrace", "R", "Floor Girt Brace R", Brace());
-                    // Longitudinal sill at grade (the floor-girt recipe at Y=0: post-to-post, outside
-                    // face flush). OFF by default; square at the post width.
+                    // Longitudinal sill below the post feet (the floor-girt recipe under grade:
+                    // post-to-post, outside face flush; Height = TOP elevation, default 0). OFF by
+                    // default; square at the post width.
                     Add("Sill", "S", "Sill", WD(p.PostW, p.PostW), enabled: false);
                     // Each eave carries ITS slope's commons/purlins (default OFF, mutually exclusive);
                     // the owning wall's side picks the slope at generation.
