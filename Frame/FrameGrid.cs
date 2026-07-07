@@ -139,6 +139,10 @@ namespace TimberDraw
                 case "HBeam":     return "HB";
                 case "HPost":     return "HP";
                 case "Girt":      return desig == "FG" ? "FG" : "TG";
+                // The transverse grade sill: "SL-1AE". The family code IS the level marker (the
+                // design memo's "-Sl" qualifier predates type-first labels; TG-1AE / FG-1AE-Dn /
+                // SL-1AE are already distinct).
+                case "Sill":      return "SL";
                 default:          return "";
             }
         }
@@ -190,6 +194,7 @@ namespace TimberDraw
             {
                 case "EaveGirt":  return "EG";
                 case "FloorGirt": return "FG";
+                case "Sill":      return "SL";   // longitudinal wall sill: "SL-A-I"
                 case "Ridge":     return "R";
                 case "QueenGirt": return "QG";
                 case "HPostGirt": return "HG";

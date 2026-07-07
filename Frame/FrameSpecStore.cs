@@ -172,6 +172,7 @@ namespace TimberDraw
                 b.Timbers = ReadTimbers(ts);
             else
                 b.Timbers = MigrateBentTimbers(e, b.BentType);   // pre-Timber JSON
+            b.EnsureSill();   // saves that predate floor systems phase 3 (adds the leaf, OFF)
 
             // Queen offset precedence: explicit queenOffset -> migrate legacy queenFraction -> default.
             // Legacy queenFraction dimensioned the OUTER face from the left edge (qLo = fraction*Span), so
@@ -205,6 +206,7 @@ namespace TimberDraw
                 {
                     BaySpec bay = ReadBay(by, frameOffset);
                     bay.Role = w.Role;   // a bay's catalog role follows its line
+                    bay.EnsureSill();    // saves that predate floor systems phase 3 (eave lines only)
                     w.Bays.Add(bay);
                 }
             return w;

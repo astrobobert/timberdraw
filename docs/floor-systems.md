@@ -2,7 +2,13 @@
 
 Direction memo for bringing floor systems into the frame model. Status: **ACCEPTED 2026-07-03**
 (review calls at the end accepted as proposed). The phased roadmap at the end sequences the work;
-phase 1 is built.
+**phases 1-3 are built** (1: 2026-07-03; 2 + 3: 2026-07-07). Build notes: joist end dovetails cut
+AT PLACE TIME inside `TJoist` (sticky Joint spec, ON by default); the sill label ships as `SL-1AE`,
+not `1AE-Sl` -- the `-Sl` qualifier predated the type-first label grammar, whose family prefix now
+does that job (`TG-1AE` / `FG-1AE-Dn` / `SL-1AE` are already distinct); the transverse sill runs
+post OUTER face to outer face (full span) so every post foot bears on its bent's sill, and the
+longitudinal bay sills run post-to-post between them (corner laps stay future work); the post-foot
+stub tenon is `TJointAll`'s second pass (its own sticky recipe, seeded short + unpegged).
 
 Decisions already made (scoping, 2026-07-03):
 - **Design doc first**, then build in phases.
@@ -181,9 +187,9 @@ Each phase is its own session with its own plan; this doc only fixes the order a
 
 | Phase | Scope | Side |
 |---|---|---|
-| 1 | Joist identity + flush tops/Drop + TAssign labeler (J-I-n) + BOM/scribe cut-mark grouping | editor |
-| 2 | Joist end dovetails (engine reuse, sticky spec) + Summer identity/joint/label | editor |
-| 3 | Sills in the recipe + post-foot tenons + grid/labels (`-Sl`) -- saved model rebuild announced | generator |
+| 1 | BUILT 2026-07-03: Joist identity + flush tops/Drop + TAssign labeler (J-I-n) + BOM/scribe cut-mark grouping | editor |
+| 2 | BUILT 2026-07-07: Joist end dovetails (engine reuse, sticky spec, cut at place time) + Summer identity/joint/label | editor |
+| 3 | BUILT 2026-07-07: Sills in the recipe + post-foot stub tenons (TJointAll sill pass) + labels (`SL-1AE`/`SL-A-I`) -- saved model rebuild announced | generator |
 | 4 | PARKED: multi-level floors, recipe summers, sill corner laps + continuous/scarfed sills, tusk tenon combo, sleepers | -- |
 
 Editor phases go first deliberately: they touch nothing the generator emits, so the working model

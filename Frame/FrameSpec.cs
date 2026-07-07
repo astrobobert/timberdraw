@@ -717,6 +717,18 @@ namespace TimberDraw
             Timbers = BuildDefaultTimbers(BentType);
         }
 
+        // Self-heal (the NormalizeBraces pattern): add the Sill leaf to saves that predate floor
+        // systems phase 3. Only post-bearing bent types carry one; seeds OFF (square at the post
+        // width) so an old frame generates unchanged until the checkbox is ticked. Idempotent.
+        public void EnsureSill()
+        {
+            bool posts = BentType == "KingPost" || BentType == "QueenPost" || BentType == "HammerBeam";
+            if (!posts || Timbers == null || Find("Sill:SL") != null) return;
+            double w = SizeOf("Post:A")?.W ?? 8.0;
+            Timbers.Add(new Timber { Role = "Sill", Designation = "SL", Label = "Sill",
+                Enabled = false, Size = new MemberSize { W = w, D = w } });
+        }
+
         public static List<Timber> BuildDefaultTimbers(string bentType)
         {
             KPBentParams p = Commands.ReadKPParams();
@@ -729,8 +741,8 @@ namespace TimberDraw
                 { W = w, D = d, Length = len, Angle = ang, Head = len, Foot = len * System.Math.Tan(ang * System.Math.PI / 180.0) };
             MemberSize WDA(double w, double d, double ang) => new MemberSize { W = w, D = d, Angle = ang };
             MemberSize WDH(double w, double d, double ht) => new MemberSize { W = w, D = d, Ht = ht };
-            void Add(string role, string desig, string label, MemberSize size)
-                => list.Add(new Timber { Role = role, Designation = desig, Label = label, Enabled = true, Size = size });
+            void Add(string role, string desig, string label, MemberSize size, bool enabled = true)
+                => list.Add(new Timber { Role = role, Designation = desig, Label = label, Enabled = enabled, Size = size });
 
             bool wallPosts = bentType == "KingPost" || bentType == "QueenPost" || bentType == "HammerBeam";
 
@@ -757,6 +769,9 @@ namespace TimberDraw
                     Add("FloorGirt", "FG", "Floor Girt", WDH(p.GirtW, p.GirtD, p.FloorGirtHt));
                     Add("FloorBrace", "A", "Floor Brace L", WDLA(p.BraceW, p.BraceD, p.BraceLength, p.BraceAngle));
                     Add("FloorBrace", "E", "Floor Brace R", WDLA(p.BraceW, p.BraceD, p.BraceLength, p.BraceAngle));
+                    // Transverse sill at grade (posts shorten + tenon down into it). OFF by default so
+                    // existing recipes generate unchanged. Square at the post width.
+                    Add("Sill", "SL", "Sill", WD(p.PostW, p.PostW), enabled: false);
                     break;
 
                 case "QueenPost":
@@ -775,6 +790,7 @@ namespace TimberDraw
                     Add("FloorGirt", "FG", "Floor Girt", WDH(p.GirtW, p.GirtD, p.FloorGirtHt));
                     Add("FloorBrace", "A", "Floor Brace L", WDLA(p.BraceW, p.BraceD, p.BraceLength, p.BraceAngle));
                     Add("FloorBrace", "E", "Floor Brace R", WDLA(p.BraceW, p.BraceD, p.BraceLength, p.BraceAngle));
+                    Add("Sill", "SL", "Sill", WD(p.PostW, p.PostW), enabled: false);
                     break;
 
                 case "HammerBeam":
@@ -793,6 +809,7 @@ namespace TimberDraw
                     Add("FloorGirt", "FG", "Floor Girt", WDH(p.GirtW, p.GirtD, p.FloorGirtHt));
                     Add("FloorBrace", "A", "Floor Brace L", WDLA(p.BraceW, p.BraceD, p.BraceLength, p.BraceAngle));
                     Add("FloorBrace", "E", "Floor Brace R", WDLA(p.BraceW, p.BraceD, p.BraceLength, p.BraceAngle));
+                    Add("Sill", "SL", "Sill", WD(p.PostW, p.PostW), enabled: false);
                     break;
 
                 case "KingPostTruss":
@@ -947,6 +964,15 @@ namespace TimberDraw
             Split("FloorBrace");
         }
 
+        // Self-heal: add the Sill leaf to eave bays saved before floor systems phase 3 (seeds OFF,
+        // square 8x8 -- the leaf is editable like any member). Idempotent; non-eave lines carry none.
+        public void EnsureSill()
+        {
+            if (Role != BayRole.Eave || Timbers == null || Find("Sill:S") != null) return;
+            Timbers.Add(new Timber { Role = "Sill", Designation = "S", Label = "Sill",
+                Enabled = false, Size = new MemberSize { W = 8.0, D = 8.0 } });
+        }
+
         // The per-line longitudinal catalog (SINGLE-SIDED -- keys are neutral, the owning wall supplies
         // L/R + side at generation). One kit per BayRole; the eave girt+brace recipe is generalized to
         // every line. New members (ridge/queen/hammer braces + girts) seed OFF, like commons/purlins.
@@ -979,6 +1005,9 @@ namespace TimberDraw
                     Add("FloorGirt", "S", "Floor Girt", WDH(p.GirtW, p.GirtD, p.FloorGirtHt));
                     Add("FloorBrace", "L", "Floor Girt Brace L", Brace());
                     Add("FloorBrace", "R", "Floor Girt Brace R", Brace());
+                    // Longitudinal sill at grade (the floor-girt recipe at Y=0: post-to-post, outside
+                    // face flush). OFF by default; square at the post width.
+                    Add("Sill", "S", "Sill", WD(p.PostW, p.PostW), enabled: false);
                     // Each eave carries ITS slope's commons/purlins (default OFF, mutually exclusive);
                     // the owning wall's side picks the slope at generation.
                     Add("Commons", "X", "Commons", WD(p.CommonW, p.CommonD), enabled: false);
@@ -1092,6 +1121,8 @@ namespace TimberDraw
             Map(b, "EaveBrace:R", "EaveBrace", "ER", "Eave Brace E-R");
             Map(a, "FloorGirt:S", "FloorGirt", "L", "Floor Girt L");
             Map(b, "FloorGirt:S", "FloorGirt", "R", "Floor Girt R");
+            Map(a, "Sill:S",      "Sill",      "L", "Sill L");
+            Map(b, "Sill:S",      "Sill",      "R", "Sill R");
             Map(a, "FloorBrace:L","FloorBrace","AL", "Floor Brace A-L");
             Map(a, "FloorBrace:R","FloorBrace","AR", "Floor Brace A-R");
             Map(b, "FloorBrace:L","FloorBrace","EL", "Floor Brace E-L");

@@ -3078,6 +3078,17 @@ namespace TimberDraw
         // (JointDefaults; factory *Spec.Default when none saved). Console review loops mutate these in
         // place per session; "Set as default" in the Joints pane persists + re-seeds them (ReseedJointSticky).
         private static ManagedTimber.JointSpec _joint = JointDefaults.Joint;
+        // Post foot -> sill stub tenon (floor systems phase 3): traditionally a SHORT UNPEGGED stub
+        // (gravity does the work), so its sticky seeds tenon-only, 2" long, no pegs. Reviewed by
+        // TJointAll's sill pass; session-sticky like _joint.
+        private static ManagedTimber.JointSpec _sillJoint = SillJointSeed();
+        private static ManagedTimber.JointSpec SillJointSeed()
+        {
+            var s = ManagedTimber.JointSpec.Default;
+            s.Tenon.Length = 2.0;
+            s.Peg.Count = 0;
+            return s;
+        }
         private static ManagedTimber.RafterFootSpec _rfoot = JointDefaults.RafterFoot;
         private static ManagedTimber.RafterHeadSpec _rhead = JointDefaults.RafterHead;
         private static ManagedTimber.RidgeHousingSpec _ridge = JointDefaults.Ridge;
@@ -3953,14 +3964,18 @@ namespace TimberDraw
             return parts.Length > 0 ? parts : "(none)";
         }
 
-        // Role sets for the batch auto-cut: a girt-family END that bears on a Post SIDE face gets a M&T.
+        // Role sets for the batch auto-cut: a girt-family END that bears on a Post SIDE face gets a M&T;
+        // a Post FOOT that bears on a Sill side (its top) gets the stub tenon (floor systems phase 3).
         private static readonly HashSet<string> GirtRoles = new HashSet<string> { "Girt", "EaveGirt", "FloorGirt" };
         private static readonly HashSet<string> PostRoles = new HashSet<string> { "Post" };
+        private static readonly HashSet<string> SillRoles = new HashSet<string> { "Sill" };
 
         // Batch-cut every girt-family -> post mortise & tenon (+ pegs) in the drawing with the current
         // sticky JointSpec (reviewed once). A girt END that bears on a Post SIDE face gets the joint;
         // contacts that already carry a joint are SKIPPED (idempotent -- safe to re-run after manual
-        // TJoint tweaks). Whole-drawing scope; a post fed by several girts rebuilds once.
+        // TJoint tweaks). Whole-drawing scope; a post fed by several girts rebuilds once. When the frame
+        // carries SILLS, a second pass tenons every post FOOT into its sill with the sticky stub recipe
+        // (_sillJoint, reviewed separately -- traditionally short + unpegged).
         [CommandMethod("TJointAll")]
         public static void JointAll()
         {
@@ -3969,7 +3984,7 @@ namespace TimberDraw
             Editor ed = doc.Editor;
             Database db = doc.Database;
 
-            if (!ReviewJoint(ed)) return;   // one recipe for the whole batch
+            if (!ReviewJoint(ed)) return;   // the girt -> post recipe, one for the whole batch
 
             var all = ManagedTimber.EnumerateWithRole(db);
             // Working frames carry the accumulating Features/Pegs; geometry (O/axes/L/D/W) never changes and
@@ -3977,65 +3992,92 @@ namespace TimberDraw
             var work = new Dictionary<ObjectId, ManagedTimber.TFrame>();
             foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) t in all) work[t.Id] = t.F;
             var dirty = new HashSet<ObjectId>();
-            var cuts = new List<(ObjectId girt, ObjectId post, int jid)>();   // for the joint-type stamp
+            var cuts = new List<(ObjectId girt, ObjectId post, int jid, ConnectionType ct)>();   // for the joint-type stamp
             int nextId = NextJointId(db);
             int cut = 0, skipped = 0, failed = 0;
 
-            foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) g in all)
+            // One end->side pass: every `maleRoles` END that bears on a `hostRoles` SIDE face gets the
+            // M&T from `spec` (already-jointed contacts skip). Shared by the girt and sill passes.
+            void Pass(HashSet<string> maleRoles, HashSet<string> hostRoles,
+                ManagedTimber.JointSpec spec, ConnectionType ct)
             {
-                if (!GirtRoles.Contains(g.Role)) continue;
-                ManagedTimber.TFrame girt = work[g.Id];
-                ManagedTimber.TFace[] gf = ManagedTimber.Faces(girt);
-                for (int gi = 0; gi <= 1; gi++)
+                foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) g in all)
                 {
-                    ManagedTimber.TFace gEnd = gf[gi];
-
-                    // The post whose SIDE face this girt end bears on (same test as TJoint).
-                    ObjectId postId = ObjectId.Null;
-                    foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) pc in all)
+                    if (!maleRoles.Contains(g.Role)) continue;
+                    ManagedTimber.TFrame girt = work[g.Id];
+                    ManagedTimber.TFace[] gf = ManagedTimber.Faces(girt);
+                    for (int gi = 0; gi <= 1; gi++)
                     {
-                        if (pc.Id == g.Id || !PostRoles.Contains(pc.Role)) continue;
-                        bool mate = false;
-                        foreach (ManagedTimber.TFace ps in ManagedTimber.Faces(pc.F))
+                        ManagedTimber.TFace gEnd = gf[gi];
+
+                        // The host whose SIDE face this end bears on (same test as TJoint).
+                        ObjectId postId = ObjectId.Null;
+                        foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) pc in all)
                         {
-                            if (Math.Abs(ps.N.DotProduct(pc.F.Z)) >= 0.5) continue;   // post face must be a SIDE
-                            if (ManagedTimber.FacesMate(gEnd, ps, 0.25, out _)) { mate = true; break; }
+                            if (pc.Id == g.Id || !hostRoles.Contains(pc.Role)) continue;
+                            bool mate = false;
+                            foreach (ManagedTimber.TFace ps in ManagedTimber.Faces(pc.F))
+                            {
+                                if (Math.Abs(ps.N.DotProduct(pc.F.Z)) >= 0.5) continue;   // host face must be a SIDE
+                                if (ManagedTimber.FacesMate(gEnd, ps, 0.25, out _)) { mate = true; break; }
+                            }
+                            if (mate) { postId = pc.Id; break; }
                         }
-                        if (mate) { postId = pc.Id; break; }
+                        if (postId.IsNull) continue;
+
+                        // Skip a contact that already carries a tenon (a union box) OR a shoulder (shared polys)
+                        // at this end (idempotent -- safe to re-run).
+                        bool farEnd = gEnd.N.DotProduct(girt.Z) > 0.0;
+                        ManagedTimber.TFrame post = work[postId];
+                        if ((girt.Features != null && girt.Features.Exists(f => !f.Subtract &&
+                                (((f.Min.Z + f.Max.Z) / 2.0 > girt.L / 2.0) == farEnd)))
+                            || ExistingRafterFootId(girt, post) != 0)
+                        { skipped++; continue; }
+
+                        if (!ManagedTimber.GirtPostJoint(girt, post, gEnd, spec,
+                                out List<(Point3d Min, Point3d Max, bool Subtract)> features,
+                                out List<(Point3d C, Vector3d Axis, double R, double Half)> pegs,
+                                out List<(Point3d[] Poly, bool OnPost, double Xlo, double Xhi)> polys))
+                        { failed++; continue; }
+
+                        int jid = nextId++;
+                        ApplyJoint(ref girt, ref post, jid, features, pegs);
+                        ApplyRafterFoot(ref girt, ref post, jid, polys);   // shoulder triangle polys
+                        work[g.Id] = girt; work[postId] = post;   // persist the (struct) frames' new lists
+                        dirty.Add(g.Id); dirty.Add(postId);
+                        cuts.Add((g.Id, postId, jid, ct));
+                        cut++;
                     }
-                    if (postId.IsNull) continue;
-
-                    // Skip a contact that already carries a tenon (a union box) OR a shoulder (shared polys)
-                    // at this end (idempotent -- safe to re-run).
-                    bool farEnd = gEnd.N.DotProduct(girt.Z) > 0.0;
-                    ManagedTimber.TFrame post = work[postId];
-                    if ((girt.Features != null && girt.Features.Exists(f => !f.Subtract &&
-                            (((f.Min.Z + f.Max.Z) / 2.0 > girt.L / 2.0) == farEnd)))
-                        || ExistingRafterFootId(girt, post) != 0)
-                    { skipped++; continue; }
-
-                    if (!ManagedTimber.GirtPostJoint(girt, post, gEnd, _joint,
-                            out List<(Point3d Min, Point3d Max, bool Subtract)> features,
-                            out List<(Point3d C, Vector3d Axis, double R, double Half)> pegs,
-                            out List<(Point3d[] Poly, bool OnPost, double Xlo, double Xhi)> polys))
-                    { failed++; continue; }
-
-                    int jid = nextId++;
-                    ApplyJoint(ref girt, ref post, jid, features, pegs);
-                    ApplyRafterFoot(ref girt, ref post, jid, polys);   // shoulder triangle polys
-                    work[g.Id] = girt; work[postId] = post;   // persist the (struct) frames' new lists
-                    dirty.Add(g.Id); dirty.Add(postId);
-                    cuts.Add((g.Id, postId, jid));
-                    cut++;
                 }
+            }
+
+            Pass(GirtRoles, PostRoles, _joint, ConnectionType.BoxTenon(_joint));
+            int girtCuts = cut;
+
+            // SILL pass: only when the frame carries sills. Its recipe is the separate _sillJoint sticky
+            // (short unpegged stub seed), reviewed through the same editor; Escape skips just this pass.
+            bool hasSills = false;
+            foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) t in all)
+                if (SillRoles.Contains(t.Role)) { hasSills = true; break; }
+            if (hasSills)
+            {
+                ed.WriteMessage("\nSill pass -- post foot -> sill stub tenon:");
+                ManagedTimber.JointSpec saveJoint = _joint;
+                _joint = _sillJoint;
+                bool go = ReviewJoint(ed);
+                _sillJoint = _joint;
+                _joint = saveJoint;
+                if (go) Pass(PostRoles, SillRoles, _sillJoint, ConnectionType.BoxTenon(_sillJoint));
+                else ed.WriteMessage("\nSill stub tenons skipped.");
             }
 
             var remap = new Dictionary<ObjectId, ObjectId>();
             foreach (ObjectId id in dirty) remap[id] = ManagedTimber.RebuildFromFrame(id, work[id]);
-            ConnectionType boxTenon = ConnectionType.BoxTenon(_joint);   // one recipe for the whole batch
-            foreach ((ObjectId girt, ObjectId post, int jid) c in cuts)
-                StampJoint(remap[c.girt], remap[c.post], c.jid, boxTenon);
-            ed.WriteMessage("\nTJointAll: cut " + cut + " joint(s), skipped " + skipped + " already-jointed" +
+            foreach ((ObjectId girt, ObjectId post, int jid, ConnectionType ct) c in cuts)
+                StampJoint(remap[c.girt], remap[c.post], c.jid, c.ct);
+            ed.WriteMessage("\nTJointAll: cut " + cut + " joint(s)" +
+                            (cut > girtCuts ? " (" + (cut - girtCuts) + " post-foot -> sill)" : "") +
+                            ", skipped " + skipped + " already-jointed" +
                             (failed > 0 ? ", " + failed + " collapsed" : "") + ".");
         }
 
