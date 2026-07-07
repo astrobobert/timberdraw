@@ -3852,8 +3852,8 @@ namespace TimberDraw
             Editor ed = doc.Editor;
             Database db = doc.Database;
 
-            if (!PickTimber(ed, db, "\nPick the TENONED timber (girt): ", out ObjectId girtId, out ManagedTimber.TFrame girt)) return;
-            if (!PickTimber(ed, db, "\nPick the MORTISED timber (post): ", out ObjectId postId, out ManagedTimber.TFrame post)) return;
+            if (!PickTimber(ed, db, "\nPick the TENONED timber (girt / summer): ", out ObjectId girtId, out ManagedTimber.TFrame girt)) return;
+            if (!PickTimber(ed, db, "\nPick the MORTISED timber (post / carrier): ", out ObjectId postId, out ManagedTimber.TFrame post)) return;
             if (girtId == postId) { ed.WriteMessage("\nPick two different timbers."); return; }
 
             // The girt END-cap (Faces 0/1) that mates a post SIDE face (coplanar, opposing, overlapping).
@@ -3868,7 +3868,7 @@ namespace TimberDraw
                     if (ManagedTimber.FacesMate(gf[gi], ps, 0.25, out _)) { gEnd = gf[gi]; found = true; break; }
                 }
             if (!found)
-            { ed.WriteMessage("\nNo end-into-face contact -- the girt's end must bear on a post side face."); return; }
+            { ed.WriteMessage("\nNo end-into-face contact -- the tenoned end must bear on a side face of the host."); return; }
 
             if (!ReviewJoint(ed)) return;   // review / adjust the sticky joint recipe (Enter / Cut proceeds)
 
@@ -4276,8 +4276,8 @@ namespace TimberDraw
             Editor ed = doc.Editor;
             Database db = doc.Database;
 
-            if (!PickTimber(ed, db, "\nPick the TENONED timber (girt): ", out ObjectId girtId, out ManagedTimber.TFrame girt)) return;
-            if (!PickTimber(ed, db, "\nPick the MORTISED timber (post): ", out ObjectId postId, out ManagedTimber.TFrame post)) return;
+            if (!PickTimber(ed, db, "\nPick the TENONED timber (girt / summer): ", out ObjectId girtId, out ManagedTimber.TFrame girt)) return;
+            if (!PickTimber(ed, db, "\nPick the MORTISED timber (post / carrier): ", out ObjectId postId, out ManagedTimber.TFrame post)) return;
             if (girtId == postId) { ed.WriteMessage("\nPick two different timbers."); return; }
 
             // The girt END-cap that bears on a post SIDE face (same find as TJoint).
@@ -5661,7 +5661,17 @@ namespace TimberDraw
         // are left untagged -- TAssign the field to its FLOOR afterward (which also mints the
         // J-<floor>-n labels). (Joist = the pitch-0 case of a future generalized purlin/common/joist
         // array.)
+        //
+        // END JOINERY (floor systems phase 2): with the sticky Joint spec ON (the default), every joist
+        // lands DOVETAILED -- both ends cut into the two span carriers as dropped-in housed dovetails
+        // via the host-neutral PurlinRafterJoint engine (housing + flared top-band tongue, JointPrisms).
+        // Each end gets its own joint id + a "Housed dovetail" pane stamp, so the Joints pane can
+        // re-cut or delete any single end; the carriers rebuild ONCE for the whole row. The Joint
+        // keyword reviews the sticky spec (On/Off + the five dovetail knobs).
         private static double _joistDrop = 0.0;   // session-sticky Drop below the carrier tops
+        // Session-sticky joist-end dovetail recipe -- seeded from the pane's saved "Housed dovetail"
+        // default (the same cut, host-neutral: purlin->rafter, joist->carrier).
+        private static ManagedTimber.PurlinRafterSpec _joistDove = JointDefaults.Purlin;
 
         [CommandMethod("TJoist")]
         public static void Joists()
@@ -5685,9 +5695,10 @@ namespace TimberDraw
                 if (!GetPositive(ed, "Depth", 10.0, out d)) return;
             }
 
-            // Span pair: the two facing bearing faces the joists run between.
-            if (!ManagedTimber.PickFace(ed, db, "\nPick the FIRST span (bearing) face: ", out _, out ManagedTimber.TFace fa)) return;
-            if (!ManagedTimber.PickFace(ed, db, "\nPick the SECOND span (bearing) face: ", out _, out ManagedTimber.TFace fb)) return;
+            // Span pair: the two facing bearing faces the joists run between (their timbers are the
+            // CARRIERS -- kept for the end-dovetail cut).
+            if (!ManagedTimber.PickFace(ed, db, "\nPick the FIRST span (bearing) face: ", out ObjectId caId, out ManagedTimber.TFace fa)) return;
+            if (!ManagedTimber.PickFace(ed, db, "\nPick the SECOND span (bearing) face: ", out ObjectId cbId, out ManagedTimber.TFace fb)) return;
             if (fa.N.DotProduct(fb.N) > -0.99)
             { ed.WriteMessage("\nThe two span faces must face each other (opposing-parallel)."); return; }
 
@@ -5724,7 +5735,8 @@ namespace TimberDraw
             if (L <= 1e-6) { ed.WriteMessage("\nThe distribution faces don't bound a run along the floor."); return; }
 
             // Count (N even, end-inset) or on-center Spacing (default 36", centered in the run).
-            // Drop edits the sticky top recess (0 = flush tops) and re-asks.
+            // Drop edits the sticky top recess (0 = flush tops); Joint reviews the sticky end-dovetail
+            // recipe (On/Off + knobs). Both re-ask.
             string mode;
             for (; ; )
             {
@@ -5732,9 +5744,11 @@ namespace TimberDraw
                 pko.Keywords.Add("Count");
                 pko.Keywords.Add("Spacing");
                 pko.Keywords.Add("Drop");
+                pko.Keywords.Add("Joint");
                 pko.Keywords.Default = "Spacing";
                 PromptResult kr = ed.GetKeywords(pko);
                 if (kr.Status != PromptStatus.OK) return;
+                if (kr.StringResult == "Joint") { if (!ReviewJoistDove(ed)) return; continue; }
                 if (kr.StringResult != "Drop") { mode = kr.StringResult; break; }
                 if (!GetDouble(ed, "Drop below carrier tops", _joistDrop, false, out double dr)) return;
                 _joistDrop = System.Math.Max(0.0, dr);
@@ -5768,15 +5782,103 @@ namespace TimberDraw
             cL += vUp * ((top - _joistDrop - d / 2.0) - cL.GetAsVector().DotProduct(vUp));
             double baseRun = cL.GetAsVector().DotProduct(runDir);
             int drawn = 0;
+            var joists = new List<(ObjectId Id, ManagedTimber.TFrame F)>();
             foreach (double s in stations)
             {
                 Point3d origin = cL + runDir * (s - baseRun);
-                ManagedTimber.DrawBox(origin, fa.N, depthAxis, runDir, gap, d, w, type, "", "butt", "butt");
+                ObjectId jId = ManagedTimber.DrawBox(origin, fa.N, depthAxis, runDir, gap, d, w, type, "", "butt", "butt");
                 drawn++;
+                if (_joistDove.On && !jId.IsNull && ManagedTimber.TryReadFrame(db, jId, out ManagedTimber.TFrame jfr))
+                    joists.Add((jId, jfr));
             }
+
+            // END DOVETAILS: cut both ends of every joist into its carrier with the sticky spec. All
+            // prisms accumulate on working frames -- each joist rebuilds once, each CARRIER once for
+            // the whole row (not per joist). Ids are minted from one batch base (NextJointId scans the
+            // DB, which doesn't see the in-memory prisms). Fresh joists carry no prior joints, so no
+            // reuse/overlap purge is needed. Each end is stamped "Housed dovetail" for the Joints pane.
+            int cutEnds = 0, missedEnds = 0;
+            if (joists.Count > 0
+                && ManagedTimber.TryReadFrame(db, caId, out ManagedTimber.TFrame carA)
+                && ManagedTimber.TryReadFrame(db, cbId, out ManagedTimber.TFrame carB))
+            {
+                int nextId = NextJointId(db);
+                var stamps = new List<(ObjectId J, bool OnA, int Jid)>();
+                for (int ji = 0; ji < joists.Count; ji++)
+                {
+                    ManagedTimber.TFrame jf = joists[ji].F;
+                    for (int side = 0; side <= 1; side++)
+                    {
+                        ManagedTimber.TFrame host = side == 0 ? carA : carB;
+                        if (!FindFootContact(jf, host, out ManagedTimber.TFace hFace)
+                            || !ManagedTimber.PurlinRafterJoint(jf, host, hFace, _joistDove,
+                                   out List<(Point3d[] Poly, Vector3d Extrude, bool OnRafter)> prisms, out _))
+                        { missedEnds++; continue; }
+                        int jid = nextId++;
+                        if (jf.JointPrisms == null) jf.JointPrisms = new List<(Point3d[], Vector3d, int, bool)>();
+                        if (host.JointPrisms == null) host.JointPrisms = new List<(Point3d[], Vector3d, int, bool)>();
+                        foreach ((Point3d[] Poly, Vector3d Extrude, bool OnRafter) p in prisms)
+                            (p.OnRafter ? host.JointPrisms : jf.JointPrisms).Add((p.Poly, p.Extrude, jid, p.OnRafter));
+                        if (side == 0) carA = host; else carB = host;
+                        stamps.Add((joists[ji].Id, side == 0, jid));
+                        cutEnds++;
+                    }
+                    joists[ji] = (joists[ji].Id, jf);
+                }
+                if (cutEnds > 0)
+                {
+                    var remap = new Dictionary<ObjectId, ObjectId>();
+                    foreach ((ObjectId Id, ManagedTimber.TFrame F) j in joists)
+                        remap[j.Id] = ManagedTimber.RebuildFromFrame(j.Id, j.F);
+                    ObjectId nA = ManagedTimber.RebuildFromFrame(caId, carA);
+                    ObjectId nB = ManagedTimber.RebuildFromFrame(cbId, carB);
+                    ConnectionType dove = ConnectionType.HousedDovetail(_joistDove);   // one recipe for the row
+                    foreach ((ObjectId J, bool OnA, int Jid) st in stamps)
+                        StampJoint(remap[st.J], st.OnA ? nA : nB, st.Jid, dove);
+                }
+            }
+
             ed.WriteMessage("\nTJoist: " + drawn + " " + type + " " + (int)w + "x" + (int)d + "x" +
                             gap.ToString("0.#") + (_joistDrop > 0 ? " dropped " + _joistDrop.ToString("0.###") + "\"" : ", tops flush")
+                            + (_joistDove.On
+                               ? ", " + cutEnds + " end dovetail(s)" + (missedEnds > 0 ? " (" + missedEnds + " end(s) missed the carrier)" : "")
+                               : ", ends butt (Joint off)")
                             + " -- TAssign the field to its floor for J-labels.");
+        }
+
+        // The joist end-dovetail sub-menu: toggle + edit the sticky _joistDove (the same five knobs as
+        // the purlin housed dovetail -- one engine, one vocabulary). Enter / "Done" returns to TJoist.
+        private static bool ReviewJoistDove(Editor ed)
+        {
+            while (true)
+            {
+                var pko = new PromptKeywordOptions(
+                    "\nJoist end dovetail [" + (_joistDove.On ? "ON" : "OFF") + "] -- Seat=" + _joistDove.Seat +
+                    " Length=" + _joistDove.Length + " Width=" + _joistDove.Width +
+                    " Depth=" + _joistDove.Depth + " Angle=" + _joistDove.Angle + ". ") { AllowNone = true };
+                pko.Keywords.Add("Done");
+                pko.Keywords.Add(_joistDove.On ? "Off" : "On");   // the prompt rebuilds each pass
+                pko.Keywords.Add("Seat");
+                pko.Keywords.Add("Length");
+                pko.Keywords.Add("Width");
+                pko.Keywords.Add("Depth");
+                pko.Keywords.Add("Angle");
+                pko.Keywords.Default = "Done";
+                PromptResult kr = ed.GetKeywords(pko);
+                if (kr.Status != PromptStatus.OK && kr.Status != PromptStatus.None) return false;
+                string kw = kr.Status == PromptStatus.None ? "Done" : kr.StringResult;
+                if (kw == "Done") return true;
+                switch (kw)
+                {
+                    case "On":     _joistDove.On = true; break;
+                    case "Off":    _joistDove.On = false; break;
+                    case "Seat":   if (GetPositive(ed, "Full-section housing depth into the carrier", _joistDove.Seat, out double sv)) _joistDove.Seat = sv; break;
+                    case "Length": if (GetPositive(ed, "Dovetail tongue length past the housing", _joistDove.Length, out double lv)) _joistDove.Length = lv; break;
+                    case "Width":  if (GetPositive(ed, "Dovetail base width", _joistDove.Width, out double wv)) _joistDove.Width = wv; break;
+                    case "Depth":  if (GetPositive(ed, "Dovetail band depth (flush with the top face)", _joistDove.Depth, out double dv)) _joistDove.Depth = dv; break;
+                    case "Angle":  if (GetDouble  (ed, "Dovetail taper half-angle (degrees)", _joistDove.Angle, false, out double av)) _joistDove.Angle = av; break;
+                }
+            }
         }
 
         // Highest reach of a rectangular face along an up axis: center + both projected half-extents.

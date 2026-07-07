@@ -2345,7 +2345,7 @@ namespace TimberDraw.Properties {
         // CSV of named sections, one per entry as "type:width:depth" (e.g. "Post:8:8").
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("Post:8:8,Girt:6:8,Rafter:5:7,Brace:4:6")]
+        [global::System.Configuration.DefaultSettingValueAttribute("Post:8:8,Girt:6:8,Rafter:5:7,Brace:4:6,Joist:6:8,Summer:8:10")]
         public string TimberSections {
             get {
                 return ((string)(this["TimberSections"]));
