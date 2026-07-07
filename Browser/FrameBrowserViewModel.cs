@@ -269,10 +269,10 @@ namespace TimberDraw.Browser
             set { if (Set(ref _editD, value) && !_loadingSel) _sectionDirty = true; }
         }
 
-        // The ONE commit button: re-section if the section fields were edited, assign if the
-        // address fields were edited -- either, or both. (If both, the assign runs through the
-        // deferred TAssign command and skips any handle the re-section just replaced; re-Apply
-        // covers that rare double.)
+        // The ONE commit button: re-section if the section fields were edited; assign whenever the
+        // address fields point somewhere the selection isn't already (NOT just when they were edited
+        // this time -- the dirty-only gate made the SECOND batch a silent no-op, and reviewing a row
+        // that loaded the right target then selecting fresh timbers did nothing on Apply).
         private void Apply()
         {
             if (_sectionDirty && _selected != null)
@@ -289,11 +289,50 @@ namespace TimberDraw.Browser
                             if (it.Id == newId) { SelectedItem = it; break; }
                 }
             }
-            if (_assignDirty && !string.IsNullOrWhiteSpace(_asmOwner))
+            if (!string.IsNullOrWhiteSpace(_asmOwner) && (_assignDirty || TargetDiffers()))
             {
                 AssignSelected();
                 _assignDirty = false;
             }
+        }
+
+        // TRUE when any selected row's current assignment differs from the target fields -- the
+        // fields are WYSIWYG: whatever they show is where Apply puts the selection. A single row
+        // loaded for review shows its own address, so a section-only Apply stays a section-only
+        // Apply; fresh (unassigned) timbers always differ.
+        private bool TargetDiffers()
+        {
+            var sel = _selectedMany.Count > 0
+                ? (System.Collections.Generic.IEnumerable<FrameBrowserItem>)_selectedMany
+                : _selected != null ? new[] { _selected } : null;
+            if (sel == null) return false;
+            var cmp = System.StringComparer.OrdinalIgnoreCase;
+            string frame = string.IsNullOrWhiteSpace(_asmFrame) ? "A" : _asmFrame.Trim();
+            string owner = (_asmOwner ?? "").Trim();
+            string bay = AsmExtraEnabled ? (_asmBay ?? "").Trim() : "";
+            foreach (FrameBrowserItem it in sel)
+            {
+                if (!cmp.Equals(it.Frame ?? "", frame)) return true;
+                switch (_asmKind)
+                {
+                    case "Bent":
+                        // The Col box only refines the minted label; ownership is the bent number.
+                        if (!cmp.Equals(it.Bent ?? "", StripIntersection(owner))) return true; break;
+                    case "Wall":
+                        if (!cmp.Equals(it.Wall ?? "", owner) || !cmp.Equals(it.Bay ?? "", bay)) return true; break;
+                    case "Floor":
+                        if (!cmp.Equals(it.Floor ?? "", owner)) return true; break;
+                }
+            }
+            return false;
+        }
+
+        // The leading digits of a possibly combined "2C" bent owner (matches TAssign's split).
+        private static string StripIntersection(string owner)
+        {
+            int i = 0;
+            while (i < owner.Length && char.IsDigit(owner[i])) i++;
+            return owner.Substring(0, i).Length > 0 ? owner.Substring(0, i) : owner;
         }
 
         private string _filter = "";
