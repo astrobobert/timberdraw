@@ -32,6 +32,7 @@ namespace TimberDraw
         public const string KeyBirdsmouth  = "Birdsmouth";
         public const string KeyPurlin      = "Housed dovetail";   // host-neutral (purlin->rafter, joist->carrier)
         public const string KeyQPRafter    = "QP rafter apex";
+        public const string KeyTusk        = "Tusk tenon";        // summer -> girt: soffit-bearing housing + deep tenon
 
         // Saved-or-factory getters -- the single source every consumer (ConnectionType factories, Spec*
         // mappers, ManagedCommands sticky seeds) reads joint defaults from.
@@ -45,6 +46,7 @@ namespace TimberDraw
         public static ManagedTimber.CommonEaveSpec   CommonEave  => Get(KeyBirdsmouth,  ManagedTimber.CommonEaveSpec.Default);
         public static ManagedTimber.PurlinRafterSpec Purlin      => Get(KeyPurlin,      ManagedTimber.PurlinRafterSpec.Default);
         public static ManagedTimber.StrutTenonSpec   QPRafter    => Get(KeyQPRafter,    ManagedTimber.StrutTenonSpec.QPRafterDefault);
+        public static ManagedTimber.JointSpec        Tusk        => Get(KeyTusk,        ManagedTimber.JointSpec.TuskDefault);
 
         // The saved default for `key`, or `factory` when none is saved / the stored JSON doesn't parse.
         public static T Get<T>(string key, T factory) where T : struct

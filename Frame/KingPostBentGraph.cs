@@ -180,6 +180,7 @@ namespace TimberDraw
                     FloorHt("FloorGirt:L"), FloorHt("FloorGirt:R"));
                 AddSillBayMembers(g, bp, bentZs[i], bentZs[i + 1],
                     y.IsEnabled("Sill:L"), y.IsEnabled("Sill:R"));
+                AddSummer(g, bp, y, bentZs[i], bentZs[i + 1]);
                 AddBayBraces(g, bp, y, bentZs[i], bentZs[i + 1]);
                 // Per-side roof: each eave owns its slope's commons/purlins (left = Wall A's bay, right
                 // = Wall E's), so the two slopes can differ. Common rafters bed on that side's eave girt.
@@ -708,6 +709,28 @@ namespace TimberDraw
                 sr.Planes.Add(HalfPlane.KeepAboveY(bot));
                 sr.Planes.Add(HalfPlane.KeepBelowY(top));
             }
+        }
+
+        // Recipe SUMMER (floor systems phase 4, owned by the CENTER line like the ridge): the major
+        // mid-span floor carrier -- a per-bay longitudinal beam centered across the span, top flush
+        // with the bent floor girts (FloorGirtHt), running girt face to girt face (LongInset = the
+        // transverse floor girt's thickness). Joists then span wall-to-summer (TJoist), and
+        // TJointAll's summer pass cuts the tusk tenons into the girts.
+        private static void AddSummer(FrameGraph g, KPBentParams p, BaySpec y, double zA, double zB)
+        {
+            if (y == null || !y.IsEnabled("Summer:S")) return;
+            MemberSize sz = y.SizeOf("Summer:S");
+            double w = sz?.W ?? 8.0, d = sz?.D ?? 10.0;
+            double top = p.FloorGirtHt, bot = top - d;
+            double xLo = (p.Span - w) / 2.0;
+            FrameEdge s = MakeLongitudinal(g, "Summer",
+                g.AddNode("SummerBay", new Point3d(xLo, top, zA)),
+                g.AddNode("SummerBay", new Point3d(xLo, top, zB)),
+                w, d, p.FloorGirtW, "S");
+            s.Planes.Add(HalfPlane.KeepRightOfX(xLo));
+            s.Planes.Add(HalfPlane.KeepLeftOfX(xLo + w));
+            s.Planes.Add(HalfPlane.KeepAboveY(bot));
+            s.Planes.Add(HalfPlane.KeepBelowY(top));
         }
 
         // Shared bay-level FLOOR GIRTS (all bent types): longitudinal members running bent to

@@ -223,13 +223,14 @@ namespace TimberDraw
                 case JointDefaults.KeyBirdsmouth:  JointDefaults.Save(JointDefaults.KeyBirdsmouth,  SpecBirdsmouth(ct));   return true;
                 case JointDefaults.KeyPurlin:      JointDefaults.Save(JointDefaults.KeyPurlin,      SpecPurlin(ct));       return true;
                 case JointDefaults.KeyQPRafter:    JointDefaults.Save(JointDefaults.KeyQPRafter,    SpecQPRafter(ct));     return true;
+                case JointDefaults.KeyTusk:        JointDefaults.Save(JointDefaults.KeyTusk,        SpecTusk(ct));         return true;
                 default: return false;
             }
         }
 
         // The built-in presets, in display order.
         public static List<ConnectionType> BuiltIns() => new List<ConnectionType>
-            { BoxTenon(), StrutTenon(), BraceTenon(), RafterFoot(), RidgeHousing(), RafterHead(), CommonRidge(), Birdsmouth(), HousedDovetail(), QPRafterApex() };
+            { BoxTenon(), TuskTenon(), StrutTenon(), BraceTenon(), RafterFoot(), RidgeHousing(), RafterHead(), CommonRidge(), Birdsmouth(), HousedDovetail(), QPRafterApex() };
 
         // ---- Built-in presets (factory + Spec* mapping + Apply delegate) ----
 
@@ -501,8 +502,18 @@ namespace TimberDraw
         // existing GirtPostJoint. a = the girt, b = the post. Pegs carry an int Count, an enum Bore (0 = Full,
         // 1 = Blind) and a bool BlindFlip (0/1) -- mapped in SpecBoxTenon.
         public static ConnectionType BoxTenon() => BoxTenon(JointDefaults.Joint);
-        public static ConnectionType BoxTenon(ManagedTimber.JointSpec d)
-            => new ConnectionType("Box tenon", new List<JointElement>
+        public static ConnectionType BoxTenon(ManagedTimber.JointSpec d) => BoxKit("Box tenon", d);
+
+        // TUSK TENON (floor systems phase 4): the classic summer -> girt joint -- a soffit-bearing
+        // HOUSING (bottom band; its top shoulder insets everything above the bearing) + a deep tenon
+        // riding above it + a peg. Same element stack, spec and engine as the Box tenon; only the
+        // name (its own saved default slot) and the factory proportions differ.
+        public static ConnectionType TuskTenon() => TuskTenon(JointDefaults.Tusk);
+        public static ConnectionType TuskTenon(ManagedTimber.JointSpec d) => BoxKit(JointDefaults.KeyTusk, d);
+
+        // The shared girt->post kit factory (Box tenon / Tusk tenon: same stack over JointSpec).
+        private static ConnectionType BoxKit(string name, ManagedTimber.JointSpec d)
+            => new ConnectionType(name, new List<JointElement>
             {
                 ElementKit.Tenon(d.Tenon.On, d.Tenon.Thickness, d.Tenon.Length, d.Tenon.ShoulderTop, d.Tenon.ShoulderBottom, d.Tenon.Offset),
                 ElementKit.HousingFull(d.Housing.On, d.Housing),
@@ -510,8 +521,14 @@ namespace TimberDraw
             }, ApplyBoxTenonCut);
 
         private static ManagedTimber.JointSpec SpecBoxTenon(ConnectionType ct)
+            => SpecBoxLike(ct, JointDefaults.Joint);
+        private static ManagedTimber.JointSpec SpecTusk(ConnectionType ct)
+            => SpecBoxLike(ct, JointDefaults.Tusk);
+
+        // The shared JointSpec mapping (the stored default for the preset's own slot seeds the
+        // unsurfaced fields, e.g. Shoulder).
+        private static ManagedTimber.JointSpec SpecBoxLike(ConnectionType ct, ManagedTimber.JointSpec spec)
         {
-            ManagedTimber.JointSpec spec = JointDefaults.Joint;   // stored default seeds unsurfaced fields (e.g. Shoulder)
             JointElement t = ct.E(ElementKind.Tenon);
             spec.Tenon.On = t.Enabled;
             spec.Tenon.Thickness = t.P("Thickness").Value;
@@ -528,7 +545,8 @@ namespace TimberDraw
             ObjectId bId, ManagedTimber.TFrame b, ConnectionType ct)
         {
             ManagedTimber.TFrame girt = a, post = b;
-            bool ok = ManagedCommands.ApplyBoxTenonJoint(db, aId, ref girt, bId, ref post, SpecBoxTenon(ct),
+            ManagedTimber.JointSpec spec = ct.Name == JointDefaults.KeyTusk ? SpecTusk(ct) : SpecBoxTenon(ct);
+            bool ok = ManagedCommands.ApplyBoxTenonJoint(db, aId, ref girt, bId, ref post, spec,
                 out ObjectId ng, out ObjectId np, out int jid, out string diag);
             return new ApplyResult { Ok = ok, Diag = diag, AId = ng, BId = np, Jid = jid };
         }

@@ -335,7 +335,7 @@ namespace TimberDraw
                 DrawElevationMarkers(tr, btr, db, layer, mapsToDraw, minX, minY);  // per-drawing view-direction markers
 
                 // FLOOR 0: a Plan-kind map framing the frame's REAL location (the structural grid + the
-                // post feet; frame SILLS will live here too, once built). ShopLayouts gives it its own
+                // post feet + the frame SILLS, drawn in place). ShopLayouts gives it its own
                 // viewport with the 3D timber layers frozen, so it reads as a clean column/foundation
                 // plan. Added after the row flow so it is not drawn as an offset map; its title is drawn
                 // here in place above the frame.
@@ -419,12 +419,19 @@ namespace TimberDraw
         // Draw each floor POST's actual FOOTPRINT (top-down projection of its solid) IN PLACE at its real
         // WCS X,Y on the floor plane -- annotating the structural grid, on the blue TM_SHOP layer (replaces
         // the dropped plan drawing). Floor-meeting verticals only (elevated king posts on a tie are skipped).
+        // Frame SILLS draw the same way (they ARE the Floor 0 story -- the foundation interface), first,
+        // so the post feet read on top of them.
         private static void DrawFootprints(Transaction tr, BlockTableRecord btr, ObjectId layer, List<ShopMap> maps)
         {
             Point3d Ident(Point2d q) => new Point3d(q.X, q.Y, 0.0);
+            var distinct = maps.SelectMany(m => m.Members)
+                               .GroupBy(t => t.Id).Select(g => g.First()).ToList();
 
-            var verticals = maps.SelectMany(m => m.Members)
-                                .GroupBy(t => t.Id).Select(g => g.First())
+            foreach (ManagedTimber.ShopInfo s in distinct)
+                if (s.Role == "Sill")
+                    DrawShape(tr, btr, layer, PlanProjection, s, Ident);
+
+            var verticals = distinct
                                 .Where(t => Math.Abs(t.F.Z.DotProduct(Vector3d.ZAxis)) >= 0.9)
                                 .ToList();
             if (verticals.Count == 0) return;

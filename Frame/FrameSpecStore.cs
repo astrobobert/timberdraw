@@ -207,6 +207,7 @@ namespace TimberDraw
                     BaySpec bay = ReadBay(by, frameOffset);
                     bay.Role = w.Role;   // a bay's catalog role follows its line
                     bay.EnsureSill();    // saves that predate floor systems phase 3 (eave lines only)
+                    bay.EnsureSummer();  // saves that predate floor systems phase 4 (center line only)
                     w.Bays.Add(bay);
                 }
             return w;

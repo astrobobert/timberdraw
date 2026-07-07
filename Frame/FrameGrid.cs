@@ -195,6 +195,7 @@ namespace TimberDraw
                 case "EaveGirt":  return "EG";
                 case "FloorGirt": return "FG";
                 case "Sill":      return "SL";   // longitudinal wall sill: "SL-A-I"
+                case "Summer":    return "SB";   // recipe summer, center-owned: "SB-C-I"
                 case "Ridge":     return "R";
                 case "QueenGirt": return "QG";
                 case "HPostGirt": return "HG";

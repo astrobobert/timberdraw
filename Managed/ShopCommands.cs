@@ -8,8 +8,8 @@ namespace TimberDraw
     // Shop drawings: automated 2D "assembly elevation maps" of the managed frame. Every timber is drawn
     // in its real place as a nominal box outline and labeled where it sits, so each stick is seen in
     // context of its neighbors -- one map per BENT, one per WALL, one FLOOR PLAN per floor level
-    // (joists/summers + carrier context), plus Floor 0 (the in-place structural grid + post feet; sills
-    // later). This is the command surface (thin); the grouping + geometry live in ShopMaps, the
+    // (joists/summers + carrier context), plus Floor 0 (the in-place structural grid + post feet +
+    // frame sills). This is the command surface (thin); the grouping + geometry live in ShopMaps, the
     // paper-space wrapper in ShopLayouts.
     public partial class ManagedCommands
     {

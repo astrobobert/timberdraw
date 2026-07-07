@@ -974,6 +974,15 @@ namespace TimberDraw
                 Enabled = false, Size = new MemberSize { W = 8.0, D = 8.0 } });
         }
 
+        // Self-heal: add the Summer leaf to center-line bays saved before floor systems phase 4
+        // (seeds OFF, 8x10). Idempotent; only the Center line carries one.
+        public void EnsureSummer()
+        {
+            if (Role != BayRole.Center || Timbers == null || Find("Summer:S") != null) return;
+            Timbers.Add(new Timber { Role = "Summer", Designation = "S", Label = "Summer",
+                Enabled = false, Size = new MemberSize { W = 8.0, D = 10.0 } });
+        }
+
         // The per-line longitudinal catalog (SINGLE-SIDED -- keys are neutral, the owning wall supplies
         // L/R + side at generation). One kit per BayRole; the eave girt+brace recipe is generalized to
         // every line. New members (ridge/queen/hammer braces + girts) seed OFF, like commons/purlins.
@@ -1020,6 +1029,9 @@ namespace TimberDraw
                     Add("Ridge", "R", "Ridge", WD(p.RidgeW, p.RidgeD));
                     Add("RidgeBrace", "L", "Ridge Brace L", Brace(), enabled: false);
                     Add("RidgeBrace", "R", "Ridge Brace R", Brace(), enabled: false);
+                    // The mid-span floor carrier (floor systems phase 4): a per-bay longitudinal beam
+                    // centered across the span, top flush with the bent floor girts. OFF by default.
+                    Add("Summer", "S", "Summer", WD(8.0, 10.0), enabled: false);
                     break;
 
                 case BayRole.Queen:
@@ -1125,6 +1137,7 @@ namespace TimberDraw
             Map(b, "FloorGirt:S", "FloorGirt", "R", "Floor Girt R");
             Map(a, "Sill:S",      "Sill",      "L", "Sill L");
             Map(b, "Sill:S",      "Sill",      "R", "Sill R");
+            Map(ridgeSrc, "Summer:S", "Summer", "S", "Summer");   // center-owned, like the ridge
             Map(a, "FloorBrace:L","FloorBrace","AL", "Floor Brace A-L");
             Map(a, "FloorBrace:R","FloorBrace","AR", "Floor Brace A-R");
             Map(b, "FloorBrace:L","FloorBrace","EL", "Floor Brace E-L");

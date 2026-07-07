@@ -67,8 +67,15 @@ frame's length is the sum of the per-bent **Separation** values. Member-level
 | **Eave girt Height** | The eave girt's elevation on its wall |
 | **Common tail + Tail Cut** | Rafter tail length past the eave, plumb or square cut |
 | **Braces follow their head** | Braces track the girt they brace when it moves |
+| **Sill Height** | The sill's TOP elevation — 0 sits it right under the post feet, negative drops it deeper |
 
 Roof framing per bay: **commons or purlins**, count or spacing mode, sizes.
+
+**Sills and summers ship OFF.** Every post-bearing bent and eave bay carries a
+**Sill** leaf, and the center line's bays a **Summer** leaf (the mid-span floor
+carrier, top flush with the floor girts) — tick the checkbox to add them. Post
+feet stay at elevation zero; sills hang below that datum, and the post feet
+stub-tenon down into them (`TJointAll` cuts those, Chapter 10).
 
 **Braces solve for two of three.** A brace's rows are **Foot / Head / Angle**
 with a checkbox on each label: the two checked rows are your inputs, the third

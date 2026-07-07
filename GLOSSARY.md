@@ -120,6 +120,9 @@ adding joint code. The set of engines is small; the catalog of connections below
 | **Ridge → King post** | end → side | housing (drop-in) | `TRidge` | the ridge drops into a chamfered pocket risen to the apex on the king-post top |
 | **Common rafter → Eave girt** | bearing / crossing | birdsmouth | `TCommonEave` | beds on the girt **top** (seat) + against a **side** (heel); the rafter runs on past as the eave **tail** |
 | **Purlin → Rafter** | end → side | dovetailed housing | `TPurlin` | the purlin **end** is a dovetail dropped into a flared housing in the rafter's back; the flare resists pull-out |
+| **Joist → Carrier** | end → side | dovetailed housing | `TJoist` (at place time) | the same host-neutral cut as the purlin's, landed on both joist ends into the girt / summer / sill as the row is placed; the sticky **Joint** keyword reviews it |
+| **Summer → Girt** | end → side | box tenon (tusk combination) | `TJointAll` summer pass / Joints-pane "Tusk tenon" | a **soffit-bearing housing** (bottom band) + a deep tenon riding above it + a peg — the classic tusk tenon composed from the box-tenon kit |
+| **Post foot → Sill** | end → side | box tenon (stub) | `TJointAll` sill pass | a short **unpegged stub** by default (gravity does the work); pegs available in the spec |
 | **Beam → Beam** | end → end | scarf | `TScarf` | a lengthwise splice |
 
 ---

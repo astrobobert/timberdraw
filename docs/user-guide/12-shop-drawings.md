@@ -20,8 +20,8 @@ Type `TShop`. One command builds the whole set:
 - **One map per wall** — each lettered wall line's elevation.
 - **One floor plan per floor level** (once the frame has floors) — joists and
   summers looking down, spaced against the girts that carry them.
-- **Floor 0** — the structural grid with the post feet in place: the
-  column/foundation plan.
+- **Floor 0** — the structural grid with the post feet and the frame sills
+  drawn in place: the column/foundation plan.
 
 Everything lands on a paper-space layout named **TM Shop** at **3/8" = 1'-0"**,
 one viewport per map. The command line lists every map and its member count.

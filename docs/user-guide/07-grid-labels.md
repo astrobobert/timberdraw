@@ -40,7 +40,8 @@ qualifiers** — so sorted lists group by member family.
 
 - **The family code** says what it is: `P` post, `KP` king post, `QP` queen
   post, `RF` rafter, `ST` strut, `VS` V-strut, `HB` hammer beam, `HP` hammer
-  post, `TG` tie girt, `FG` floor girt, `EG` eave girt, `J` joist ...
+  post, `TG` tie girt, `FG` floor girt, `EG` eave girt, `SL` sill, `SB`
+  summer, `J` joist ...
 - **The anchor** says where, and its *shape* tells you the plane:
   - **Digit-first = bent plane**: `P-2A` is the post at bent 2, wall A;
     `TG-2` the tie girt of bent 2.

@@ -720,6 +720,18 @@ namespace TimberDraw
             public ShoulderSpec Shoulder;
             public static JointSpec Default => new JointSpec
             { Tenon = TenonSpec.Default, Peg = PegSpec.Default, Housing = HousingSpec.Default, Shoulder = ShoulderSpec.Default };
+
+            // The TUSK TENON factory (floor systems phase 4) -- the classic summer -> girt joint as a
+            // combination of the SAME kit: a SOFFIT BEARING housing (bottom band only -- its top
+            // shoulder insets everything above the bearing) + a deep tenon riding just above it + one
+            // peg. Proportions seed a 10" summer; every value is pane-editable like any box tenon.
+            public static JointSpec TuskDefault => new JointSpec
+            {
+                Tenon = new TenonSpec { On = true, Thickness = 2.0, Length = 4.0, ShoulderTop = 4.0, ShoulderBottom = 3.0, Offset = 0.0 },
+                Peg = new PegSpec { Count = 1, Diameter = 1.0, Setback = 2.0, Spacing = 4.0, BlindDepth = 2.0, Bore = PegBore.Full, BlindFlip = false },
+                Housing = new HousingSpec { On = true, Seat = 1.0, ShoulderTop = 7.0, ShoulderBottom = 0.0, ShoulderSide1 = 0.0, ShoulderSide2 = 0.0 },
+                Shoulder = ShoulderSpec.Default
+            };
         }
 
         // The recipe for a principal-rafter FOOT housed into a post SIDE -- a kit like the girt joint, but
@@ -3089,6 +3101,9 @@ namespace TimberDraw
             s.Peg.Count = 0;
             return s;
         }
+        // Summer end -> girt side (floor systems phase 4): the classic TUSK TENON (soffit-bearing
+        // housing + deep tenon). Reviewed by TJointAll's summer pass; session-sticky like _joint.
+        private static ManagedTimber.JointSpec _summerJoint = JointDefaults.Tusk;
         private static ManagedTimber.RafterFootSpec _rfoot = JointDefaults.RafterFoot;
         private static ManagedTimber.RafterHeadSpec _rhead = JointDefaults.RafterHead;
         private static ManagedTimber.RidgeHousingSpec _ridge = JointDefaults.Ridge;
@@ -3119,8 +3134,9 @@ namespace TimberDraw
                 case JointDefaults.KeyRidge:       _ridge = JointDefaults.Ridge; _ridgeRafter = JointDefaults.Ridge; break;
                 case JointDefaults.KeyCommonRidge: _comridge = JointDefaults.CommonRidge; break;
                 case JointDefaults.KeyBirdsmouth:  _comeave = JointDefaults.CommonEave; break;
-                case JointDefaults.KeyPurlin:      _purlin = JointDefaults.Purlin; break;
+                case JointDefaults.KeyPurlin:      _purlin = JointDefaults.Purlin; _joistDove = JointDefaults.Purlin; break;
                 case JointDefaults.KeyQPRafter:    _qprafter = JointDefaults.QPRafter; break;
+                case JointDefaults.KeyTusk:        _summerJoint = JointDefaults.Tusk; break;
             }
         }
 
@@ -3969,6 +3985,9 @@ namespace TimberDraw
         private static readonly HashSet<string> GirtRoles = new HashSet<string> { "Girt", "EaveGirt", "FloorGirt" };
         private static readonly HashSet<string> PostRoles = new HashSet<string> { "Post" };
         private static readonly HashSet<string> SillRoles = new HashSet<string> { "Sill" };
+        private static readonly HashSet<string> SummerRoles = new HashSet<string> { "Summer" };
+        // A summer's end can die into a bent floor girt, the tie, or (first floor) a sill.
+        private static readonly HashSet<string> SummerHostRoles = new HashSet<string> { "Girt", "FloorGirt", "Sill" };
 
         // Batch-cut every girt-family -> post mortise & tenon (+ pegs) in the drawing with the current
         // sticky JointSpec (reviewed once). A girt END that bears on a Post SIDE face gets the joint;
@@ -4054,29 +4073,52 @@ namespace TimberDraw
             Pass(GirtRoles, PostRoles, _joint, ConnectionType.BoxTenon(_joint));
             int girtCuts = cut;
 
-            // SILL pass: only when the frame carries sills. Its recipe is the separate _sillJoint sticky
-            // (short unpegged stub seed), reviewed through the same editor; Escape skips just this pass.
-            bool hasSills = false;
-            foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) t in all)
-                if (SillRoles.Contains(t.Role)) { hasSills = true; break; }
-            if (hasSills)
+            // Extra passes only when the frame carries the roles. Each has its own sticky recipe,
+            // reviewed through the same editor by temporarily swapping the _joint sticky; Escape
+            // skips just that pass.
+            bool RolePresent(HashSet<string> roles)
+            {
+                foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) t in all)
+                    if (roles.Contains(t.Role)) return true;
+                return false;
+            }
+            bool ReviewSwapped(ref ManagedTimber.JointSpec sticky)
+            {
+                ManagedTimber.JointSpec saveJoint = _joint;
+                _joint = sticky;
+                bool go = ReviewJoint(ed);
+                sticky = _joint;
+                _joint = saveJoint;
+                return go;
+            }
+
+            // SILL pass: post foot -> sill, the short unpegged stub.
+            if (RolePresent(SillRoles))
             {
                 ed.WriteMessage("\nSill pass -- post foot -> sill stub tenon:");
-                ManagedTimber.JointSpec saveJoint = _joint;
-                _joint = _sillJoint;
-                bool go = ReviewJoint(ed);
-                _sillJoint = _joint;
-                _joint = saveJoint;
-                if (go) Pass(PostRoles, SillRoles, _sillJoint, ConnectionType.BoxTenon(_sillJoint));
+                if (ReviewSwapped(ref _sillJoint))
+                    Pass(PostRoles, SillRoles, _sillJoint, ConnectionType.BoxTenon(_sillJoint));
                 else ed.WriteMessage("\nSill stub tenons skipped.");
             }
+            int sillCuts = cut - girtCuts;
+
+            // SUMMER pass: summer end -> girt/sill side, the tusk tenon (soffit bearing + deep tenon).
+            if (RolePresent(SummerRoles))
+            {
+                ed.WriteMessage("\nSummer pass -- summer end -> girt tusk tenon:");
+                if (ReviewSwapped(ref _summerJoint))
+                    Pass(SummerRoles, SummerHostRoles, _summerJoint, ConnectionType.TuskTenon(_summerJoint));
+                else ed.WriteMessage("\nSummer tusk tenons skipped.");
+            }
+            int summerCuts = cut - girtCuts - sillCuts;
 
             var remap = new Dictionary<ObjectId, ObjectId>();
             foreach (ObjectId id in dirty) remap[id] = ManagedTimber.RebuildFromFrame(id, work[id]);
             foreach ((ObjectId girt, ObjectId post, int jid, ConnectionType ct) c in cuts)
                 StampJoint(remap[c.girt], remap[c.post], c.jid, c.ct);
             ed.WriteMessage("\nTJointAll: cut " + cut + " joint(s)" +
-                            (cut > girtCuts ? " (" + (cut - girtCuts) + " post-foot -> sill)" : "") +
+                            (sillCuts > 0 ? " (" + sillCuts + " post-foot -> sill)" : "") +
+                            (summerCuts > 0 ? " (" + summerCuts + " summer -> girt)" : "") +
                             ", skipped " + skipped + " already-jointed" +
                             (failed > 0 ? ", " + failed + " collapsed" : "") + ".");
         }

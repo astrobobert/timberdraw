@@ -198,7 +198,7 @@ Each phase is its own session with its own plan; this doc only fixes the order a
 | 1 | BUILT 2026-07-03: Joist identity + flush tops/Drop + TAssign labeler (J-I-n) + BOM/scribe cut-mark grouping | editor |
 | 2 | BUILT 2026-07-07: Joist end dovetails (engine reuse, sticky spec, cut at place time) + Summer identity/joint/label | editor |
 | 3 | BUILT 2026-07-07: Sills in the recipe + post-foot stub tenons (TJointAll sill pass) + labels (`SL-1AE`/`SL-A-I`) -- saved model rebuild announced | generator |
-| 4 | PARKED: multi-level floors, recipe summers, sill corner laps + continuous/scarfed sills, tusk tenon combo, sleepers | -- |
+| 4 | BUILT 2026-07-07 (partial, Robert's go): recipe summers (Center-line bay leaf, auto-centered, `SB-C-I`) + tusk tenon (a named preset of the box-tenon kit: soffit-bearing housing + deep tenon; TJointAll summer pass + Joints pane) + Floor 0 draws the sills. STILL PARKED (own design sessions): multi-level floors, sill corner laps + continuous/scarfed sills; sleepers + decking stay non-features per sections 1/6. | mixed |
 
 Editor phases go first deliberately: they touch nothing the generator emits, so the working model
 never needs a rebuild until phase 3.
