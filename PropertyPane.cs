@@ -138,6 +138,7 @@ namespace TimberDraw
                     ForeColor = row.ReadOnly ? Theme.SubtleFg : Theme.Fg,
                     TextAlign = ContentAlignment.MiddleLeft,
                     Padding = new Padding(4, 0, 0, 0), Margin = new Padding(0),
+                    TabStop = false,   // Tab walks the VALUE fields only (Robert's call)
                 };
                 cb.CheckedChanged += (s, e) =>
                 {

@@ -2329,6 +2329,18 @@ namespace TimberDraw.Properties {
             }
         }
 
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string ScribeFolder {
+            get {
+                return ((string)(this["ScribeFolder"]));
+            }
+            set {
+                this["ScribeFolder"] = value;
+            }
+        }
+
         // ---- Managed timber palette (TPanel) ----
         // CSV of named sections, one per entry as "type:width:depth" (e.g. "Post:8:8").
         [global::System.Configuration.UserScopedSettingAttribute()]

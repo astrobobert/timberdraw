@@ -77,9 +77,10 @@ move command. Two cautions:
   Selecting rows **highlights** the solids (the view doesn't jump);
   double-click **zooms** to one. The stacked fields below the list are both
   the review and the assign surface: a selected row loads its section and
-  address; **Apply** re-sections, **Assign** addresses the selection through
-  `TAssign` (Frame / Kind / Owner / Bay). The list re-reads itself when the
-  drawing changes or joinery replaces a timber.
+  address, and one **Apply** commits whatever you edited — section fields
+  re-section the timber, address fields (Frame / Kind / Owner / Bay) assign
+  the selection through `TAssign`. The list re-reads itself when you open the
+  tab, switch drawings, or joinery replaces a timber.
 
 > **Figure 8-4 — The frame browser with three joists selected and highlighted.**
 > *[capture: TBrowse beside the model; three rows selected, the matching

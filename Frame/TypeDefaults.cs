@@ -76,11 +76,32 @@ namespace TimberDraw
             }
         }
 
+        // ROOF-SCOPED overlay for a bay whose roof CHECKBOX changed: copy only the saved roof-type
+        // params and the roof members' state -- the bay's floor girt / floor braces / eave girt keep
+        // their checkboxes (the full overlay was silently unchecking them; Robert's bug).
+        public static void ApplyRoofOnly(BaySpec bay)
+        {
+            string key = Key(bay);
+            if (key == null) return;
+            if (!TryGet(key, out FrameElement savedEl) || !(savedEl is BaySpec sy)) return;
+            bay.CommonMode = sy.CommonMode; bay.CommonCount = sy.CommonCount; bay.CommonSpacing = sy.CommonSpacing;
+            bay.CommonW = sy.CommonW; bay.CommonD = sy.CommonD;
+            bay.CommonTail = sy.CommonTail; bay.CommonTailCut = sy.CommonTailCut;
+            bay.PurlinMode = sy.PurlinMode; bay.PurlinCount = sy.PurlinCount; bay.PurlinSpacing = sy.PurlinSpacing;
+            bay.PurlinW = sy.PurlinW; bay.PurlinD = sy.PurlinD;
+            Overlay(bay.Timbers, sy.Timbers,
+                k => k.StartsWith("Commons:") || k.StartsWith("Purlins:"));
+            bay.SyncRoofType();
+        }
+
         // Copy Enabled + Size from the saved timbers onto the canonical ones, matched by Key.
-        private static void Overlay(List<Timber> canonical, List<Timber> saved)
+        // `take` limits which keys the overlay may touch (null = all).
+        private static void Overlay(List<Timber> canonical, List<Timber> saved,
+            System.Func<string, bool> take = null)
         {
             foreach (Timber c in canonical)
             {
+                if (take != null && !take(c.Key)) continue;
                 Timber s = saved.Find(t => t.Key == c.Key);
                 if (s == null) continue;
                 c.Enabled = s.Enabled;

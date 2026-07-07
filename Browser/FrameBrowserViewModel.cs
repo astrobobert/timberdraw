@@ -97,9 +97,8 @@ namespace TimberDraw.Browser
         public FrameBrowserViewModel()
         {
             RefreshCommand = new RelayCommand(Refresh);
-            ApplyCommand = new RelayCommand(Apply, () => _selected != null);
-            AssignCommand = new RelayCommand(AssignSelected,
-                () => SelectedCount > 0 && !string.IsNullOrWhiteSpace(_asmOwner));
+            // ONE Apply (Robert's call; Assign folded in): commits whatever the user edited.
+            ApplyCommand = new RelayCommand(Apply, () => SelectedCount > 0);
 
             // Refresh whenever a TAssign completes (fired from here or anywhere else) so new
             // labels/groups appear without a manual Refresh. Runs on the AutoCAD UI thread.
@@ -123,7 +122,12 @@ namespace TimberDraw.Browser
 
         public ICommand RefreshCommand { get; }
         public RelayCommand ApplyCommand { get; }
-        public RelayCommand AssignCommand { get; }
+
+        // What the user actually EDITED since the last load/apply -- Apply commits only these
+        // (review-loading a row populates the same fields, so loads must never read as edits).
+        private bool _loadingSel;
+        private bool _sectionDirty;
+        private bool _assignDirty;
 
         private FrameBrowserItem _selected;
         public FrameBrowserItem SelectedItem
@@ -134,6 +138,7 @@ namespace TimberDraw.Browser
                 if (!Set(ref _selected, value)) return;
                 if (_selected != null)
                 {
+                    _loadingSel = true;
                     // Populate the property editor (zoom happens in SetSelectedMany, single-pick only).
                     EditType = _selected.Type;
                     EditW = _selected.W.ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -148,9 +153,10 @@ namespace TimberDraw.Browser
                     { AsmKind = "Wall"; AsmOwner = _selected.Wall; AsmBay = _selected.Bay; }
                     else if (!string.IsNullOrEmpty(_selected.Floor))
                     { AsmKind = "Floor"; AsmOwner = _selected.Floor; AsmBay = ""; }
+                    _loadingSel = false;
+                    _sectionDirty = false;   // the section fields now mirror the row
                 }
                 ApplyCommand.RaiseCanExecuteChanged();
-                AssignCommand.RaiseCanExecuteChanged();
             }
         }
 
@@ -168,7 +174,7 @@ namespace TimberDraw.Browser
             var ids = new System.Collections.Generic.List<ObjectId>(_selectedMany.Count);
             foreach (FrameBrowserItem it in _selectedMany) ids.Add(it.Id);
             ManagedView.Highlight(ids);
-            AssignCommand.RaiseCanExecuteChanged();
+            ApplyCommand.RaiseCanExecuteChanged();
         }
 
         // Double-click zoom: frame the (single) clicked row's timber in the view.
@@ -182,7 +188,11 @@ namespace TimberDraw.Browser
         public System.Collections.Generic.List<string> AsmKinds { get; } = new() { "Bent", "Wall", "Floor" };
 
         private string _asmFrame = "A";
-        public string AsmFrame { get => _asmFrame; set => Set(ref _asmFrame, value); }
+        public string AsmFrame
+        {
+            get => _asmFrame;
+            set { if (Set(ref _asmFrame, value) && !_loadingSel) _assignDirty = true; }
+        }
 
         private string _asmKind = "Bent";
         public string AsmKind
@@ -191,6 +201,7 @@ namespace TimberDraw.Browser
             set
             {
                 if (!Set(ref _asmKind, value)) return;
+                if (!_loadingSel) _assignDirty = true;
                 Raise(nameof(AsmExtraEnabled));
                 Raise(nameof(AsmExtraLabel));
             }
@@ -214,11 +225,15 @@ namespace TimberDraw.Browser
         public string AsmOwner
         {
             get => _asmOwner;
-            set { if (Set(ref _asmOwner, value)) AssignCommand.RaiseCanExecuteChanged(); }
+            set { if (Set(ref _asmOwner, value) && !_loadingSel) _assignDirty = true; }
         }
 
         private string _asmBay = "";
-        public string AsmBay { get => _asmBay; set => Set(ref _asmBay, value); }
+        public string AsmBay
+        {
+            get => _asmBay;
+            set { if (Set(ref _asmBay, value) && !_loadingSel) _assignDirty = true; }
+        }
 
         // Hand the selected rows + target to TAssign (via ManagedView.Assign -> ManagedAssembly
         // stash -> command context). The Applied event refreshes the rows when it completes.
@@ -234,27 +249,51 @@ namespace TimberDraw.Browser
 
         // ---- property editor (write-back) ----
         private string _editType = "";
-        public string EditType { get => _editType; set => Set(ref _editType, value); }
+        public string EditType
+        {
+            get => _editType;
+            set { if (Set(ref _editType, value) && !_loadingSel) _sectionDirty = true; }
+        }
 
         private string _editW = "";
-        public string EditW { get => _editW; set => Set(ref _editW, value); }
+        public string EditW
+        {
+            get => _editW;
+            set { if (Set(ref _editW, value) && !_loadingSel) _sectionDirty = true; }
+        }
 
         private string _editD = "";
-        public string EditD { get => _editD; set => Set(ref _editD, value); }
+        public string EditD
+        {
+            get => _editD;
+            set { if (Set(ref _editD, value) && !_loadingSel) _sectionDirty = true; }
+        }
 
-        // Re-section the selected timber and reselect the regenerated solid (new handle).
+        // The ONE commit button: re-section if the section fields were edited, assign if the
+        // address fields were edited -- either, or both. (If both, the assign runs through the
+        // deferred TAssign command and skips any handle the re-section just replaced; re-Apply
+        // covers that rare double.)
         private void Apply()
         {
-            if (_selected == null) return;
-            var ci = System.Globalization.CultureInfo.InvariantCulture;
-            if (!double.TryParse(_editW, System.Globalization.NumberStyles.Any, ci, out double w) || w <= 0) return;
-            if (!double.TryParse(_editD, System.Globalization.NumberStyles.Any, ci, out double d) || d <= 0) return;
-
-            ObjectId newId = ManagedView.ApplySection(_selected.Id, w, d, (_editType ?? "").Trim());
-            Refresh();
-            if (!newId.IsNull)
-                foreach (FrameBrowserItem it in Timbers)
-                    if (it.Id == newId) { SelectedItem = it; break; }
+            if (_sectionDirty && _selected != null)
+            {
+                var ci = System.Globalization.CultureInfo.InvariantCulture;
+                if (double.TryParse(_editW, System.Globalization.NumberStyles.Any, ci, out double w) && w > 0
+                    && double.TryParse(_editD, System.Globalization.NumberStyles.Any, ci, out double d) && d > 0)
+                {
+                    ObjectId newId = ManagedView.ApplySection(_selected.Id, w, d, (_editType ?? "").Trim());
+                    _sectionDirty = false;
+                    Refresh();
+                    if (!newId.IsNull)
+                        foreach (FrameBrowserItem it in Timbers)
+                            if (it.Id == newId) { SelectedItem = it; break; }
+                }
+            }
+            if (_assignDirty && !string.IsNullOrWhiteSpace(_asmOwner))
+            {
+                AssignSelected();
+                _assignDirty = false;
+            }
         }
 
         private string _filter = "";

@@ -238,24 +238,34 @@ namespace TimberDraw
         private static string GeomSig(ManagedTimber.ShopInfo t) =>
             $"{Math.Round(t.F.W)}x{Math.Round(t.F.D)}x{Math.Round(t.F.L * 2.0) / 2.0}";
 
-        // Output folder, defaulting next to the drawing (or Documents for an unsaved one).
+        // Output folder via a REMEMBERED folder browser (Robert's call: no command-line prompt).
+        // First run defaults next to the drawing (or Documents for an unsaved one); afterward the
+        // dialog opens at the last-used folder, so accepting is one click.
         private static string PromptFolder(Editor ed, Database db)
         {
-            string baseDir;
-            try { baseDir = Path.GetDirectoryName(db.Filename); } catch { baseDir = null; }
-            if (string.IsNullOrEmpty(baseDir))
-                baseDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            string def = Path.Combine(baseDir, "Scribe");
-
-            var opts = new PromptStringOptions("\nOutput folder")
+            string def = Properties.Settings.Default.ScribeFolder;
+            if (string.IsNullOrWhiteSpace(def) || !Directory.Exists(def))
             {
-                AllowSpaces = true,
-                DefaultValue = def,
-                UseDefaultValue = true
-            };
-            PromptResult r = ed.GetString(opts);
-            if (r.Status != PromptStatus.OK) return null;
-            return string.IsNullOrWhiteSpace(r.StringResult) ? def : r.StringResult.Trim();
+                string baseDir;
+                try { baseDir = Path.GetDirectoryName(db.Filename); } catch { baseDir = null; }
+                if (string.IsNullOrEmpty(baseDir))
+                    baseDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                def = Path.Combine(baseDir, "Scribe");
+            }
+
+            using (var dlg = new System.Windows.Forms.FolderBrowserDialog
+            {
+                Description = "Scribe output folder (the .tsj files land here)",
+                SelectedPath = def,
+                ShowNewFolderButton = true
+            })
+            {
+                if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return null;
+                string folder = dlg.SelectedPath;
+                Properties.Settings.Default.ScribeFolder = folder;
+                Properties.Settings.Default.Save();
+                return folder;
+            }
         }
 
         private static string Label(ManagedTimber.ShopInfo t)

@@ -492,7 +492,9 @@ namespace TimberDraw
                 if (e.Node.Parent != null) e.Node.Parent.Text = NodeLabel(bay);
                 if (bay.RoofType != before)
                 {
-                    TypeDefaults.Apply(bay);
+                    // Roof checkbox changed: overlay ONLY the roof members/params -- the full
+                    // overlay was unchecking the bay's floor girt + braces.
+                    TypeDefaults.ApplyRoofOnly(bay);
                     Persist();
                     BuildTree();
                     SelectByTag(bay);

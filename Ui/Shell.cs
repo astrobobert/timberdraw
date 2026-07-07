@@ -93,13 +93,18 @@ namespace TimberDraw
                       | PaletteSetStyles.ShowAutoHideButton;
 
             // The Output tab never opens empty: first activation with no tally auto-loads the
-            // BOM from the model ("what happened to BOM?" -- it was an empty grid).
+            // BOM from the model ("what happened to BOM?" -- it was an empty grid). The Browser
+            // re-lists on EVERY activation -- its list was built when the palette was created,
+            // which could be before any frame existed (the empty-tab-on-entry bug).
             _ps.PaletteActivated += (s, e) =>
             {
                 try
                 {
-                    if (e.Activated != null && e.Activated.Name == "Output" && !_output.Bom.HasData)
+                    if (e.Activated == null) return;
+                    if (e.Activated.Name == "Output" && !_output.Bom.HasData)
                         _output.Bom.RefreshFromModel();
+                    if (e.Activated.Name == "Browser")
+                        _browser.Reload();
                 }
                 catch { /* best-effort; a busy editor just leaves the grid for manual Refresh */ }
             };

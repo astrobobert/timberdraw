@@ -49,7 +49,10 @@ namespace TimberDraw
         public int    HBDivisor;            // Hammer Beam bent: 4 = single tier (6 = stacked, later)
         public bool   HasHBeam, HasHPost, HasCollar; // Hammer Beam bent: member gates
         public double FloorGirtW, FloorGirtD, FloorGirtHt; // shared floor girt: section + TOP height
-        public bool   HasFloorGirt, HasFloorBrace;  // shared floor girt gates (braces reuse BraceW/D/Length/Angle)
+        public bool   HasFloorGirt, HasFloorBrace;  // shared floor girt gates
+        // Floor girt braces carry their OWN size/legs (from the FloorBrace:A leaf); zero falls back
+        // to the bent girt brace values in the builder -- they used to be hard-linked (Robert's bug).
+        public double FloorBraceW, FloorBraceD, FloorBraceFoot, FloorBraceHead;
         public double GirtDrop;             // tie elevation: tie TOP sits GirtDrop below the rafter-foot line (TOH), min 6"
         public bool   Make3D;
 
@@ -287,6 +290,7 @@ namespace TimberDraw
             MemberSize hpost  = b.SizeOf("HPost:A");
             MemberSize collar = b.SizeOf("Collar:AE");
             MemberSize floor  = b.SizeOf("FloorGirt:FG");
+            MemberSize fbrace = b.SizeOf("FloorBrace:A");
 
             return new KPBentParams
             {
@@ -321,6 +325,9 @@ namespace TimberDraw
                 CollarW = collar?.W ?? d.GirtW, CollarD = collar?.D ?? d.GirtD, HBDivisor = b.HBDivisor,
                 HasFloorGirt = b.IsEnabled("FloorGirt:FG"),
                 HasFloorBrace = b.IsEnabled("FloorBrace:A") || b.IsEnabled("FloorBrace:E"),
+                // The floor braces' OWN spec (zero -> the builder falls back to the girt brace).
+                FloorBraceW = fbrace?.W ?? 0, FloorBraceD = fbrace?.D ?? 0,
+                FloorBraceFoot = fbrace?.Foot ?? 0, FloorBraceHead = fbrace?.Head ?? 0,
                 FloorGirtW = floor?.W ?? d.GirtW, FloorGirtD = floor?.D ?? d.GirtD,
                 FloorGirtHt = floor?.Ht ?? d.FloorGirtHt,
                 GirtDrop = b.GirtDrop                 // tie elevation (>=6"); drives TOG/BOG + everything on them
@@ -593,11 +600,17 @@ namespace TimberDraw
                 HalfPlane.KeepAboveY(bot),       HalfPlane.KeepBelowY(top)
             });
 
-            // Knee braces: post inner face -> floor-girt bottom (corner at `bot`). Body INSIDE the triangle.
-            if (p.HasFloorBrace && p.BraceFoot > 0 && p.BraceHead > 0 && On("FloorBrace:FB"))
+            // Knee braces: post inner face -> floor-girt bottom (corner at `bot`). Body INSIDE the
+            // triangle. The floor braces read their OWN leaf spec first; a zero falls back to the
+            // bent girt brace value (the old hard link, now just the default).
+            double fbFoot = p.FloorBraceFoot > 0 ? p.FloorBraceFoot : p.BraceFoot;
+            double fbHead = p.FloorBraceHead > 0 ? p.FloorBraceHead : p.BraceHead;
+            double fbW    = p.FloorBraceW    > 0 ? p.FloorBraceW    : p.BraceW;
+            double fbD    = p.FloorBraceD    > 0 ? p.FloorBraceD    : p.BraceD;
+            if (p.HasFloorBrace && fbFoot > 0 && fbHead > 0 && On("FloorBrace:FB"))
             {
-                double foot = p.BraceFoot;   // down the post (vertical)
-                double head = p.BraceHead;   // along the girt (horizontal)
+                double foot = fbFoot;   // down the post (vertical)
+                double head = fbHead;   // along the girt (horizontal)
 
                 Point3d bla = new Point3d(p.PostD, bot - foot, 0);
                 Point3d blb = new Point3d(p.PostD + head, bot, 0);
@@ -605,11 +618,11 @@ namespace TimberDraw
                 FrameEdge bl = g.AddEdge("Brace",
                     g.AddNode("FBraceLPost", new Point3d(bla.X, bla.Y, bentZ)),
                     g.AddNode("FBraceLGirt", new Point3d(blb.X, blb.Y, bentZ)),
-                    p.BraceW, p.BraceD, "FB");
+                    fbW, fbD, "FB");
                 bl.Planes.Add(HalfPlane.KeepRightOfX(p.PostD));
                 bl.Planes.Add(HalfPlane.KeepBelowY(bot));
-                AddLongFacesOneSided(bl, bla, blb, p.BraceD, OffsetToward(bla, blb, cL));
-                bl.ZOffset = ZOffsetFor(Math.Min(p.PostW, p.FloorGirtW), p.BraceW, p.PlaceOf("FloorBrace:A"));
+                AddLongFacesOneSided(bl, bla, blb, fbD, OffsetToward(bla, blb, cL));
+                bl.ZOffset = ZOffsetFor(Math.Min(p.PostW, p.FloorGirtW), fbW, p.PlaceOf("FloorBrace:A"));
 
                 Point3d bra = new Point3d(p.Span - p.PostD, bot - foot, 0);
                 Point3d brb = new Point3d(p.Span - p.PostD - head, bot, 0);
@@ -617,11 +630,11 @@ namespace TimberDraw
                 FrameEdge br = g.AddEdge("Brace",
                     g.AddNode("FBraceRPost", new Point3d(bra.X, bra.Y, bentZ)),
                     g.AddNode("FBraceRGirt", new Point3d(brb.X, brb.Y, bentZ)),
-                    p.BraceW, p.BraceD, "FB");
+                    fbW, fbD, "FB");
                 br.Planes.Add(HalfPlane.KeepLeftOfX(p.Span - p.PostD));
                 br.Planes.Add(HalfPlane.KeepBelowY(bot));
-                AddLongFacesOneSided(br, bra, brb, p.BraceD, OffsetToward(bra, brb, cR));
-                br.ZOffset = ZOffsetFor(Math.Min(p.PostW, p.FloorGirtW), p.BraceW, p.PlaceOf("FloorBrace:E"));
+                AddLongFacesOneSided(br, bra, brb, fbD, OffsetToward(bra, brb, cR));
+                br.ZOffset = ZOffsetFor(Math.Min(p.PostW, p.FloorGirtW), fbW, p.PlaceOf("FloorBrace:E"));
             }
         }
 

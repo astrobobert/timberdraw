@@ -3280,9 +3280,12 @@ namespace TimberDraw
                 }
             }
 
-            // Owner-addressed labels for the repetitive free families (Joist -> J-1-1..): minted in
-            // run order before the patch so the loop below writes tags + label in one SetXdata.
-            Dictionary<ObjectId, string> mint = MintOwnerLabels(db, ids, frames, bentTag, wallTag, bayTag, floorTag);
+            // Owner-addressed labels (FAM-owner-seq, e.g. J-1-1 / P-A-1): minted in run order before
+            // the patch so the loop below writes tags + label in one SetXdata. A grid INTERSECTION
+            // assign skips the mint -- the intersection itself is the address (P-2C below).
+            Dictionary<ObjectId, string> mint = colTag.Length > 0
+                ? new Dictionary<ObjectId, string>()
+                : MintOwnerLabels(db, ids, frames, bentTag, wallTag, bayTag, floorTag);
 
             // In-place XData patch (no rebuild): set the grouping tags on each timber + move it to the
             // group layer so it isolates with its bent/wall/floor.
@@ -3309,9 +3312,9 @@ namespace TimberDraw
                 else if (colTag.Length > 0)
                 {
                     // Grid intersection, TYPE-FIRST like the emitter (P-2C beside the skeleton's
-                    // KP-2C -- distinct labels, so the shop-map dedup labels both).
-                    BentLabelFamilies.TryGetValue(xd.Type ?? "", out string fam);
-                    xd.GridLabel = (string.IsNullOrEmpty(fam) ? "" : fam + "-") + bentTag + colTag;
+                    // KP-2C -- distinct labels, so the shop-map dedup labels both). FamilyFor
+                    // guarantees the prefix (unknown types use their initial).
+                    xd.GridLabel = FamilyFor(xd.Type) + "-" + bentTag + colTag;
                 }
                 Module1.SetXdata(id, xd);
                 n++;
@@ -3340,7 +3343,20 @@ namespace TimberDraw
         private static readonly Dictionary<string, string> BentLabelFamilies =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             { { "Post", "P" }, { "KingPost", "KP" }, { "QueenPost", "QP" }, { "Rafter", "RF" },
-              { "Strut", "ST" }, { "VStrut", "VS" }, { "HBeam", "HB" }, { "HPost", "HP" } };
+              { "Strut", "ST" }, { "VStrut", "VS" }, { "HBeam", "HB" }, { "HPost", "HP" },
+              { "Girt", "G" }, { "Brace", "B" }, { "Ridge", "RG" }, { "Common", "C" },
+              { "Purlin", "PU" }, { "EaveGirt", "EG" }, { "FloorGirt", "FG" } };
+
+        // The label family for ANY type: the owner table, the bent table, else the type's initial
+        // letter uppercased -- every TAssign label carries a family prefix (Robert's call; the bare
+        // anchor read as unlabeled).
+        private static string FamilyFor(string type)
+        {
+            if (string.IsNullOrWhiteSpace(type)) return "T";
+            if (OwnerLabelFamilies.TryGetValue(type, out string f)) return f;
+            if (BentLabelFamilies.TryGetValue(type, out f)) return f;
+            return char.ToUpperInvariant(type.Trim()[0]).ToString();
+        }
 
         // Mint FAM-<owner>-<seq> GridLabels for the selected family members. Owner preference: floor,
         // else bay, else wall, else bent. Sequence runs ALONG THE ROW (midpoints sorted on the
@@ -3362,7 +3378,7 @@ namespace TimberDraw
             {
                 Module1.DataStructure xd = Module1.GetXdata(id);
                 if (xd == null || string.IsNullOrEmpty(xd.Type)) continue;
-                if (!OwnerLabelFamilies.TryGetValue(xd.Type, out string fam)) continue;
+                string fam = FamilyFor(xd.Type);   // EVERY type mints FAM-owner-seq now
                 if (!byFam.TryGetValue(fam, out var list)) byFam[fam] = list = new List<ObjectId>();
                 list.Add(id);
             }
@@ -5541,10 +5557,14 @@ namespace TimberDraw
         // ---- orientation presets (palette) ------------------------------------------------
         // The managed verbs read the section roll -- and, for TPlace, the extrusion direction --
         // from the current UCS. These three presets set the standard orthographic UCSs so the
-        // user doesn't hand-roll the UCS per member. TPlace extrudes a new timber along UCS Z:
-        //   Plan  (Top)   -> Z = world +Z : posts / vertical members
-        //   Bent  (Front) -> Z = world -Y : members running across the bays (into the screen)
-        //   Wall  (Right) -> Z = world +X : members running along the span / building width
+        // user doesn't hand-roll the UCS per member. In the model basis the BENTS lie in the
+        // world YZ plane and the WALLS in the world XZ plane, so (Robert's mapping, 2026-07-07 --
+        // the two were reversed before):
+        //   Plan (Top)  -> X = world +X, Y = world +Y : Z = world +Z (posts / verticals)
+        //   Bent        -> X = world +Y, Y = world +Z : Z = world +X (the bent cross-plane;
+        //                  TPlace extrudes along the building)
+        //   Wall        -> X = world +X, Y = world +Z : Z = world -Y (the wall elevation;
+        //                  TPlace extrudes across the span, into the screen)
         // TSpan / TJoin take their direction from the picked faces, so for them the UCS only sets
         // the section roll.
 
@@ -5554,11 +5574,11 @@ namespace TimberDraw
 
         [CommandMethod("TUcsBent")]
         public static void UcsBent()
-            => SetUcs(Vector3d.XAxis, Vector3d.ZAxis, Vector3d.YAxis.Negate(), "Bent elevation (Front)");
+            => SetUcs(Vector3d.YAxis, Vector3d.ZAxis, Vector3d.XAxis, "Bent elevation");
 
         [CommandMethod("TUcsWall")]
         public static void UcsWall()
-            => SetUcs(Vector3d.YAxis, Vector3d.ZAxis, Vector3d.XAxis, "Wall elevation (Right)");
+            => SetUcs(Vector3d.XAxis, Vector3d.ZAxis, Vector3d.YAxis.Negate(), "Wall elevation");
 
         private static void SetUcs(Vector3d x, Vector3d y, Vector3d z, string label)
         {

@@ -152,11 +152,11 @@
             <TextBox Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"/>
         </DockPanel>
 
-        <!-- Bottom action row: full-span buttons (the shared bottom-bar idiom). -->
-        <UniformGrid DockPanel.Dock="Bottom" Columns="3" Margin="0,6,0,0">
+        <!-- Bottom action row: full-span buttons (the shared bottom-bar idiom). ONE Apply
+             commits whatever was edited: section fields re-section, address fields assign. -->
+        <UniformGrid DockPanel.Dock="Bottom" Columns="2" Margin="0,6,0,0">
             <Button Content="Refresh" Margin="2" Padding="0,4" Command="{Binding RefreshCommand}"/>
             <Button Content="Apply"   Margin="2" Padding="0,4" Command="{Binding ApplyCommand}"/>
-            <Button Content="Assign"  Margin="2" Padding="0,4" Command="{Binding AssignCommand}"/>
         </UniformGrid>
 
         <!-- Property editor + assign target: fully STACKED labeled rows, one edit box per

@@ -72,8 +72,10 @@ bookkeeping:
 2. Give the target: a **bent** (a free post standing on a grid intersection
    takes the intersection itself, e.g. `2C`), a **wall + bay**, or a **floor
    level**. From the Browser the target comes from its Frame / Kind / Owner /
-   Bay fields and **Assign**; from the command line, the prompts walk you
-   through the same choice.
+   Bay fields and **Apply**; from the command line, the prompts walk you
+   through the same choice. Every assigned timber gets a type-first label
+   (`P-2C`, `J-1-1`, `G-B-1`) — family prefix, owner, and a sequence where
+   the owner holds several of a kind.
 
 Assigned timbers get labels in the same grammar (`J-A-1`), appear in the
 grid's derivation, and group correctly in the BOM, shop maps, and scribe
