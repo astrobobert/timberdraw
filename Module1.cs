@@ -60,7 +60,12 @@ namespace TimberDraw
             // The installer label derived from the structural grid: a VERTICAL member's column ("1A"),
             // a SPANNING member's two columns ("1BC"). Stamped at emit; blank on free/legacy timbers.
             public string GridLabel;
-            public DataStructure() { JointNear = ""; JointFar = ""; JointNearParams = ""; JointFarParams = ""; JointNearParamsDrawn = ""; JointFarParamsDrawn = ""; FrameTag = ""; BayTag = ""; WallTag = ""; FloorTag = ""; GridLabel = ""; }
+            // "1" on FREE-ASSEMBLY timbers (editor-created: TPlace/TSpan/TJoin/TJoist), stamped at
+            // creation and preserved across rebuilds. The generator's regenerate erases only its own
+            // skeleton (Free != "1"), so hand-placed timbers survive a re-Generate -- assigned or not.
+            // Blank on emitted skeleton members and on legacy timbers (additive field, absent reads "").
+            public string Free;
+            public DataStructure() { JointNear = ""; JointFar = ""; JointNearParams = ""; JointFarParams = ""; JointNearParamsDrawn = ""; JointFarParamsDrawn = ""; FrameTag = ""; BayTag = ""; WallTag = ""; FloorTag = ""; GridLabel = ""; Free = ""; }
             public DataStructure(string type, string bentNumber, string designation, string size,
                 string tagHandle, int tenonCnt, int mortiseCnt, int pegCnt,
                 double width = 0, double depth = 0, double length = 0,
@@ -117,6 +122,7 @@ namespace TimberDraw
                     data.WallTag     = ReadTextField(extDict, tr, "WallTag");
                     data.FloorTag    = ReadTextField(extDict, tr, "FloorTag");
                     data.GridLabel   = ReadTextField(extDict, tr, "GridLabel");
+                    data.Free        = ReadTextField(extDict, tr, "Free");
                 }
                 tr.Commit();
             }
@@ -192,6 +198,7 @@ namespace TimberDraw
                 WriteTextField(extDict,   tr, "WallTag",              data.WallTag ?? "");
                 WriteTextField(extDict,   tr, "FloorTag",             data.FloorTag ?? "");
                 WriteTextField(extDict,   tr, "GridLabel",            data.GridLabel ?? "");
+                WriteTextField(extDict,   tr, "Free",                 data.Free ?? "");
                 tr.Commit();
             }
             return objId;

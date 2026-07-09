@@ -193,8 +193,10 @@ namespace TimberDraw
             }
 
             string size = (int)Math.Round(width) + "x" + (int)Math.Round(depth) + "x" + Module1.BuyLongFeet(length);
-            return Module1.SetXdata(id, new Module1.DataStructure(
-                type, "", designation, size, "0", 0, 0, 0, width, depth, length, nearCut, farCut, false));
+            var xd = new Module1.DataStructure(
+                type, "", designation, size, "0", 0, 0, 0, width, depth, length, nearCut, farCut, false);
+            xd.Free = "1";   // editor-created = FREE ASSEMBLY: a regenerate never erases it
+            return Module1.SetXdata(id, xd);
         }
 
         // Build a managed-timber solid from a full frame (square OR mitered ends), slicing the body to
@@ -482,15 +484,8 @@ namespace TimberDraw
             Module1.EraseEntity(id);
             ObjectId nid = DrawFramedSolid(f, type, desig, nearCut, farCut, frameTag, bentTag, bayTag, wallTag, gridLabel);
 
-            // Carry the stable production number (TagHandle slot) across the rebuild -- the erase+redraw
-            // mints a fresh AutoCAD handle, but the per-stick production id must outlive a re-section. It's
-            // unpopulated ("0"/blank) until labeling, so only patch when there's a real value to preserve.
-            string tagHandle = xd?.TagHandle;
-            if (!nid.IsNull && !string.IsNullOrEmpty(tagHandle) && tagHandle != "0")
-            {
-                Module1.DataStructure nd = Module1.GetXdata(nid);
-                if (nd != null) { nd.TagHandle = tagHandle; Module1.SetXdata(nid, nd); }
-            }
+            // Carry the production number + floor ownership + free-assembly marker (shared patch).
+            PatchCarriedIdentity(nid, xd);
             return nid;
         }
 
@@ -533,15 +528,30 @@ namespace TimberDraw
             Module1.EraseEntity(id);
             ObjectId nid = DrawFramedSolid(f, type, desig, nearCut, farCut, frameTag, bentTag, bayTag, wallTag, gridLabel, layer);
 
-            string tagHandle = xd?.TagHandle;
-            if (!nid.IsNull && !string.IsNullOrEmpty(tagHandle) && tagHandle != "0")
-            {
-                Module1.DataStructure nd = Module1.GetXdata(nid);
-                if (nd != null) { nd.TagHandle = tagHandle; Module1.SetXdata(nid, nd); }
-            }
+            PatchCarriedIdentity(nid, xd);
             if (!nid.IsNull && jointSpecs.Count > 0) WriteJointSpecsMap(nid, jointSpecs);
             if (!nid.IsNull) { try { Rebuilt?.Invoke(); } catch { } }   // a listener must never break the cut
             return nid;
+        }
+
+        // Carry the identity slots a redraw can't know onto the fresh entity: the stable production
+        // number (TagHandle -- only when populated), the FLOOR ownership (DrawFramedSolid has no
+        // floorTag parameter, so every rebuild silently dropped it -- a re-cut joist lost its floor),
+        // and the free-assembly origin marker (Free -- what keeps a hand-placed timber safe from a
+        // regenerate). Shared by RebuildFromFrame + RegenerateSection.
+        private static void PatchCarriedIdentity(ObjectId nid, Module1.DataStructure xd)
+        {
+            if (nid.IsNull || xd == null) return;
+            bool realTag = !string.IsNullOrEmpty(xd.TagHandle) && xd.TagHandle != "0";
+            string floorTag = xd.FloorTag ?? "";
+            string free = xd.Free ?? "";
+            if (!realTag && floorTag.Length == 0 && free.Length == 0) return;
+            Module1.DataStructure nd = Module1.GetXdata(nid);
+            if (nd == null) return;
+            if (realTag) nd.TagHandle = xd.TagHandle;
+            nd.FloorTag = floorTag;
+            nd.Free = free;
+            Module1.SetXdata(nid, nd);
         }
 
         // ---- persisted joint specs (the editor's OPAQUE per-joint state string, keyed by joint id) -----------
@@ -1969,7 +1979,14 @@ namespace TimberDraw
         {
             if (!TryBraceFrame(fa, fb, depth, width, footRun, headRun, bodyA, bodyB, out TFrame frame))
                 return ObjectId.Null;
-            return DrawFramedSolid(frame, type, designation, "matchface", "matchface");
+            ObjectId id = DrawFramedSolid(frame, type, designation, "matchface", "matchface");
+            if (!id.IsNull)
+            {
+                // Editor-created = FREE ASSEMBLY: a regenerate never erases it (same stamp as DrawBox).
+                Module1.DataStructure xd = Module1.GetXdata(id);
+                if (xd != null) { xd.Free = "1"; Module1.SetXdata(id, xd); }
+            }
+            return id;
         }
 
         // The corner-relative anchors + unit step directions a brace foot/head are measured along (so a
@@ -2481,9 +2498,11 @@ namespace TimberDraw
 
         // Erase managed timbers (those carrying a TMFrame xrecord). When `frameTag` is null, clears
         // EVERY managed timber (legacy whole-frame redraw). When `frameTag` is given, clears only the
-        // timbers carrying that FrameTag -- the per-frame redraw that lets MULTIPLE managed frames
-        // coexist in one drawing (the grouping layer). Non-managed solids untouched. Reversible via
-        // AutoCAD UNDO. Returns the count erased.
+        // GENERATOR'S OWN timbers carrying that FrameTag -- a regenerate never touches hand-placed
+        // (free-assembly) work, assigned or not: a timber survives when it carries the Free marker
+        // (stamped at editor creation) OR a FloorTag (floor-owned members are free by construction --
+        // the generator never writes FloorTag, so this also protects joists/summers placed before the
+        // marker existed). Non-managed solids untouched. Reversible via AutoCAD UNDO. Returns the count.
         public static int EraseFrame(Database db, string frameTag)
         {
             int n = 0;
@@ -2497,7 +2516,12 @@ namespace TimberDraw
                 {
                     if (!(tr.GetObject(id, OpenMode.ForRead) is Entity ent)) continue;
                     if (!TryReadFrame(tr, ent, out _)) continue;
-                    if (frameTag != null && ReadXTextField(tr, ent, "FrameTag") != frameTag) continue;
+                    if (frameTag != null)
+                    {
+                        if (ReadXTextField(tr, ent, "FrameTag") != frameTag) continue;
+                        if (ReadXTextField(tr, ent, "Free") == "1") continue;        // hand-placed: keep
+                        if (ReadXTextField(tr, ent, "FloorTag") != "") continue;     // floor-owned: keep
+                    }
                     ent.UpgradeOpen(); ent.Erase(); n++;
                 }
                 tr.Commit();
@@ -3134,7 +3158,7 @@ namespace TimberDraw
                 case JointDefaults.KeyRidge:       _ridge = JointDefaults.Ridge; _ridgeRafter = JointDefaults.Ridge; break;
                 case JointDefaults.KeyCommonRidge: _comridge = JointDefaults.CommonRidge; break;
                 case JointDefaults.KeyBirdsmouth:  _comeave = JointDefaults.CommonEave; break;
-                case JointDefaults.KeyPurlin:      _purlin = JointDefaults.Purlin; _joistDove = JointDefaults.Purlin; break;
+                case JointDefaults.KeyPurlin:      _purlin = JointDefaults.Purlin; _joistDove = JoistDoveSeed(); break;
                 case JointDefaults.KeyQPRafter:    _qprafter = JointDefaults.QPRafter; break;
                 case JointDefaults.KeyTusk:        _summerJoint = JointDefaults.Tusk; break;
             }
@@ -3330,6 +3354,14 @@ namespace TimberDraw
             {
                 Module1.DataStructure xd = Module1.GetXdata(id);
                 if (xd == null) continue;
+                // A FULLY unassigned timber cannot be a skeleton member (the emitter stamps every
+                // emit), so its first assignment also marks it FREE -- hand-placed timbers from
+                // before the marker existed gain regenerate protection the moment they're assigned.
+                // An already-assigned timber is left as-is (it could be a skeleton member re-owned).
+                if (string.IsNullOrEmpty(xd.FrameTag) && string.IsNullOrEmpty(xd.BentNumber)
+                    && string.IsNullOrEmpty(xd.WallTag) && string.IsNullOrEmpty(xd.BayTag)
+                    && string.IsNullOrEmpty(xd.FloorTag) && string.IsNullOrEmpty(xd.GridLabel))
+                    xd.Free = "1";
                 xd.FrameTag = frame;
                 xd.BentNumber = bentTag;
                 xd.WallTag = wallTag;
@@ -3677,15 +3709,19 @@ namespace TimberDraw
                 nf.L = newL; nf.FarN = target.N.Negate();                     // near end unchanged
             }
 
-            // Preserve type/designation + the unfitted end's cut tag; tag the fitted end "matchface".
+            // Tag the fitted end "matchface" on the STORED xdata, then rebuild through RebuildFromFrame
+            // -- which preserves the timber's whole identity (frame/owner tags, grid label, group layer,
+            // production number, floor + free markers, persisted joint specs). The old bare
+            // DrawFramedSolid redraw silently stripped all of it on every TFit.
             Module1.DataStructure old = Module1.GetXdata(mid);
             string type = string.IsNullOrEmpty(old?.Type) ? "Timber" : old.Type;
-            string desg = old?.Designation ?? "";
-            string nearCut = isNear ? "matchface" : (string.IsNullOrEmpty(old?.JointNear) ? "butt" : old.JointNear);
-            string farCut = isNear ? (string.IsNullOrEmpty(old?.JointFar) ? "butt" : old.JointFar) : "matchface";
+            if (old != null)
+            {
+                if (isNear) old.JointNear = "matchface"; else old.JointFar = "matchface";
+                Module1.SetXdata(mid, old);
+            }
 
-            Module1.EraseEntity(mid);
-            ObjectId nid = ManagedTimber.DrawFramedSolid(nf, type, desg, nearCut, farCut);
+            ObjectId nid = ManagedTimber.RebuildFromFrame(mid, nf);
             ed.WriteMessage("\nTFit: " + type + " " + (isNear ? "near" : "far") +
                             " end fitted; new length " + nf.L.ToString("0.#") + " (" + nid.Handle + ").");
         }
@@ -3842,8 +3878,14 @@ namespace TimberDraw
             // XData (outside the txn, like the other commands) + the explicit splice node.
             string sz1 = (int)Math.Round(f.W) + "x" + (int)Math.Round(f.D) + "x" + Module1.BuyLongFeet(f1.L);
             string sz2 = (int)Math.Round(f.W) + "x" + (int)Math.Round(f.D) + "x" + Module1.BuyLongFeet(f2.L);
-            Module1.SetXdata(nP1, new Module1.DataStructure(type, "", desg, sz1, "0", 0, 0, 0, f.W, f.D, f1.L, "scarf", "scarf", false));
-            Module1.SetXdata(nP2, new Module1.DataStructure(type, "", desg, sz2, "0", 0, 0, 0, f.W, f.D, f2.L, "scarf", "scarf", false));
+            // Pieces inherit the parent's free-assembly origin: scarfed FREE timbers stay regen-proof;
+            // scarfed SKELETON halves stay skeleton (a regenerate replaces the unsplit member).
+            var xd1 = new Module1.DataStructure(type, "", desg, sz1, "0", 0, 0, 0, f.W, f.D, f1.L, "scarf", "scarf", false);
+            var xd2 = new Module1.DataStructure(type, "", desg, sz2, "0", 0, 0, 0, f.W, f.D, f2.L, "scarf", "scarf", false);
+            xd1.Free = od?.Free ?? "";
+            xd2.Free = od?.Free ?? "";
+            Module1.SetXdata(nP1, xd1);
+            Module1.SetXdata(nP2, xd2);
             ManagedTimber.WriteScarfNode(db, nP1, cs);
             ManagedTimber.WriteScarfNode(db, nP2, cs);
 
@@ -3988,13 +4030,20 @@ namespace TimberDraw
         private static readonly HashSet<string> SummerRoles = new HashSet<string> { "Summer" };
         // A summer's end can die into a bent floor girt, the tie, or (first floor) a sill.
         private static readonly HashSet<string> SummerHostRoles = new HashSet<string> { "Girt", "FloorGirt", "Sill" };
+        private static readonly HashSet<string> JoistRoles = new HashSet<string> { "Joist" };
+        // A joist's end dies into any floor carrier.
+        private static readonly HashSet<string> JoistHostRoles = new HashSet<string> { "Girt", "FloorGirt", "EaveGirt", "Summer", "Sill" };
 
-        // Batch-cut every girt-family -> post mortise & tenon (+ pegs) in the drawing with the current
-        // sticky JointSpec (reviewed once). A girt END that bears on a Post SIDE face gets the joint;
-        // contacts that already carry a joint are SKIPPED (idempotent -- safe to re-run after manual
-        // TJoint tweaks). Whole-drawing scope; a post fed by several girts rebuilds once. When the frame
-        // carries SILLS, a second pass tenons every post FOOT into its sill with the sticky stub recipe
-        // (_sillJoint, reviewed separately -- traditionally short + unpegged).
+        // Batch-cut the frame's end->side joinery, DELIBERATELY: the first prompt scopes the batch to
+        // All timbers or a SELECTION -- the selected timbers are the ones that GET joints (the male
+        // side: girt ends, post feet, summer ends, joist ends); hosts are always found drawing-wide.
+        // Passes, each with its own sticky recipe, reviewed only when its role is in scope:
+        //   girt-family end -> post side  (mortise & tenon + pegs; _joint)
+        //   post foot -> sill             (short unpegged stub; _sillJoint)
+        //   summer end -> girt/sill       (tusk tenon; _summerJoint)
+        //   joist end -> carrier          (housed dovetail; _joistDove -- the deliberate half of TJoist)
+        // Contacts that already carry a joint are SKIPPED (idempotent -- safe to re-run after manual
+        // tweaks); a host fed by several members rebuilds once.
         [CommandMethod("TJointAll")]
         public static void JointAll()
         {
@@ -4003,7 +4052,22 @@ namespace TimberDraw
             Editor ed = doc.Editor;
             Database db = doc.Database;
 
-            if (!ReviewJoint(ed)) return;   // the girt -> post recipe, one for the whole batch
+            // DELIBERATE scope (Robert's rule: joinery is applied to selected timbers or groups).
+            HashSet<ObjectId> scope = null;
+            var sko = new PromptKeywordOptions("\nCut joinery for") { AllowNone = true };
+            sko.Keywords.Add("All");
+            sko.Keywords.Add("Select");
+            sko.Keywords.Default = "All";
+            PromptResult skr = ed.GetKeywords(sko);
+            if (skr.Status != PromptStatus.OK && skr.Status != PromptStatus.None) return;
+            if (skr.Status == PromptStatus.OK && skr.StringResult == "Select")
+            {
+                var filter = new SelectionFilter(new[] { new TypedValue((int)DxfCode.Start, "3DSOLID") });
+                var pso = new PromptSelectionOptions { MessageForAdding = "\nSelect the timbers to joint: " };
+                PromptSelectionResult sel = ed.GetSelection(pso, filter);
+                if (sel.Status != PromptStatus.OK) return;
+                scope = new HashSet<ObjectId>(sel.Value.GetObjectIds());
+            }
 
             var all = ManagedTimber.EnumerateWithRole(db);
             // Working frames carry the accumulating Features/Pegs; geometry (O/axes/L/D/W) never changes and
@@ -4015,14 +4079,22 @@ namespace TimberDraw
             int nextId = NextJointId(db);
             int cut = 0, skipped = 0, failed = 0;
 
-            // One end->side pass: every `maleRoles` END that bears on a `hostRoles` SIDE face gets the
-            // M&T from `spec` (already-jointed contacts skip). Shared by the girt and sill passes.
+            bool InScope(ObjectId id) => scope == null || scope.Contains(id);
+            bool RolePresent(HashSet<string> roles)
+            {
+                foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) t in all)
+                    if (roles.Contains(t.Role) && InScope(t.Id)) return true;
+                return false;
+            }
+
+            // One end->side pass: every in-scope `maleRoles` END that bears on a `hostRoles` SIDE face
+            // gets the M&T from `spec` (already-jointed contacts skip). Girt / sill / summer passes.
             void Pass(HashSet<string> maleRoles, HashSet<string> hostRoles,
                 ManagedTimber.JointSpec spec, ConnectionType ct)
             {
                 foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) g in all)
                 {
-                    if (!maleRoles.Contains(g.Role)) continue;
+                    if (!maleRoles.Contains(g.Role) || !InScope(g.Id)) continue;
                     ManagedTimber.TFrame girt = work[g.Id];
                     ManagedTimber.TFace[] gf = ManagedTimber.Faces(girt);
                     for (int gi = 0; gi <= 1; gi++)
@@ -4070,18 +4142,18 @@ namespace TimberDraw
                 }
             }
 
-            Pass(GirtRoles, PostRoles, _joint, ConnectionType.BoxTenon(_joint));
+            // The girt -> post pass: reviewed first (Escape here aborts the whole batch, the
+            // long-standing contract); runs only when a girt-family male is in scope.
+            if (RolePresent(GirtRoles))
+            {
+                if (!ReviewJoint(ed)) return;
+                Pass(GirtRoles, PostRoles, _joint, ConnectionType.BoxTenon(_joint));
+            }
             int girtCuts = cut;
 
-            // Extra passes only when the frame carries the roles. Each has its own sticky recipe,
-            // reviewed through the same editor by temporarily swapping the _joint sticky; Escape
-            // skips just that pass.
-            bool RolePresent(HashSet<string> roles)
-            {
-                foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) t in all)
-                    if (roles.Contains(t.Role)) return true;
-                return false;
-            }
+            // Extra passes only when the frame carries the roles in scope. Each has its own sticky
+            // recipe, reviewed through the same editor by temporarily swapping the _joint sticky;
+            // Escape skips just that pass.
             bool ReviewSwapped(ref ManagedTimber.JointSpec sticky)
             {
                 ManagedTimber.JointSpec saveJoint = _joint;
@@ -4112,6 +4184,47 @@ namespace TimberDraw
             }
             int summerCuts = cut - girtCuts - sillCuts;
 
+            // JOIST pass: joist end -> carrier, the housed dovetail -- the deliberate half of TJoist's
+            // Joint option (place plain, adjust, select, cut). The pass turns the sticky ON (running it
+            // IS the deliberate act); Off + Done in the review still vetoes. Already-dovetailed pairs
+            // skip by their shared joint id. Cuts JointPrisms via PurlinRafterJoint, not GirtPostJoint.
+            if (RolePresent(JoistRoles))
+            {
+                ed.WriteMessage("\nJoist pass -- joist end -> carrier housed dovetail:");
+                _joistDove.On = true;
+                if (!ReviewJoistDove(ed) || !_joistDove.On)
+                    ed.WriteMessage("\nJoist dovetails skipped.");
+                else
+                {
+                    ConnectionType dove = ConnectionType.HousedDovetail(_joistDove);
+                    foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) j in all)
+                    {
+                        if (!JoistRoles.Contains(j.Role) || !InScope(j.Id)) continue;
+                        foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) h in all)
+                        {
+                            if (h.Id == j.Id || !JoistHostRoles.Contains(h.Role)) continue;
+                            ManagedTimber.TFrame joist = work[j.Id];
+                            ManagedTimber.TFrame host = work[h.Id];
+                            if (ExistingRafterFootId(joist, host) != 0) { skipped++; continue; }
+                            if (!FindFootContact(joist, host, out ManagedTimber.TFace hFace)) continue;
+                            if (!ManagedTimber.PurlinRafterJoint(joist, host, hFace, _joistDove,
+                                    out List<(Point3d[] Poly, Vector3d Extrude, bool OnRafter)> prisms, out _))
+                            { failed++; continue; }
+                            int jid = nextId++;
+                            if (joist.JointPrisms == null) joist.JointPrisms = new List<(Point3d[], Vector3d, int, bool)>();
+                            if (host.JointPrisms == null) host.JointPrisms = new List<(Point3d[], Vector3d, int, bool)>();
+                            foreach ((Point3d[] Poly, Vector3d Extrude, bool OnRafter) p in prisms)
+                                (p.OnRafter ? host.JointPrisms : joist.JointPrisms).Add((p.Poly, p.Extrude, jid, p.OnRafter));
+                            work[j.Id] = joist; work[h.Id] = host;
+                            dirty.Add(j.Id); dirty.Add(h.Id);
+                            cuts.Add((j.Id, h.Id, jid, dove));
+                            cut++;
+                        }
+                    }
+                }
+            }
+            int joistCuts = cut - girtCuts - sillCuts - summerCuts;
+
             var remap = new Dictionary<ObjectId, ObjectId>();
             foreach (ObjectId id in dirty) remap[id] = ManagedTimber.RebuildFromFrame(id, work[id]);
             foreach ((ObjectId girt, ObjectId post, int jid, ConnectionType ct) c in cuts)
@@ -4119,6 +4232,7 @@ namespace TimberDraw
             ed.WriteMessage("\nTJointAll: cut " + cut + " joint(s)" +
                             (sillCuts > 0 ? " (" + sillCuts + " post-foot -> sill)" : "") +
                             (summerCuts > 0 ? " (" + summerCuts + " summer -> girt)" : "") +
+                            (joistCuts > 0 ? " (" + joistCuts + " joist end(s))" : "") +
                             ", skipped " + skipped + " already-jointed" +
                             (failed > 0 ? ", " + failed + " collapsed" : "") + ".");
         }
@@ -5753,9 +5867,17 @@ namespace TimberDraw
         // re-cut or delete any single end; the carriers rebuild ONCE for the whole row. The Joint
         // keyword reviews the sticky spec (On/Off + the five dovetail knobs).
         private static double _joistDrop = 0.0;   // session-sticky Drop below the carrier tops
-        // Session-sticky joist-end dovetail recipe -- seeded from the pane's saved "Housed dovetail"
-        // default (the same cut, host-neutral: purlin->rafter, joist->carrier).
-        private static ManagedTimber.PurlinRafterSpec _joistDove = JointDefaults.Purlin;
+        // Session-sticky joist-end dovetail recipe -- the pane's saved "Housed dovetail" values (the
+        // same cut, host-neutral) but seeded OFF: joinery is DELAYED AND DELIBERATE (Robert's rule) --
+        // joists land plain, get moved/adjusted freely, then a selection + TJointAll cuts the
+        // dovetails. The Joint keyword still opts in at place time.
+        private static ManagedTimber.PurlinRafterSpec _joistDove = JoistDoveSeed();
+        private static ManagedTimber.PurlinRafterSpec JoistDoveSeed()
+        {
+            var s = JointDefaults.Purlin;
+            s.On = false;
+            return s;
+        }
 
         [CommandMethod("TJoist")]
         public static void Joists()

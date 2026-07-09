@@ -101,6 +101,10 @@ namespace TimberDraw
 				baseWcs, cs.Xaxis, cs.Yaxis, cs.Zaxis);
 			placement = ManagedFrameEmitter.Compose(placement);   // stand the frame up Z-up (model basis)
 
+			// Clear the prior skeleton before re-emitting (this was missing -- a second TRoughIn
+			// stacked duplicates; only the tree's Draw button erased). Same rule as the tree:
+			// EraseFrame keeps every hand-placed (free-assembly / floor-owned) timber.
+			ManagedTimber.EraseFrame(db, "A");
 			ManagedTimber.EraseGrid(db, "A");
 			int drawn = ManagedFrameEmitter.Emit(g, placement, "A", out FrameGrid grid);
 			grid.Draw(placement, "A");   // flat under the frame (model basis -> floor on WCS XY)
