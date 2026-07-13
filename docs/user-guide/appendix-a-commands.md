@@ -31,7 +31,7 @@ palette** — Frame / Assembly / Joints / Browser / Output.
 | `TFit` | Trim/extend a picked end onto a target face. Ch. 8 |
 | `TSection` | Re-section a timber (W x D) in place. Ch. 8 |
 | `TScarf` | Split a timber in two with a scarf splice. Ch. 8 |
-| `TJoist` | Place a row of floor joists in a bay, end dovetails cut as it goes. Ch. 8 |
+| `TJoist` | Place a row of plain floor joists in a bay (dovetails cut later via TJointAll). Ch. 8 |
 | `TScan` | Rescan face coincidence; mark connection nodes. Ch. 8 |
 | `TBrowse` | Open the Browser tab: filter, highlight, zoom, re-section, assign. Ch. 8 |
 | `TUcsPlan` / `TUcsBent` / `TUcsWall` | UCS presets for comfortable placement. Ch. 8 |
@@ -42,7 +42,8 @@ palette** — Frame / Assembly / Joints / Browser / Output.
 |---|---|
 | `TJoinPick` / `TJoinApply` | The Joints pane: pick a pair, edit the element stack, cut. Ch. 10 |
 | `TJoint` / `TJointDel` | Girt end -> post: tenon + housing + pegs. Ch. 10 |
-| `TJointAll` | Batch-cut every girt-to-post contact (+ post-to-sill and summer-to-girt passes when present). Ch. 10 |
+| `TJointAll` | Batch-cut joinery for All or a Selection: girt-post, post-sill, summer-girt, joist-carrier passes. Ch. 10 |
+| `TJointSync` | Re-cut a moved timber's joints from their stored recipes; re-attach orphans after a re-Generate. Ch. 10 |
 | `TBrace` / `TBraceDel` | Knee brace: 1 1/2" barefaced tenon. Ch. 10 |
 | `TStrut` / `TStrutDel` | Strut / V-strut tenon onto any host face, any angle. Ch. 10 |
 | `TRafterFoot` / `TRafterFootDel` | Rafter foot let into a post side (sloped wedge). Ch. 10 |

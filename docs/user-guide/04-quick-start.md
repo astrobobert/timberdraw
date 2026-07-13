@@ -62,10 +62,12 @@ that's a feature).
 
 ## Step 4 — Cut the joinery: `TJointAll`
 
-Type `TJointAll`. First it walks you through the joint recipe (tenon size, pegs
-— the defaults are sensible; press Enter through them). Then it finds every
-girt-end-to-post contact in the frame and cuts the whole batch: tenon on the
-girt, matching mortise and peg bores in the post.
+Type `TJointAll`. First it asks the scope — press Enter for **All** (later,
+when you only want joinery on some timbers, **Select** cuts just those). Then
+it walks you through the joint recipe (tenon size, pegs — the defaults are
+sensible; press Enter through them), finds every girt-end-to-post contact in
+the frame, and cuts the whole batch: tenon on the girt, matching mortise and
+peg bores in the post.
 
 The command line reports how many joints were cut and how many contacts were
 skipped (already jointed — safe to re-run).

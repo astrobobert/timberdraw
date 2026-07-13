@@ -44,6 +44,12 @@ sections further below are the GENERATOR's internals only.
   allowed to reference `Managed\`).
 - `FrameRegistry` / `TFreeze` -- the one-way freeze gate. Once frozen the tree's Draw button refuses and
   the timbers carry on as the source of truth.
+- **Regenerate is skeleton-only (2026-07-07):** `EraseFrame` keeps any FrameTag-matched timber whose
+  `Free` xdata == "1" (stamped at every editor creation: DrawBox/DrawMiteredBrace/TScarf pieces/first
+  TAssign of an unassigned timber) OR whose FloorTag is set (the generator never writes FloorTag) --
+  hand-placed timbers survive a re-Generate, assigned or not. Joinery is DELAYED AND DELIBERATE
+  (Robert's rule): nothing auto-cuts at place time; `TJointAll` (selection-scoped) cuts, `TJointSync`
+  re-cuts after moves / re-attaches after a regen.
 
 `Managed\` -- the managed timber model, the editor, and the output layer. `ManagedTimber.cs` is the core:
 - `TFrame` struct -- a timber's WCS frame (`O`, axes `X/Y/Z`, `L/D/W`) + end-cut normals + feature lists.
@@ -80,7 +86,7 @@ Editor verbs (`Managed\ManagedTimber.cs` unless noted):
 | `TFit` | Trim/extend a timber's picked END onto a target face (square or mitered); other end stays. |
 | `TSection` | Re-section a managed timber (change W x D) in place. |
 | `TScarf` | Scarf-splice a timber into two pieces; stores the scarf interface node. |
-| `TJoist` | Place a row of floor joists in a wall/bay (free-assembly infill; Joist role, FLUSH tops, Drop). |
+| `TJoist` | Place a row of PLAIN floor joists in a wall/bay (Joist role, FLUSH tops, Drop). Joinery is DELIBERATE (Robert's rule): dovetails cut later via TJointAll's joist pass (or the opt-in Joint keyword). |
 | `TAssign` | Assign free timber(s) to a group for addressing -- hierarchy Frame -> Bent\|Wall -> Bay\|FLOOR. |
 | `TScan` | Rescan all managed timbers for coincident faces; mark the derived nodes. |
 | `TPickFace` | Debug/util: interactively pick one analytic face. |
@@ -91,7 +97,8 @@ Joinery commands (each family below; every cutter has a matching `...Del`):
 
 | Command | Connection |
 |---|---|
-| `TJoint` / `TJointAll` / `TJointDel` | Girt end -> post side: tenon + housing + pegs (`TJointAll` = batch over the whole frame). |
+| `TJoint` / `TJointAll` / `TJointDel` | Girt end -> post side: tenon + housing + pegs. `TJointAll` = the DELIBERATE batch: All-or-Selection scope (selection = who GETS joints), then girt->post / post->sill / summer->girt / joist->carrier passes, each with its own sticky recipe. |
+| `TJointSync` | Re-cut a selected timber's joints from their STORED recipes after a move (same id) or a re-Generate (geometric re-attach to the fresh skeleton member); no-contact joints reported + left. |
 | `TJoinPick` / `TJoinApply` | Joints pane flow (`TPanel` -> Joints): pick pair, edit the element stack, live re-cut. |
 | `TStrut` / `TStrutDel` | Strut / v-strut -> rafter underside, post side, king-post side, girt underside (any angle). |
 | `TBrace` / `TBraceDel` | Knee brace -> post/girt: same engine, 1.5" barefaced default. |

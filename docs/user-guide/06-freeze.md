@@ -30,8 +30,8 @@ is the **gate**:
 ## 6.2 Why one-way
 
 A two-way gate would mean the generator could run again — and a generator that
-runs again *replaces the skeleton*, taking your re-sectioned girt, your cut
-joinery, and your floor system with it. The freeze exists to make that
+runs again *replaces the skeleton*, taking your re-sectioned girt and the
+joinery cut into skeleton members with it. The freeze exists to make that
 impossible, not merely discouraged. One direction, no surprises.
 
 If you genuinely need to go parametric again, start a fresh frame (a new frame
@@ -39,14 +39,18 @@ tag) and rebuild — deliberately, not by accident.
 
 ## 6.3 When to freeze
 
-**As soon as the skeleton is right, and always before:**
+**Hand-placed timbers are safe either way**: a re-Generate erases only the
+generator's own skeleton — joists, summers, and anything else from the editor
+verbs survive it, assigned or not (their joints into replaced skeleton members
+re-cut with `TJointSync`, Chapter 10.3). So freeze **as soon as the skeleton
+itself is right, and always before:**
 
-- hand-cut joinery (`TJoint`, `TBrace`, ... — Chapter 10),
-- infill and floors (`TPlace`, `TJoist`, ... — Chapter 8),
-- any per-timber change you want to keep (`TSection`, `TFit`, `TScarf`).
+- hand-cut joinery into skeleton members (`TJoint`, `TBrace`, ... — Chapter 10),
+- any per-skeleton-timber change you want to keep (`TSection`, `TFit`, `TScarf`).
 
-While the palette can still re-Generate, treat the model as disposable. The
-moment you would be upset to lose an edit, you should already have frozen.
+While the palette can still re-Generate, treat the *skeleton* as disposable.
+The moment you would be upset to lose a skeleton edit, you should already have
+frozen.
 
 ---
 

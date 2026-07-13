@@ -46,7 +46,7 @@ knowing about it.
 | `TFit` | a timber's **end**, then a target face | Trims or extends that end onto the face (square or mitered); the other end stays put. |
 | `TSection` | a timber | Re-sections it (new W x D) in place. |
 | `TScarf` | a timber + a point | Splits it into two pieces with a scarf, and remembers the splice interface. |
-| `TJoist` | a bay/wall + spacing | Places a whole row of floor joists — flush tops, optional drop — and **cuts both end dovetails into the carriers as it goes** (the sticky **Joint** keyword reviews or disables the cut). Chapter 7.3 for how floors are addressed. |
+| `TJoist` | a bay/wall + spacing | Places a whole row of **plain** floor joists — flush tops, optional drop. Joinery is deliberate: cut the end dovetails later with a selection + `TJointAll` (Chapter 10.2), or opt in at place time via the **Joint** keyword. Chapter 7.3 for how floors are addressed. |
 
 > **Figure 8-2 — TSpan before/after.**
 > *[capture: two posts with a gap, then the same view with the spanning girt
@@ -66,6 +66,9 @@ move command. Two cautions:
   thing that desynchronizes it — resize with `TSection`, refit with `TFit`.
 - **ERASE deletes cleanly** — everything the timber knew lived on the timber.
   Run `TScan` afterward if you care about the node markers.
+- **Joinery travels with the timber.** Moving a jointed timber carries its
+  cuts along; when it lands, select it and run `TJointSync` (Chapter 10.3) to
+  re-cut its joints against its mates at the new contact.
 
 ## 8.4 Seeing what you have: `TScan` and `TBrowse`
 

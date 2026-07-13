@@ -10,6 +10,14 @@ post OUTER face to outer face (full span) so every post foot bears on its bent's
 longitudinal bay sills run post-to-post between them (corner laps stay future work); the post-foot
 stub tenon is `TJointAll`'s second pass (its own sticky recipe, seeded short + unpegged).
 
+**Amendment 2 (Robert's workflow rule, 2026-07-07): joinery is DELAYED AND DELIBERATE.** Timbers
+are moved and adjusted a lot before joinery belongs on them, so nothing cuts at place time by
+default: `TJoist` lands PLAIN joists (its Joint keyword is the opt-in), and the dovetails are cut
+later by selecting the field and running `TJointAll` (now selection-scoped, with a joist->carrier
+pass). Once applied, joinery travels with the timber; `TJointSync` re-cuts a moved timber's joints
+and re-attaches orphans after a skeleton re-Generate (which now preserves all hand-placed timbers).
+This supersedes phase 2's "every joist lands jointed in one command" default.
+
 **Amendment (Robert's call at first test, 2026-07-07): sills sit BELOW the frame datum.** Section
 2's "body Z = 0..D, posts shorten" is superseded: the post feet stay the y=0 datum (full-length
 posts -- so the derived grid's ground test, and everything else anchored to grade, is untouched

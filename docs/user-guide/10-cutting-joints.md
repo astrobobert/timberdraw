@@ -41,7 +41,7 @@ has a matching `...Del`.
 | Connection | Command | What it cuts |
 |---|---|---|
 | **Girt -> post** | `TJoint` | The square workhorse: tenon on the girt end, mortise + housing in the post, peg bores. Host-neutral — a summer end into a girt side cuts the same way. |
-| **Whole frame at once** | `TJointAll` | Reviews one joint recipe, then batch-cuts every girt-end-to-post contact; already-cut contacts are skipped. Frames with **sills** get a second pass (post feet -> sill, a short unpegged stub by default) and frames with **summers** a third (summer ends -> girt, the tusk tenon) — each with its own reviewed recipe; Escape skips just that pass. |
+| **The batch cutter** | `TJointAll` | The deliberate act: first prompt scopes it to **All** or a **Select**ion (the selected timbers are the ones that *get* joints; their hosts are found automatically). Then up to four passes, each reviewed only when its members are in scope, Escape skipping just that pass: girt ends -> posts (M&T + pegs), post feet -> **sills** (short unpegged stub), **summer** ends -> girts (tusk tenon), **joist** ends -> carriers (housed dovetail). Already-cut contacts always skip — safe to re-run. |
 | **Brace -> girt / post** | `TBrace` | 1 1/2" barefaced tenon by default (Flip picks the cheek); beds on a girt underside or post side. |
 | **Strut / V-strut -> rafter, post, king post** | `TStrut` | The any-angle tenon: strut head into a rafter underside, strut foot into a post side — same engine. |
 | **Rafter foot -> post** | `TRafterFoot` | The sloped wedge: level seat + pitched top housed into the post side, plus a reduced tongue. |
@@ -50,7 +50,7 @@ has a matching `...Del`.
 | **Ridge -> principal rafter** | `TRidgeRafter` | The same drop-in geometry, housed into a rafter head instead — for bents with no king post, where the two rafters carry the ridge. Run it once per rafter. |
 | **Common rafter -> ridge** | `TCommonRidge` | The common's head let into a recess in the ridge (the ridge is the host). |
 | **Common rafter -> eave girt** | `TCommonEave` | Birdsmouth: level seat on the girt top + plumb heel; the rafter runs past as the eave tail. |
-| **Purlin -> rafter** | `TPurlin` | Housed dovetail dropped into the rafter's back; the flare resists pull-out. The same cut lands on every joist end automatically at `TJoist` time (Chapter 8.2). |
+| **Purlin -> rafter** | `TPurlin` | Housed dovetail dropped into the rafter's back; the flare resists pull-out. The same cut lands on joist ends through `TJointAll`'s joist pass (or `TJoist`'s opt-in Joint keyword). |
 | **Summer -> girt** | *Joints pane: Tusk tenon* | The classic summer joint: a soffit bearing let into the girt's bottom band plus a deep tenon riding above it, pegged. `TJointAll` batch-cuts them; the pane preset re-cuts any single one. |
 | **Queen-post rafter apex** | `TQPRafter` | Where the two principal rafters meet at the peak: the male rafter's peak end seats and tenons into the host rafter (housing + tenon + optional pegs). |
 | **Beam -> beam** | `TScarf` | Lengthwise end-to-end splice (Chapter 8 — it also splits the timber). |
@@ -72,6 +72,13 @@ has a matching `...Del`.
   bores with it.
 - **Batch is idempotent.** `TJointAll` skips contacts that already carry a
   joint, so re-running it after adding a girt only cuts the new work.
+- **Moved a jointed timber? `TJointSync`.** Select the timbers you moved and
+  the command re-cuts every joint they carry from its stored recipe: a partner
+  still sharing the joint id is re-cut in place (same id); a partner that was
+  *replaced* — the re-Generate case, where the fresh skeleton member has no
+  pocket — is healed by re-attaching the joint to whatever the timber now
+  touches (a fresh id). A partner that no longer touches at all is reported
+  and left alone; delete that joint deliberately if the separation is final.
 
 ---
 

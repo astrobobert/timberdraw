@@ -90,9 +90,13 @@ same type seed from it.
 
 **Generate Frame** emits the whole frame as managed timbers, standing Z-up, at
 the current UCS origin — with the structural grid beneath and every stick
-labeled. Generating again **replaces** this frame's timbers (other frames and
-unmanaged solids are untouched). Hand edits to a pre-freeze skeleton do not
-survive a re-Generate; that is what the freeze is for (Chapter 6).
+labeled. Generating again **replaces this frame's skeleton only**: hand-placed
+timbers (joists, summers, braces, anything from the editor verbs) survive a
+re-Generate, assigned to the frame or not — the generator erases only what it
+emitted itself. Hand edits **to the skeleton members themselves** (a re-fit
+girt, joinery cut into a post) do not survive; that is what the freeze is for
+(Chapter 6). Joinery that a surviving timber shared with a replaced skeleton
+member re-cuts with `TJointSync` (Chapter 10.3).
 
 **Save / Save As / Load** manage named `.framespec` templates — your barn
 starter, your saltbox. Loading one replaces the palette's spec; Draw makes it

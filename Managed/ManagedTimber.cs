@@ -4237,6 +4237,140 @@ namespace TimberDraw
                             (failed > 0 ? ", " + failed + " collapsed" : "") + ".");
         }
 
+        // TJointSync -- DELIBERATE joint maintenance (the other half of "joinery travels with the
+        // timber"): after MOVING jointed timbers, or after a re-Generate replaced the skeleton around
+        // surviving free timbers, select them and re-cut their joints in place. Per selected timber,
+        // every joint id it carries is re-applied from its STORED recipe (the per-joint stamp every
+        // cutter writes):
+        //   - partner found by the shared id -> RE-CUT at the current contact, same id (both pick
+        //     orders are tried -- the Apply helpers find the end-into-side contact themselves and
+        //     fail WITHOUT mutating when the order or contact is wrong);
+        //   - no partner carries the id (the regen case) -> GEOMETRIC RE-ATTACH: the timber it now
+        //     touches is found first, the orphaned features are stripped, and the recipe is applied
+        //     against the new mate under a fresh id + stamp;
+        //   - partner exists but no contact any more (moved apart) -> left untouched, reported
+        //     (delete deliberately via the joint's ...Del or the pane).
+        // Joints with no stored recipe (pre-stamp legacy cuts) are reported and skipped. Crossing
+        // joints (birdsmouth) can re-cut by id but not re-attach (no end-into-side contact to find).
+        [CommandMethod("TJointSync")]
+        public static void JointSync()
+        {
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            Editor ed = doc.Editor;
+            Database db = doc.Database;
+
+            var filter = new SelectionFilter(new[] { new TypedValue((int)DxfCode.Start, "3DSOLID") });
+            var pso = new PromptSelectionOptions { MessageForAdding = "\nSelect timbers whose joints to re-sync: " };
+            PromptSelectionResult sel = ed.GetSelection(pso, filter);
+            if (sel.Status != PromptStatus.OK) return;
+
+            List<ConnectionType> presets = ConnectionType.BuiltIns();
+            var done = new HashSet<int>();                       // each joint syncs once, even if both partners are selected
+            var remap = new Dictionary<ObjectId, ObjectId>();    // every re-cut rebuilds both sides -> fresh ObjectIds
+            ObjectId Cur(ObjectId id) { while (!id.IsNull && remap.TryGetValue(id, out ObjectId nx)) id = nx; return id; }
+            void Map(ObjectId from, ObjectId to) { if (!from.IsNull && !to.IsNull && from != to) remap[from] = to; }
+
+            int recut = 0, reattached = 0, apart = 0, unknown = 0;
+
+            foreach (ObjectId rawId in sel.Value.GetObjectIds())
+            {
+                ObjectId selId = Cur(rawId);
+                if (selId.IsNull || selId.IsErased
+                    || !ManagedTimber.TryReadFrame(db, selId, out ManagedTimber.TFrame sf)) continue;
+
+                // Every joint id this timber carries: all five feature primitives + the stored recipes.
+                var jids = new List<int>(AllJointIds(sf));
+                foreach (int k in ManagedTimber.ReadJointSpecs(selId).Keys)
+                    if (k != 0 && !jids.Contains(k)) jids.Add(k);
+
+                foreach (int jid in jids)
+                {
+                    if (jid == 0 || !done.Add(jid)) continue;
+                    selId = Cur(selId);
+                    if (selId.IsNull || !ManagedTimber.TryReadFrame(db, selId, out sf)) break;
+
+                    // The stored recipe: this side's stamp first, the partner's as fallback.
+                    ManagedTimber.ReadJointSpecs(selId).TryGetValue(jid, out string state);
+
+                    // The partner = the other timber carrying this joint id (fresh enumeration --
+                    // earlier re-cuts changed ids).
+                    ObjectId partnerId = ObjectId.Null; ManagedTimber.TFrame pfr = default;
+                    foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) t in ManagedTimber.EnumerateWithRole(db))
+                    {
+                        if (t.Id == selId || !AllJointIds(t.F).Contains(jid)) continue;
+                        partnerId = t.Id; pfr = t.F; break;
+                    }
+                    if (state == null && !partnerId.IsNull)
+                        ManagedTimber.ReadJointSpecs(partnerId).TryGetValue(jid, out state);
+                    ConnectionType ct = state != null ? ConnectionType.FromState(presets, state) : null;
+                    if (ct == null)
+                    { unknown++; ed.WriteMessage("\n  joint #" + jid + ": no stored recipe -- skipped."); continue; }
+
+                    if (!partnerId.IsNull)
+                    {
+                        // RE-CUT in place (idempotent replace by the shared id).
+                        ApplyResult r = ct.Apply(db, selId, sf, partnerId, pfr);
+                        if (r.Ok) { Map(selId, r.AId); Map(partnerId, r.BId); }
+                        else
+                        {
+                            r = ct.Apply(db, partnerId, pfr, selId, sf);
+                            if (r.Ok) { Map(partnerId, r.AId); Map(selId, r.BId); }
+                        }
+                        if (r.Ok) { StampJoint(r.AId, r.BId, r.Jid, ct); recut++; }
+                        else
+                        {
+                            apart++;
+                            ed.WriteMessage("\n  joint #" + jid + " (" + ct.Name + "): no contact with its partner -- left as-is.");
+                        }
+                        continue;
+                    }
+
+                    // RE-ATTACH: the partner died (a regenerate replaced it). Find the timber this one
+                    // now touches end-into-side, in either direction, skipping mates it is already
+                    // jointed to -- only then strip the orphaned features and cut the recipe fresh.
+                    ObjectId hostId = ObjectId.Null; ManagedTimber.TFrame hfr = default; bool selIsMale = true;
+                    foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) t in ManagedTimber.EnumerateWithRole(db))
+                    {
+                        if (t.Id == selId || SharedJointId(sf, t.F) != 0) continue;
+                        if (FindFootContact(sf, t.F, out _)) { hostId = t.Id; hfr = t.F; selIsMale = true; break; }
+                        if (FindFootContact(t.F, sf, out _)) { hostId = t.Id; hfr = t.F; selIsMale = false; break; }
+                    }
+                    if (hostId.IsNull)
+                    {
+                        apart++;
+                        ed.WriteMessage("\n  joint #" + jid + " (" + ct.Name + "): partner gone and nothing to re-attach to -- left as-is.");
+                        continue;
+                    }
+
+                    StripJoint(ref sf, jid);
+                    ObjectId nid = ManagedTimber.RebuildFromFrame(selId, sf);
+                    Map(selId, nid); selId = nid;
+                    if (!ManagedTimber.TryReadFrame(db, selId, out sf)) break;
+
+                    ApplyResult ra = selIsMale ? ct.Apply(db, selId, sf, hostId, hfr)
+                                               : ct.Apply(db, hostId, hfr, selId, sf);
+                    if (ra.Ok)
+                    {
+                        if (selIsMale) { Map(selId, ra.AId); Map(hostId, ra.BId); }
+                        else { Map(hostId, ra.AId); Map(selId, ra.BId); }
+                        StampJoint(ra.AId, ra.BId, ra.Jid, ct);
+                        reattached++;
+                    }
+                    else
+                    {
+                        apart++;
+                        ed.WriteMessage("\n  joint #" + jid + " (" + ct.Name + "): re-attach failed -- " + ra.Diag +
+                                        " (orphaned features stripped; UNDO restores).");
+                    }
+                }
+            }
+
+            ed.WriteMessage("\nTJointSync: " + recut + " re-cut, " + reattached + " re-attached"
+                            + (apart > 0 ? ", " + apart + " without contact (left as-is)" : "")
+                            + (unknown > 0 ? ", " + unknown + " with no stored recipe (skipped)" : "") + ".");
+        }
+
         // Review / adjust the sticky joint recipe (_joint) as a KIT OF PARTS: the elements (Tenon, Housing,
         // Pegs) are peers, each a toggleable sub-menu. Enter / "Cut" proceeds (returns true); Escape cancels
         // (false). Shared by TJoint (per cut) and TJointAll (once). A new element type adds a keyword + a
