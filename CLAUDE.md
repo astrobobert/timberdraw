@@ -201,6 +201,8 @@ closed.
 
 **Boundary guard:** the generator/editor split lives in the FOLDER layout, not in namespaces (all flat `TimberDraw`). `tests\TimberDraw.Architecture.Tests` text-scans the generator folders and `Managed\` and fails if one core names the other's types (only `Frame\ManagedFrameEmitter.cs` + `Frame\FrameGrid.cs` may cross, as the freeze bridge). Run it standalone (`dotnet test tests/TimberDraw.Architecture.Tests`); do NOT add it to `TimberDraw.sln`. The folder + token lists in `BoundaryTests.cs` ARE the coverage -- when you add a generator folder or a recipe/editor type, add it there.
 
+**Domain characterization tests:** `tests\TimberDraw.Domain.Tests` (net8, xunit, standalone like the arch tests -- NOT in the .sln) compiles the PURE production sources directly (source-linked: `FrameSpec.cs`, `FrameSpecStore.cs`, `KPBentParams.cs`, `UnitInput.cs`, `Pegs\*.cs`) with a test-side stub for `Commands.ReadKPParams`. It pins the `.framespec` round-trip + every legacy migration, the bent-separation convention, distance parsing, and the TFG peg standards. `fixtures\current-kingpost.framespec` is a GOLDEN file (byte-equality) -- when the on-disk format legitimately changes, delete it, run the tests once (it regenerates + fails with instructions), and commit the new fixture in the same commit. If a linked file gains an Autodesk using, this project stops compiling -- that is the alarm. Run: `dotnet test tests/TimberDraw.Domain.Tests`.
+
 ## Architecture
 
 ### Entry Point

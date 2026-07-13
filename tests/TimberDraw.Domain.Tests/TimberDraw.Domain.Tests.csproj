@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Characterization tests for the PURE production logic, compiled from the production
+       sources directly (source-linked). LangVersion/Nullable/ImplicitUsings mirror the net48
+       plugin so linked files keep plugin compilation semantics. If a linked file ever gains
+       an Autodesk using, this project stops compiling: that is the alarm, not an
+       inconvenience. Standalone like the architecture tests; do NOT add to TimberDraw.sln. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\Frame\FrameSpec.cs"       Link="linked\FrameSpec.cs" />
+    <Compile Include="..\..\Frame\FrameSpecStore.cs"  Link="linked\FrameSpecStore.cs" />
+    <Compile Include="..\..\Frame\KPBentParams.cs"    Link="linked\KPBentParams.cs" />
+    <Compile Include="..\..\Frame\UnitInput.cs"       Link="linked\UnitInput.cs" />
+    <Compile Include="..\..\Pegs\PegSpecification.cs" Link="linked\PegSpecification.cs" />
+    <Compile Include="..\..\Pegs\TFGPegStandards.cs"  Link="linked\TFGPegStandards.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+</Project>
