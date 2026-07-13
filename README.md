@@ -80,14 +80,16 @@ TimberDraw\
     Scribe*.cs           -- TScribe / TScribeAll .tsj export + annotations
 
   Browser\               -- TBrowse frame browser palette
-  docs\                  -- floor-systems design doc, user-guide outline
+  Ui\                    -- Shared shell: tabbed palette (Shell), dialogs, theme, pane row idioms
+  docs\                  -- floor-systems design doc, user guide
   GLOSSARY.md            -- Trade terms + canonical joinery parameter names (single source of truth)
 
-  Bent\ Bay\ Kpost\ Qpost\ Hbeam\ KpostTruss\ QpostTruss\ Joints\
-                         -- Legacy parametric pipeline (the generator's internals; parked)
-  Pegs\                  -- TFG peg standards (shared by both paths)
-  tests\                 -- Architecture boundary tests (run standalone, not in the .sln)
+  Pegs\                  -- TFG peg standards (future shared library)
+  tests\                 -- Architecture boundary + domain characterization tests (standalone, not in the .sln)
 ```
+
+The legacy parametric pipeline (`Bent\`, `Bay\`, `Kpost\`, `Joints\`, ...) was **removed** in July 2026 —
+the managed path is the only pipeline. The old design docs live in git history (commit `1ad54d9`).
 
 ---
 
@@ -153,7 +155,7 @@ See [CLAUDE.md](CLAUDE.md) for the full architecture guide.
 
 ## History
 
-Originally written in VB.NET around 2009. Converted to C# and modernized to an SDK-style project in 2026; renamed from DrawAFrame to TimberDraw, May 2026. The parametric regeneration/cascade pipeline (May 2026) was superseded in June 2026 by the managed-timber substrate: frame graph generator + one-way freeze, editor verbs, identity-tracked joinery engine, structural-grid labels, BOM/shop drawings, managed scribe export, and floor systems phase 1. Split out of the timber-frame-suite monorepo into its own repository, July 2026.
+Originally written in VB.NET around 2009. Converted to C# and modernized to an SDK-style project in 2026; renamed from DrawAFrame to TimberDraw, May 2026. The parametric regeneration/cascade pipeline (May 2026) was superseded in June 2026 by the managed-timber substrate: frame graph generator + one-way freeze, editor verbs, identity-tracked joinery engine, structural-grid labels, BOM/shop drawings, managed scribe export, and floor systems phase 1. Split out of the timber-frame-suite monorepo into its own repository, July 2026. The legacy parametric pipeline was deleted outright in the Phase C deep purge (2026-07-06), and a hardening pass followed (2026-07): characterization tests over the pure domain logic, session diagnostics for silently-swallowed failures, and a behavior-neutral decomposition of the managed-timber core file.
 
 ---
 

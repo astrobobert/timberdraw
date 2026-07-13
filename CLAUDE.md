@@ -24,7 +24,7 @@ Consequences for new work:
 - Grid lines are a property of frame-spec bents (declaring a sub-bent emits its line; sub-bents take intermediate numbers like 1.1, parallel to intermediate wall lines A.1). Freely placed posts do NOT create grid lines; they are addressed by wall+bay+sequence and located by dimension.
 - Shop drawings and the cut list are a **reporting layer that reads the model/XData** -- never re-derive geometry.
 
-Full rationale and the labeling convention: see `timberdraw-architecture-decisions.md`.
+Naming and the labeling convention: see `GLOSSARY.md`; the superseded design docs live in git history (last complete at commit `1ad54d9`).
 
 ## Managed Substrate -- Editor + Joinery (the ACTIVE direction)
 
@@ -74,7 +74,7 @@ RETIRED 2026-07-06 (Phase C, Robert's disposition): `TFrameFlat`, `TDrawLegacy`,
 `TFrame`/`TFrameQP`/`TFrameHB`/`TFrameKPT`/`TFrameQPT`, `TFrameSave`/`TFrameLoad`, `TSave`/`TLoad` --
 commands + their UI deleted (ProjectFile.cs, UserControl1, FrameControl, FrameStore). `TPickFace`
 kept (debug). The legacy generator internals (`Bent\`/`Bay\`/`Kpost\`/..., `TimberFactory`,
-`Joints\`) remain as DEAD CODE pending the deep purge -- nothing invokes them.
+`Joints\`) were DELETED in the same purge -- see "Legacy Parametric Pipeline -- REMOVED" below.
 
 Editor verbs (`Managed\ManagedTimber.cs` unless noted):
 
@@ -114,6 +114,12 @@ Joinery commands (each family below; every cutter has a matching `...Del`):
 Output commands: `TBom` (sortable per-timber grid; rows highlight solids; CSV export), `TShop` /
 `TShopClear` (shop maps per bent/wall + floor plans, paper-space layouts, pre-joinery arris linework,
 X/+ housing marks), `TScribe` / `TScribeAll` / `TScribeProbe` (`.tsj` laser scribe export + diagnostics).
+
+**Commands vs operations (convention):** `ManagedCommands` methods are thin command shells -- prompt,
+select, resolve the sticky specs -- that delegate to static OPERATIONS (`Apply*`/`Compute*` facades,
+`ManagedTimber.Build*`/`Emit*`/joint builders). New joinery lands as an operation plus a thin command
+wrapper; do not put geometry math in a `[CommandMethod]` body. (The `Apply*` commit half rebuilds both
+solids; the `Compute*` half mutates frames only -- shared by commands and the Joints-pane preview.)
 
 ### Managed Joinery
 
