@@ -113,7 +113,9 @@ Joinery commands (each family below; every cutter has a matching `...Del`):
 
 Output commands: `TBom` (sortable per-timber grid; rows highlight solids; CSV export), `TShop` /
 `TShopClear` (shop maps per bent/wall + floor plans, paper-space layouts, pre-joinery arris linework,
-X/+ housing marks), `TScribe` / `TScribeAll` / `TScribeProbe` (`.tsj` laser scribe export + diagnostics).
+X/+ housing marks), `TScribe` / `TScribeAll` / `TScribeProbe` (`.tsj` laser scribe export + diagnostics),
+`TDiag` (dump the session diagnostic ring -- `Diag.Warn` lines from silently-recovered geometry/persistence
+failures; root `Diag.cs`, callable from Frame\ and Managed\ alike).
 
 **Commands vs operations (convention):** `ManagedCommands` methods are thin command shells -- prompt,
 select, resolve the sticky specs -- that delegate to static OPERATIONS (`Apply*`/`Compute*` facades,

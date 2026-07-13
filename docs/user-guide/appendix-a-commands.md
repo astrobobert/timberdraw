@@ -71,6 +71,7 @@ palette** — Frame / Assembly / Joints / Browser / Output.
 |---|---|
 | `TVer` | Print the loaded build (the am-I-stale check). Ch. 2 |
 | `TPickFace` | Debug: pick and report one analytic face. |
+| `TDiag` | Dump this session's diagnostic warnings (silently-recovered geometry/persistence failures). |
 
 ## Removed
 
