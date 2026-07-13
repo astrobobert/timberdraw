@@ -299,10 +299,18 @@ namespace TimberDraw
             // Replace THIS joint by its id; the geometry-overlap purge applies ONLY to legacy id-0 prisms (a
             // stale un-identified pocket at the same contact). A DIFFERENT identified joint on the same host
             // must never be swept up by the overlap net. Other purlins sit at different stations anyway.
+            // PURGE BEFORE ADDING: this joint puts TWO prisms (housing + tongue) on each target list, so the
+            // by-id purge must run once up front -- doing it per-prism would delete the housing when the
+            // tongue is added (same id, same list), leaving the dovetail with no housing on every re-cut.
+            if (reuse != 0)
+            {
+                purlin.JointPrisms.RemoveAll(j => j.Joint == reuse);
+                rafter.JointPrisms.RemoveAll(j => j.Joint == reuse);
+            }
             foreach ((Point3d[] Poly, Vector3d Extrude, bool OnRafter) p in prisms)
             {
                 var target = p.OnRafter ? rafter.JointPrisms : purlin.JointPrisms;
-                target.RemoveAll(j => (reuse != 0 && j.Joint == reuse) || (j.Joint == 0 && PrismPolysOverlap(j.Poly, p.Poly)));
+                target.RemoveAll(j => j.Joint == 0 && PrismPolysOverlap(j.Poly, p.Poly));
                 target.Add((p.Poly, p.Extrude, jid, p.OnRafter));
             }
             return true;
