@@ -632,8 +632,11 @@ namespace TimberDraw
         public override bool GetStandardValuesSupported(ITypeDescriptorContext c) => true;
         public override bool GetStandardValuesExclusive(ITypeDescriptorContext c) => true;
         public override StandardValuesCollection GetStandardValues(ITypeDescriptorContext c)
+            // "Free Assembly" is a first-class choice: a bare numbered grid station (no parametric
+            // geometry) whose timbers are hand-placed (TPlace + TAssign). Selecting it rebuilds the bent
+            // to an empty parametric set; picking a real type afterward regenerates that type's defaults.
             => new StandardValuesCollection(new[]
-               { "", "KingPost", "QueenPost", "HammerBeam", "KingPostTruss", "QueenPostTruss" });
+               { "", "KingPost", "QueenPost", "HammerBeam", "KingPostTruss", "QueenPostTruss", "Free Assembly" });
         // The unset bent type ("") shows + selects as "None".
         public override object ConvertTo(ITypeDescriptorContext c, System.Globalization.CultureInfo ci,
             object value, System.Type destType)
