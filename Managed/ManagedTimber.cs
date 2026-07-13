@@ -99,29 +99,62 @@ namespace TimberDraw
         // (free-assembly) work, assigned or not: a timber survives when it carries the Free marker
         // (stamped at editor creation) OR a FloorTag (floor-owned members are free by construction --
         // the generator never writes FloorTag, so this also protects joists/summers placed before the
-        // marker existed). Non-managed solids untouched. Reversible via AutoCAD UNDO. Returns the count.
+        // marker existed). Survivors JOINTED TO the erased skeleton then get those joints' features
+        // STRIPPED (and rebuild) -- the new mate is fresh uncut wood, so the half-joint is stale. The
+        // per-joint recipe stamps are KEPT: TJointSync re-attaches them deliberately, or TJointAll /
+        // the Joints pane cuts fresh. Non-managed solids untouched. Reversible via AutoCAD UNDO.
+        // Returns the count erased.
         public static int EraseFrame(Database db, string frameTag)
         {
             int n = 0;
             Document doc = Application.DocumentManager.MdiActiveDocument;
             if (doc == null) return 0;
+            var erasedJoints = new HashSet<int>();   // joint ids the erased skeleton carried
+            var survivors = new List<ObjectId>();    // managed timbers kept (free / floor-owned / other frames)
             using (doc.LockDocument())
-            using (Transaction tr = db.TransactionManager.StartTransaction())
             {
-                var btr = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForRead);
-                foreach (ObjectId id in btr)
+                using (Transaction tr = db.TransactionManager.StartTransaction())
                 {
-                    if (!(tr.GetObject(id, OpenMode.ForRead) is Entity ent)) continue;
-                    if (!TryReadFrame(tr, ent, out _)) continue;
-                    if (frameTag != null)
+                    var btr = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForRead);
+                    foreach (ObjectId id in btr)
                     {
-                        if (ReadXTextField(tr, ent, "FrameTag") != frameTag) continue;
-                        if (ReadXTextField(tr, ent, "Free") == "1") continue;        // hand-placed: keep
-                        if (ReadXTextField(tr, ent, "FloorTag") != "") continue;     // floor-owned: keep
+                        if (!(tr.GetObject(id, OpenMode.ForRead) is Entity ent)) continue;
+                        if (!TryReadFrame(tr, ent, out TFrame f)) continue;
+                        if (frameTag != null)
+                        {
+                            if (ReadXTextField(tr, ent, "FrameTag") != frameTag         // another frame's: keep
+                                || ReadXTextField(tr, ent, "Free") == "1"               // hand-placed: keep
+                                || ReadXTextField(tr, ent, "FloorTag") != "")           // floor-owned: keep
+                            { survivors.Add(id); continue; }
+                            foreach (int j in JointIds(f)) erasedJoints.Add(j);
+                        }
+                        ent.UpgradeOpen(); ent.Erase(); n++;
                     }
-                    ent.UpgradeOpen(); ent.Erase(); n++;
+                    tr.Commit();
                 }
-                tr.Commit();
+
+                // The ORPHAN SWEEP: a joint id is pairwise, so an erased timber's id found on a survivor
+                // is a half-joint whose mate just died. Strip those features and rebuild the survivor
+                // plain (its recipe stamps ride across RebuildFromFrame untouched).
+                if (erasedJoints.Count > 0)
+                {
+                    int strippedJoints = 0, strippedTimbers = 0;
+                    foreach (ObjectId sid in survivors)
+                    {
+                        if (!TryReadFrame(db, sid, out TFrame f)) continue;
+                        List<int> orphaned = null;
+                        foreach (int j in JointIds(f))
+                            if (erasedJoints.Contains(j)) (orphaned ??= new List<int>()).Add(j);
+                        if (orphaned == null) continue;
+                        foreach (int j in orphaned) StripJoint(ref f, j);
+                        if (RebuildFromFrame(sid, f).IsNull) continue;
+                        strippedTimbers++; strippedJoints += orphaned.Count;
+                    }
+                    if (strippedTimbers > 0)
+                        doc.Editor.WriteMessage("\n  regen: stripped " + strippedJoints
+                            + " orphaned joint(s) from " + strippedTimbers
+                            + " surviving timber(s); recipes kept -- TJointSync re-attaches, or re-cut via TJointAll / the Joints pane.");
+                }
             }
             return n;
         }

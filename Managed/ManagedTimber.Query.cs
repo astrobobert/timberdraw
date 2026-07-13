@@ -13,6 +13,35 @@ namespace TimberDraw
     // and interactive face picking. (Verbatim moves; see CLAUDE.md.)
     public static partial class ManagedTimber
     {
+        // ---- joint-id primitives over the five feature kinds (box features + pegs + the three polygon
+        //      families): "which joints does this timber carry" and "remove this joint from this timber".
+        //      The single definitions -- shared by the Joints pane, TJointSync, and the regen orphan sweep
+        //      in EraseFrame. -----------------------------------------------------------------------------
+
+        // Every joint id present in the frame's GEOMETRY (id 0 = legacy unidentified cuts, excluded).
+        public static HashSet<int> JointIds(TFrame f)
+        {
+            var s = new HashSet<int>();
+            if (f.Features    != null) foreach (var x in f.Features)    s.Add(x.Joint);
+            if (f.Pegs        != null) foreach (var x in f.Pegs)        s.Add(x.Joint);
+            if (f.JointPolys  != null) foreach (var x in f.JointPolys)  s.Add(x.Joint);
+            if (f.JointPolysZ != null) foreach (var x in f.JointPolysZ) s.Add(x.Joint);
+            if (f.JointPrisms != null) foreach (var x in f.JointPrisms) s.Add(x.Joint);
+            s.Remove(0);
+            return s;
+        }
+
+        // Erase a joint from a frame COMPLETELY -- every feature kind that can carry an id.
+        public static void StripJoint(ref TFrame f, int id)
+        {
+            if (id == 0) return;
+            f.Features?.RemoveAll(x => x.Joint == id);
+            f.Pegs?.RemoveAll(x => x.Joint == id);
+            f.JointPolys?.RemoveAll(x => x.Joint == id);
+            f.JointPolysZ?.RemoveAll(x => x.Joint == id);
+            f.JointPrisms?.RemoveAll(x => x.Joint == id);
+        }
+
         // WCS frames of every managed timber stamped with `frameTag` (null = all managed timbers).
         // Includes both parametric-emitted timbers and sub timbers assigned via TAssign -- the source
         // for the drawing-derived structural grid (so adding/removing a sub shifts the numbering).
