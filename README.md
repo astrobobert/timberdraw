@@ -72,11 +72,14 @@ TimberDraw\
     FrameRegistry.cs     -- The one-way freeze gate
 
   Managed\               -- The MANAGED SUBSTRATE (editor + joinery + output)
-    ManagedTimber.cs     -- TFrame model, faces/nodes, solid build, editor verbs, joinery commands
-    JoinCommands.cs      -- Joints pane commands (TJoinPick / TJoinApply)
-    RelabelCommands.cs   -- TRelabel
-    BomCommands.cs       -- TBom
-    ShopCommands.cs / ShopMaps.cs / ShopLayouts.cs -- TShop shop drawings
+    ManagedTimber.*.cs   -- The core, six partial files: anchor (keys/layers/erase), Model
+                            (TFrame/specs), Solid (build/draw/rebuild), Geometry (joint
+                            builders/faces), Persist (xrecords), Query (enumeration/picking)
+    *Commands.cs         -- The command shells (partial class ManagedCommands): Core (shared
+                            spine), Place, Assign, Scarf, GirtPost, RafterRidge, RoofInfill,
+                            StrutBrace, Scan, Joist + JoinCommands (Joints pane), Relabel,
+                            Bom, Shop, Scribe
+    ShopMaps.cs / ShopLayouts.cs -- TShop shop drawings
     Scribe*.cs           -- TScribe / TScribeAll .tsj export + annotations
 
   Browser\               -- TBrowse frame browser palette

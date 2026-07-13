@@ -51,18 +51,33 @@ sections further below are the GENERATOR's internals only.
   (Robert's rule): nothing auto-cuts at place time; `TJointAll` (selection-scoped) cuts, `TJointSync`
   re-cuts after moves / re-attaches after a regen.
 
-`Managed\` -- the managed timber model, the editor, and the output layer. `ManagedTimber.cs` is the core:
+`Managed\` -- the managed timber model, the editor, and the output layer. The core is the
+`ManagedTimber` static class, SPLIT (2026-07-13, behavior-neutral) across six partial files:
+- `ManagedTimber.cs` (anchor: const keys, group layers, erase/tags + the `[assembly: CommandClass]`),
+  `ManagedTimber.Model.cs` (`TFrame`/`TFace` + the joint spec structs), `ManagedTimber.Solid.cs`
+  (`DrawBox`/`BuildFramedSolid`/`DrawFramedSolid`/`RebuildFromFrame`/re-section/scarf tongue),
+  `ManagedTimber.Geometry.cs` (all joint builders + `Faces`/`FacesMate`/transforms),
+  `ManagedTimber.Persist.cs` (frame xrecord + joint-spec map + scarf/seat nodes),
+  `ManagedTimber.Query.cs` (`Enumerate*`/BOM/shop info, `ComputeNodes`, face picking).
 - `TFrame` struct -- a timber's WCS frame (`O`, axes `X/Y/Z`, `L/D/W`) + end-cut normals + feature lists.
   `Faces(TFrame)` returns the 6 nominal faces; `ComputeNodes` derives connectivity from face coincidence
   (`FacesMate`), surfaced by `TScan`. `BuildFramedSolid` builds the solid (box -> slice end cuts -> convex
   Cuts -> concave Subtracts -> joinery Features/Pegs/JointPolys/JointPolysZ); `DrawFramedSolid` /
   `RebuildFromFrame` persist everything as XData trailers and preserve the production `TagHandle`.
 
+The `ManagedCommands` partial class (the command shells) spans the `<Area>Commands.cs` files:
+`ManagedCommands.Core.cs` (the shared spine: sticky specs, StampJoint/ApplyJoint/NextJointId, contact +
+overlap helpers, shared review loops, PickTimber/prompts), `PlaceCommands.cs` (TPlace/TSpan/TJoin/TFit/
+TSection), `AssignCommands.cs` (TAssign + label minting), `ScarfCommands.cs`, `GirtPostCommands.cs`
+(TJoint/TJointAll/TJointSync/TJointDel), `RafterRidgeCommands.cs`, `RoofInfillCommands.cs`,
+`StrutBraceCommands.cs`, `ScanCommands.cs`, `JoistCommands.cs` -- plus the pre-existing siblings
+`JoinCommands.cs` (Joints pane), `RelabelCommands.cs`, `BomCommands.cs`, `ShopCommands.cs`,
+`ScribeCommands.cs`.
+
 The rest of `Managed\`: jigs (`PlaceJig`/`SpanJig`/`ScarfJig`/`JigGeometry`), sticky section + assembly
-model (`ManagedSection`/`ManagedAssembly`), connection types (`ConnectionType`/`JointDefaults`), the
-Joints pane commands (`JoinCommands.cs`), labels (`RelabelCommands.cs`), BOM (`BomCommands.cs`), shop
-drawings (`ShopCommands`/`ShopMaps`/`ShopLayouts`), and scribe export (`Scribe*.cs`). The frame browser
-palette lives in `Browser\`.
+model (`ManagedSection`/`ManagedAssembly`), connection types (`ConnectionType`/`JointDefaults`), shop
+drawings (`ShopMaps`/`ShopLayouts`), and scribe export (`Scribe*.cs`). The frame browser palette lives
+in `Browser\`.
 
 ### Editor commands
 
