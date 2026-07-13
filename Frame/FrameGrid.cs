@@ -154,10 +154,12 @@ namespace TimberDraw
         private readonly Dictionary<string, int> _roofSeq = new Dictionary<string, int>();
 
         // A brace carries only a GROUP label: every brace of the same SIZE shares one symbol -- the first
-        // group "*", the next "**", and so on (no bent / column letters). Grouped by CROSS-SECTION (W x D)
-        // ONLY, so a bent knee brace and a wall/bay brace of the same size share a symbol (their nominal box
-        // LENGTH differs by convention -- a bent brace stores its centerline, a wall FreeBox brace an
-        // over-long padded length -- so length is deliberately left out of the key).
+        // group "*", the next "**", and so on (no bent / column letters). This is a PROVISIONAL stamp
+        // grouped by CROSS-SECTION (W x D) only; the authoritative symbol is re-derived post-emit by
+        // ManagedCommands.RelabelBraces (size + shape: section, angle, and TRUE trimmed length, so it also
+        // separates same-section braces of different shape and survives re-section / hand-place / assign).
+        // Length is left out HERE by convention -- a bent brace stores its centerline, a wall FreeBox brace
+        // an over-long padded length -- which is exactly why the real grouping happens on the finished solids.
         public string BraceLabel(FrameEdge e, ManagedTimber.TFrame f)
         {
             string sig = Q(f.W) + "x" + Q(f.D);

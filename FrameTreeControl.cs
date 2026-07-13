@@ -859,6 +859,7 @@ namespace TimberDraw
             // used inside Emit to stamp each timber's installer label.)
             FrameGrid grid = doc != null ? FrameGrid.BuildFromDrawing(doc.Database, frameTag, placement) : emitGrid;
             grid.Draw(placement, frameTag);   // flat under the frame (model basis)
+            if (doc != null) ManagedCommands.RelabelBraces(doc.Database);   // brace symbols (*, **) by size+shape
 
             // Free Assembly elements emit no geometry -> draw a provisional dashed line at each (bent =
             // cumulative Z, wall = cumulative X) so the user can align placed timbers; suppressed once a

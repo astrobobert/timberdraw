@@ -108,6 +108,7 @@ namespace TimberDraw
 			ManagedTimber.EraseGrid(db, "A");
 			int drawn = ManagedFrameEmitter.Emit(g, placement, "A", out FrameGrid grid);
 			grid.Draw(placement, "A");   // flat under the frame (model basis -> floor on WCS XY)
+			ManagedCommands.RelabelBraces(db);   // authoritative brace symbols (*, **) by size+shape
 
 			// Store the recipe on the frame (pre-break, frozen=false): bent type + seed params + the
 			// placement that put it in WCS. TFreeze later flips Frozen; a future re-seed reads this.

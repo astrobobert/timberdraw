@@ -67,7 +67,12 @@ namespace TimberDraw
                 prefixed += Apply(t, fam + "-" + label);
             }
 
-            ed.WriteMessage($"\nTRelabel: {renamed} level label(s) + {prefixed} family prefix(es) updated"
+            // Brace symbols (*, **, ...) re-derived from the current model too -- so re-sectioned or
+            // hand-placed braces pick up the size+shape grouping the same as the emitted ones.
+            int braces = RelabelBraces(db);
+
+            ed.WriteMessage($"\nTRelabel: {renamed} level label(s) + {prefixed} family prefix(es)"
+                + $" + {braces} brace symbol(s) updated"
                 + (ambiguous > 0 ? $", {ambiguous} group(s) skipped" : "") + ".");
         }
 
@@ -80,6 +85,68 @@ namespace TimberDraw
             if (role.Equals("Girt", StringComparison.OrdinalIgnoreCase))
                 return string.Equals(desig, "FG", StringComparison.OrdinalIgnoreCase) ? "FG" : "TG";
             return BentLabelFamilies.TryGetValue(role, out string f) ? f : "";
+        }
+
+        // TRelabelBraces -- re-derive every brace's group symbol from the CURRENT model. A brace carries
+        // only a symbol (*, **, ...), shared by every brace of the same SIZE + SHAPE. Run it after
+        // re-sectioning / hand-placing / assigning braces (the emitter stamps a provisional symbol at
+        // draw, but that never revisits post-emit edits, which is why a re-sized brace kept reading '*').
+        [CommandMethod("TRelabelBraces")]
+        public static void RelabelBracesCommand()
+        {
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            int n = RelabelBraces(doc.Database);
+            doc.Editor.WriteMessage("\nTRelabelBraces: " + n + " brace symbol(s) updated.");
+        }
+
+        // Model-wide brace symbols: every Brace-role timber gets a group symbol (*, **, ...) by SIZE +
+        // SHAPE -- cross-section (W x D, quarter-inch buckets) plus the brace's angle-from-horizontal and
+        // its true (trimmed) length. Overall (the finished solid's extent along its axis) is used for
+        // length, so a bent brace's centerline and a wall brace's OVER-LONG box collapse to the same
+        // stick -- identical braces share a symbol, genuinely different ones split. Symbols are assigned
+        // in a stable numeric order (section, then angle, then length ascending), so the mapping is
+        // reproducible across runs. Returns the number of GridLabels changed. The single authority --
+        // the emitter's FrameGrid.BraceLabel is a provisional stamp this supersedes.
+        public static int RelabelBraces(Database db)
+        {
+            var braces = ManagedTimber.EnumerateForBom(db)
+                .Where(t => string.Equals(t.Type, "Brace", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (braces.Count == 0) return 0;
+
+            (int W, int D, int A, int L) Key(ManagedTimber.TimberBom t) =>
+                (QInt(t.F.W), QInt(t.F.D), (int)Math.Round(BraceAngleDeg(t.F)), (int)Math.Round(t.Overall));
+
+            var order = braces.Select(Key).Distinct()
+                .OrderBy(k => k.W).ThenBy(k => k.D).ThenBy(k => k.A).ThenBy(k => k.L)
+                .ToList();
+            var symbol = new Dictionary<(int, int, int, int), string>();
+            for (int i = 0; i < order.Count; i++) symbol[order[i]] = new string('*', i + 1);
+
+            int changed = 0;
+            foreach (var t in braces)
+            {
+                string lbl = symbol[Key(t)];
+                if (string.Equals(t.Label, lbl, StringComparison.Ordinal)) continue;
+                var xd = Module1.GetXdata(t.Id);
+                if (xd == null) continue;
+                xd.GridLabel = lbl;
+                Module1.SetXdata(t.Id, xd);
+                changed++;
+            }
+            return changed;
+        }
+
+        private static int QInt(double v) => (int)Math.Round(v * 4.0);   // quarter-inch section bucket
+
+        // Brace angle from horizontal (0 = flat, 90 = plumb), from the world-Z rise of the length axis --
+        // storage-independent (a brace's box length varies by build path; its direction does not).
+        private static double BraceAngleDeg(ManagedTimber.TFrame f)
+        {
+            double zx = f.Z.X, zy = f.Z.Y, zz = f.Z.Z;
+            double h = Math.Sqrt(zx * zx + zy * zy);
+            return Math.Atan2(Math.Abs(zz), h) * 180.0 / Math.PI;
         }
 
         private static double MidZ(ManagedTimber.TFrame f) => (f.O + f.Z * (f.L / 2.0)).Z;

@@ -3383,6 +3383,10 @@ namespace TimberDraw
                 ? "Bent " + bentTag + (colTag.Length > 0 ? " (grid " + bentTag + colTag + ")" : "")
                 : wallTag.Length > 0 ? "Wall " + wallTag + (bayTag.Length > 0 ? " / Bay " + bayTag : "")
                 : "Floor " + floorTag;
+            // Braces are label-by-symbol, skipped by the owner-seq mint above -- re-derive their
+            // *, ** grouping from the whole model so a just-assigned brace shows its symbol, not a blank.
+            RelabelBraces(db);
+
             ed.WriteMessage("\nTAssign: " + n + " timber(s) -> Frame " + frame + " / " + target
                 + (mint.Count > 0 ? " (" + mint.Count + " label(s) minted)" : "")
                 + (skipped > 0 ? " (skipped " + skipped + " non-managed)" : "") + ".");
@@ -3437,7 +3441,11 @@ namespace TimberDraw
             {
                 Module1.DataStructure xd = Module1.GetXdata(id);
                 if (xd == null || string.IsNullOrEmpty(xd.Type)) continue;
-                string fam = FamilyFor(xd.Type);   // EVERY type mints FAM-owner-seq now
+                // Braces are the group-symbol family (*, **, ...): they are NEVER owner-seq numbered.
+                // RelabelBraces (called after the assign) re-derives their symbol by size+shape; minting
+                // B-owner-seq here would clobber it (B-3-1 instead of *).
+                if (string.Equals(xd.Type, "Brace", StringComparison.OrdinalIgnoreCase)) continue;
+                string fam = FamilyFor(xd.Type);   // EVERY other type mints FAM-owner-seq
                 if (!byFam.TryGetValue(fam, out var list)) byFam[fam] = list = new List<ObjectId>();
                 list.Add(id);
             }
