@@ -40,6 +40,12 @@ namespace TimberDraw
 
         public void Bind(object[] targets)
         {
+            // A rebuild disposes every editor. If one currently holds focus (e.g. Tab just moved the
+            // caret into Head, whose commit-of-Foot triggered a brace solve-for re-Bind), remember its
+            // row so the caret can be put back on the same field -- otherwise Tab looks like it can't
+            // reach that field at all.
+            string keepFocus = FocusedRowName();
+
             _loading = true;
             _table.SuspendLayout();
             _table.Controls.Clear();
@@ -62,6 +68,28 @@ namespace TimberDraw
                 }
             }
             finally { _table.ResumeLayout(); _loading = false; }
+
+            if (keepFocus != null) RestoreFocus(keepFocus);
+        }
+
+        // The stamped row name of the editor that currently holds focus, or null. Editors carry their
+        // row name (AddRow) so focus survives the rebuild a commit can trigger.
+        private string FocusedRowName()
+        {
+            foreach (Control c in _table.Controls)
+                if (c.Focused && !string.IsNullOrEmpty(c.Name)) return c.Name;
+            return null;
+        }
+
+        private void RestoreFocus(string rowName)
+        {
+            foreach (Control c in _table.Controls)
+                if (c.Name == rowName && c.TabStop && c.CanFocus)
+                {
+                    c.Focus();
+                    if (c is TextBox tb) tb.SelectAll();
+                    return;
+                }
         }
 
         // ------------------------------------------------------------- row model
@@ -150,7 +178,9 @@ namespace TimberDraw
                 label = cb;
             }
             else label = PaneRows.RowLabel(row.Label, 6, subtle: row.ReadOnly);
-            PaneRows.AddParamRow(_table, label, BuildEditor(row));
+            Control editor = BuildEditor(row);
+            editor.Name = name;   // stamp the row so focus can be restored across a rebuild
+            PaneRows.AddParamRow(_table, label, editor);
         }
 
         private Control BuildEditor(DisplayRow row)
