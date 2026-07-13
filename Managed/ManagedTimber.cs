@@ -6010,6 +6010,18 @@ namespace TimberDraw
             return s;
         }
 
+        // A managed box's extent along a world direction: its center projected onto dir, plus/minus the
+        // box half-dimensions projected the same way. Used to find where two carriers overlap along the
+        // joist run without any face picking.
+        private static void ExtentAlong(ManagedTimber.TFrame f, Vector3d dir, out double lo, out double hi)
+        {
+            double c = (f.O + f.Z * (f.L / 2.0)).GetAsVector().DotProduct(dir);
+            double half = System.Math.Abs(f.X.DotProduct(dir)) * (f.W / 2.0)
+                        + System.Math.Abs(f.Y.DotProduct(dir)) * (f.D / 2.0)
+                        + System.Math.Abs(f.Z.DotProduct(dir)) * (f.L / 2.0);
+            lo = c - half; hi = c + half;
+        }
+
         [CommandMethod("TJoist")]
         public static void Joists()
         {
@@ -6032,15 +6044,14 @@ namespace TimberDraw
                 if (!GetPositive(ed, "Depth", 10.0, out d)) return;
             }
 
-            // Span pair: the two facing bearing faces the joists run between (their timbers are the
-            // CARRIERS -- kept for the end-dovetail cut).
-            if (!ManagedTimber.PickFace(ed, db, "\nPick the FIRST span (bearing) face: ", out ObjectId caId, out ManagedTimber.TFace fa)) return;
-            if (!ManagedTimber.PickFace(ed, db, "\nPick the SECOND span (bearing) face: ", out ObjectId cbId, out ManagedTimber.TFace fb)) return;
-            if (fa.N.DotProduct(fb.N) > -0.99)
-            { ed.WriteMessage("\nThe two span faces must face each other (opposing-parallel)."); return; }
-
-            double gap = (fb.C - fa.C).DotProduct(fa.N);
-            if (gap <= 1e-6) { ed.WriteMessage("\nNo positive gap between the span faces."); return; }
+            // Carrier pair: pick the two CARRIER TIMBERS (like TSpan) and let FindFacingPair locate the
+            // facing bearing faces the joists run between -- no face picking. The ids are kept for the
+            // end-dovetail cut.
+            if (!PickTimber(ed, db, "\nPick the FIRST carrier timber: ", out ObjectId caId, out ManagedTimber.TFrame carAfr)) return;
+            if (!PickTimber(ed, db, "\nPick the SECOND carrier timber: ", out ObjectId cbId, out ManagedTimber.TFrame carBfr)) return;
+            if (!ManagedTimber.FindFacingPair(carAfr, carBfr, out ManagedTimber.TFace fa, out ManagedTimber.TFace fb, out double gap))
+            { ed.WriteMessage("\nThose timbers have no facing, overlapping faces to bear joists between."); return; }
+            if (gap <= 1e-6) { ed.WriteMessage("\nNo positive gap between the carriers."); return; }
             Vector3d off = (fb.C - fa.C) - gap * fa.N;
             Point3d cL = fa.C + off * 0.5;                       // lateral center between the faces
 
@@ -6062,30 +6073,42 @@ namespace TimberDraw
                 ed.WriteMessage("\nCarrier tops differ by " + System.Math.Abs(topA - topB).ToString("0.###")
                                 + "\" -- using the lower.");
 
-            // Distribution pair: the run bounds, projected onto runDir.
-            if (!ManagedTimber.PickFace(ed, db, "\nPick the FIRST distribution (run-bound) face: ", out _, out ManagedTimber.TFace fc)) return;
-            if (!ManagedTimber.PickFace(ed, db, "\nPick the SECOND distribution (run-bound) face: ", out _, out ManagedTimber.TFace fd)) return;
-            double r0 = fc.C.GetAsVector().DotProduct(runDir);
-            double r1 = fd.C.GetAsVector().DotProduct(runDir);
-            if (r0 > r1) { double t = r0; r0 = r1; r1 = t; }
+            // Run bounds: default to where the two carriers OVERLAP along the run direction -- no picks
+            // (the joists fill the shared bearing length). The Bounds keyword below overrides this with
+            // two explicit run-bound faces for a partial fill.
+            ExtentAlong(carAfr, runDir, out double loA, out double hiA);
+            ExtentAlong(carBfr, runDir, out double loB, out double hiB);
+            double r0 = System.Math.Max(loA, loB), r1 = System.Math.Min(hiA, hiB);
+            if (r1 - r0 <= 1e-6) { ed.WriteMessage("\nThe carriers don't overlap along their length -- nothing to fill."); return; }
             double L = r1 - r0;
-            if (L <= 1e-6) { ed.WriteMessage("\nThe distribution faces don't bound a run along the floor."); return; }
 
-            // Count (N even, end-inset) or on-center Spacing (default 36", centered in the run).
-            // Drop edits the sticky top recess (0 = flush tops); Joint reviews the sticky end-dovetail
-            // recipe (On/Off + knobs). Both re-ask.
+            // Count (N even, end-inset) or on-center Spacing (default 36", centered in the run). Bounds
+            // re-picks the run extent (two faces) for a partial fill; Drop edits the sticky top recess
+            // (0 = flush tops); Joint reviews the sticky end-dovetail recipe (On/Off + knobs). All re-ask.
             string mode;
             for (; ; )
             {
                 var pko = new PromptKeywordOptions("\nDistribute by");
                 pko.Keywords.Add("Count");
                 pko.Keywords.Add("Spacing");
+                pko.Keywords.Add("Bounds");
                 pko.Keywords.Add("Drop");
                 pko.Keywords.Add("Joint");
                 pko.Keywords.Default = "Spacing";
                 PromptResult kr = ed.GetKeywords(pko);
                 if (kr.Status != PromptStatus.OK) return;
                 if (kr.StringResult == "Joint") { if (!ReviewJoistDove(ed)) return; continue; }
+                if (kr.StringResult == "Bounds")
+                {
+                    if (!ManagedTimber.PickFace(ed, db, "\nPick the FIRST run-bound face: ", out _, out ManagedTimber.TFace fc)) continue;
+                    if (!ManagedTimber.PickFace(ed, db, "\nPick the SECOND run-bound face: ", out _, out ManagedTimber.TFace fd)) continue;
+                    double a = fc.C.GetAsVector().DotProduct(runDir), b = fd.C.GetAsVector().DotProduct(runDir);
+                    r0 = System.Math.Min(a, b); r1 = System.Math.Max(a, b);
+                    L = r1 - r0;
+                    if (L <= 1e-6) { ed.WriteMessage("\nThose faces don't bound a run along the carriers."); r0 = System.Math.Max(loA, loB); r1 = System.Math.Min(hiA, hiB); L = r1 - r0; }
+                    else ed.WriteMessage("\nRun bounds set: " + L.ToString("0.#") + "\" along the carriers.");
+                    continue;
+                }
                 if (kr.StringResult != "Drop") { mode = kr.StringResult; break; }
                 if (!GetDouble(ed, "Drop below carrier tops", _joistDrop, false, out double dr)) return;
                 _joistDrop = System.Math.Max(0.0, dr);
