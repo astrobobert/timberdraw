@@ -16,7 +16,13 @@ editor:
   README/CLAUDE.md.
 - **Architecture tests** — `dotnet test tests/TimberDraw.Architecture.Tests`
   runs anywhere: the tests read the production sources as text and reference
-  neither AutoCAD nor the plugin assembly. This is also what CI runs.
+  neither AutoCAD nor the plugin assembly.
+- **Domain characterization tests** — `dotnet test tests/TimberDraw.Domain.Tests`
+  also runs anywhere: it compiles the pure production sources (FrameSpec /
+  FrameSpecStore / UnitInput / peg standards) directly and pins the
+  `.framespec` format, the legacy migrations, and distance parsing. Both test
+  projects are what CI runs; the plugin itself compiles only locally (the
+  ObjectARX SDK is a licensed local install).
 - **Design discussion** — issues about joinery geometry, labeling conventions,
   and shop workflow are welcome from working framers especially.
 
@@ -59,8 +65,9 @@ AutoCAD before rebuilding.
 ## Pull requests
 
 - Keep PRs focused; describe what you exercised (built + loaded in AutoCAD,
-  or arch-tests-only — say which).
-- `dotnet test tests/TimberDraw.Architecture.Tests` must pass.
+  or tests-only — say which).
+- Both `dotnet test tests/TimberDraw.Architecture.Tests` and
+  `dotnet test tests/TimberDraw.Domain.Tests` must pass.
 - New commands/parameters need a line in the user guide's
   [command reference](docs/user-guide/appendix-a-commands.md) and, if they
   introduce vocabulary, a GLOSSARY entry.
