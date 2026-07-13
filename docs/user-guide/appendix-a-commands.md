@@ -40,7 +40,7 @@ palette** — Frame / Assembly / Joints / Browser / Output.
 
 | Command | One line |
 |---|---|
-| `TJoinPick` / `TJoinApply` | The Joints pane: pick a pair, edit the element stack, cut. Ch. 10 |
+| `TJoinPick` / `TJoinApply` / `TJoinClear` | The Joints pane: pick a pair, edit the element stack, cut; Clear removes the held pair's joint (Apply right after = re-snap). Ch. 10 |
 | `TJoint` / `TJointDel` | Girt end -> post: tenon + housing + pegs. Ch. 10 |
 | `TJointAll` | Batch-cut joinery for All or a Selection: girt-post, post-sill, summer-girt, joist-carrier passes. Ch. 10 |
 | `TJointSync` | Re-cut a moved timber's joints from their stored recipes; re-attach orphans after a re-Generate. Ch. 10 |

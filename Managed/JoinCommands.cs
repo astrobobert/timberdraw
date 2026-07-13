@@ -91,17 +91,7 @@ namespace TimberDraw
             return 0;
         }
 
-        private static HashSet<int> AllJointIds(ManagedTimber.TFrame f)
-        {
-            var s = new HashSet<int>();
-            if (f.Features   != null) foreach (var x in f.Features)   s.Add(x.Joint);
-            if (f.Pegs       != null) foreach (var x in f.Pegs)       s.Add(x.Joint);
-            if (f.JointPolys != null) foreach (var x in f.JointPolys) s.Add(x.Joint);
-            if (f.JointPolysZ!= null) foreach (var x in f.JointPolysZ)s.Add(x.Joint);
-            if (f.JointPrisms!= null) foreach (var x in f.JointPrisms)s.Add(x.Joint);
-            s.Remove(0);
-            return s;
-        }
+        private static HashSet<int> AllJointIds(ManagedTimber.TFrame f) => ManagedTimber.JointIds(f);
 
         // Cut the active connection type (set by the pane, with its edited params) onto the picked pair. Runs in
         // a command context so RebuildFromFrame has the document lock. Updates the held ids to the rebuilt solids
@@ -117,6 +107,42 @@ namespace TimberDraw
             if (!JoinSession.HasPair) { ed.WriteMessage("\nNo timber pair -- press Pick pair first."); return; }
             if (JoinSession.Active == null) { ed.WriteMessage("\nNo connection type selected."); return; }
             ApplyHeldPair(ed, db);
+        }
+
+        // Remove the held pair's joint COMPLETELY -- every feature kind + the persisted per-joint spec -- and
+        // rebuild both timbers plain. The pane's one-click CLEAR: the pair STAYS HELD, so Apply right after
+        // re-cuts the same connection fresh at the CURRENT contact (the displaced-joint re-snap, without
+        // toggling an element off/on to force a re-cut). Runs in a command context for the document lock,
+        // like TJoinApply. Same machinery as the all-elements-off delete inside ApplyHeldPair.
+        [CommandMethod("TJoinClear")]
+        public static void JoinClear()
+        {
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            Editor ed = doc.Editor;
+            Database db = doc.Database;
+
+            if (!JoinSession.HasPair) { ed.WriteMessage("\nNo timber pair -- press Pick pair first."); return; }
+            ManagedTimber.TFrame fa = JoinSession.A, fb = JoinSession.B;
+            int sid = SharedJointId(fa, fb);
+            if (sid == 0)
+            {
+                ed.WriteMessage("\nNo joint between the held pair -- nothing to clear.");
+                JoinSession.Report("no joint between the held pair");
+                return;
+            }
+            fa = CloneFrame(fa); fb = CloneFrame(fb);
+            StripJoint(ref fa, sid); StripJoint(ref fb, sid);
+            ObjectId na = ManagedTimber.RebuildFromFrame(JoinSession.AId, fa);
+            ObjectId nb = ManagedTimber.RebuildFromFrame(JoinSession.BId, fb);
+            ManagedTimber.RemoveJointSpec(na, sid);
+            ManagedTimber.RemoveJointSpec(nb, sid);
+            string gone = "joint cleared -- Apply re-cuts fresh at the current contact";
+            ed.WriteMessage("\nJoints: " + gone + ".");
+            if (ManagedTimber.TryReadFrame(db, na, out ManagedTimber.TFrame a2) &&
+                ManagedTimber.TryReadFrame(db, nb, out ManagedTimber.TFrame b2))
+                JoinSession.SetPair(na, a2, nb, b2, gone);
+            else { JoinSession.LastDiag = gone + " (pair released)"; JoinSession.ClearPair(); }
         }
 
         // Cut the active connection type (the dropdown is king -- exactly the type the pane shows) onto the held
@@ -218,17 +244,10 @@ namespace TimberDraw
         }
 
         // Erase a joint from a frame COMPLETELY -- every feature kind that can carry an id (box features + pegs +
-        // the three polygon families). The single definition of "remove this joint from this timber", so switching
-        // a pair's joint to a different KIND replaces it in place instead of stacking a second one.
-        private static void StripJoint(ref ManagedTimber.TFrame f, int id)
-        {
-            if (id == 0) return;
-            f.Features?.RemoveAll(x => x.Joint == id);
-            f.Pegs?.RemoveAll(x => x.Joint == id);
-            f.JointPolys?.RemoveAll(x => x.Joint == id);
-            f.JointPolysZ?.RemoveAll(x => x.Joint == id);
-            f.JointPrisms?.RemoveAll(x => x.Joint == id);
-        }
+        // the three polygon families). The single definition now lives on ManagedTimber (the regen orphan sweep
+        // in EraseFrame shares it); switching a pair's joint to a different KIND still replaces it in place
+        // instead of stacking a second one.
+        private static void StripJoint(ref ManagedTimber.TFrame f, int id) => ManagedTimber.StripJoint(ref f, id);
 
         // ---- Factored apply-halves for the facade (each FINDS its own contact, so it runs from a timber pair).
         //      The matching commands route through these too, so command + facade share one path. -------------

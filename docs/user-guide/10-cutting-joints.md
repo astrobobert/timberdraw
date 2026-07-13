@@ -25,7 +25,12 @@ Open `TPanel` and switch to the **Joints** tab.
 3. If the pair **already carries a joint**, its saved settings load into the
    pane instead (nothing is clobbered). Tweak and **Apply** (`TJoinApply`) to
    re-cut it.
-4. The grid lists every element and parameter across all connection types in
+4. **Clear joint** (`TJoinClear`) removes the held pair's joint outright —
+   every element plus its saved settings, both timbers rebuilt plain. The pair
+   stays held, so **Apply** right after re-cuts it fresh at the current
+   contact: the quick fix for a joint that ended up displaced (no more
+   toggling an element off and back on to force a re-cut).
+5. The grid lists every element and parameter across all connection types in
    one stable layout; the selected type decides which rows are live and which
    are grayed. Changing a value re-cuts the real joint as you go.
 
@@ -75,10 +80,16 @@ has a matching `...Del`.
 - **Moved a jointed timber? `TJointSync`.** Select the timbers you moved and
   the command re-cuts every joint they carry from its stored recipe: a partner
   still sharing the joint id is re-cut in place (same id); a partner that was
-  *replaced* — the re-Generate case, where the fresh skeleton member has no
-  pocket — is healed by re-attaching the joint to whatever the timber now
-  touches (a fresh id). A partner that no longer touches at all is reported
-  and left alone; delete that joint deliberately if the separation is final.
+  *replaced* — the re-Generate case — is healed by re-attaching the joint to
+  whatever the timber now touches (a fresh id). A partner that no longer
+  touches at all is reported and left alone; delete that joint deliberately if
+  the separation is final.
+- **Regenerate strips orphaned halves.** When the tree's Draw replaces the
+  skeleton, any surviving free timber jointed to it has those joints' cuts
+  stripped automatically — the fresh skeleton member is uncut wood, so the old
+  half-joint was stale. The timbers come back plain but **keep their joint
+  recipes**; re-cut deliberately with `TJointSync` (re-attaches each stick
+  from its stored recipe) or `TJointAll` (cuts fresh).
 
 ---
 

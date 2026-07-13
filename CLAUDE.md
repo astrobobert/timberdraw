@@ -47,9 +47,12 @@ sections further below are the GENERATOR's internals only.
 - **Regenerate is skeleton-only (2026-07-07):** `EraseFrame` keeps any FrameTag-matched timber whose
   `Free` xdata == "1" (stamped at every editor creation: DrawBox/DrawMiteredBrace/TScarf pieces/first
   TAssign of an unassigned timber) OR whose FloorTag is set (the generator never writes FloorTag) --
-  hand-placed timbers survive a re-Generate, assigned or not. Joinery is DELAYED AND DELIBERATE
+  hand-placed timbers survive a re-Generate, assigned or not. **The orphan sweep (2026-07-13):**
+  after the erase, `EraseFrame` strips from every survivor the joint FEATURES whose id lived on an
+  erased skeleton timber (the half-joint's mate is fresh uncut wood) and rebuilds it plain; the
+  per-joint recipe STAMPS are kept, so the joint is re-cuttable. Joinery is DELAYED AND DELIBERATE
   (Robert's rule): nothing auto-cuts at place time; `TJointAll` (selection-scoped) cuts, `TJointSync`
-  re-cuts after moves / re-attaches after a regen.
+  re-cuts after moves / re-attaches after a regen (from those kept stamps).
 
 `Managed\` -- the managed timber model, the editor, and the output layer. The core is the
 `ManagedTimber` static class, SPLIT (2026-07-13, behavior-neutral) across six partial files:
@@ -114,7 +117,7 @@ Joinery commands (each family below; every cutter has a matching `...Del`):
 |---|---|
 | `TJoint` / `TJointAll` / `TJointDel` | Girt end -> post side: tenon + housing + pegs. `TJointAll` = the DELIBERATE batch: All-or-Selection scope (selection = who GETS joints), then girt->post / post->sill / summer->girt / joist->carrier passes, each with its own sticky recipe. |
 | `TJointSync` | Re-cut a selected timber's joints from their STORED recipes after a move (same id) or a re-Generate (geometric re-attach to the fresh skeleton member); no-contact joints reported + left. |
-| `TJoinPick` / `TJoinApply` | Joints pane flow (`TPanel` -> Joints): pick pair, edit the element stack, live re-cut. |
+| `TJoinPick` / `TJoinApply` / `TJoinClear` | Joints pane flow (`TPanel` -> Joints): pick pair, edit the element stack, live re-cut. Clear strips the held pair's joint (features + spec) and KEEPS the pair -- Apply after re-cuts fresh at the current contact (the displaced-joint re-snap). |
 | `TStrut` / `TStrutDel` | Strut / v-strut -> rafter underside, post side, king-post side, girt underside (any angle). |
 | `TBrace` / `TBraceDel` | Knee brace -> post/girt: same engine, 1.5" barefaced default. |
 | `TRafterFoot` / `TRafterFootDel` | Principal rafter foot -> post ("girt at a pitch": sloped housing + tenon). |

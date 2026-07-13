@@ -23,6 +23,7 @@ namespace TimberDraw
         private readonly Panel _stackHost = new Panel();          // scroll host for the grid
         private readonly TableLayoutPanel _grid = PaneRows.MakeGrid();   // the shared 2-col row idiom
         private readonly Button _btnApply = new Button();
+        private readonly Button _btnClear = new Button();         // remove the held pair's joint (strip + rebuild plain)
         private readonly Button _btnSetDefault = new Button();    // persist the active values as the type's default
         private readonly Button _btnResetDefault = new Button();  // drop the saved default (disabled = none saved)
         private readonly ToolTip _tip = new ToolTip { AutoPopDelay = 20000, InitialDelay = 400, ReshowDelay = 100, ShowAlways = true };
@@ -87,6 +88,17 @@ namespace TimberDraw
             _btnApply.Dock = DockStyle.Fill; _btnApply.Text = "Apply";
             _btnApply.Click += (s, e) => OnApply();
 
+            // CLEAR shares the Apply row: remove the held pair's joint outright. The pair stays held,
+            // so Apply right after re-cuts fresh at the current contact (the displaced-joint re-snap).
+            _btnClear.Dock = DockStyle.Fill; _btnClear.Text = "Clear joint";
+            _btnClear.Click += (s, e) => OnClear();
+            _tip.SetToolTip(_btnClear, "Remove the held pair's joint (both timbers rebuilt plain). The pair stays held -- Apply then re-cuts fresh at the current contact, re-snapping a displaced joint.");
+            var applyRow = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = new Padding(0) };
+            applyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
+            applyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
+            applyRow.Controls.Add(_btnApply, 0, 0);
+            applyRow.Controls.Add(_btnClear, 1, 0);
+
             // The DEFAULTS row: persist / drop the selected type's user default. A store gesture only --
             // it never re-cuts the held pair. Clicking either button focus-commits a pending text edit
             // first (the TextBox Leave -> CommitText path), so what you see is what gets saved.
@@ -104,7 +116,7 @@ namespace TimberDraw
             layout.Controls.Add(_stackHost, 0, 1);
             layout.Controls.Add(_lblStatus, 0, 2);
             layout.Controls.Add(_btnPick, 0, 3);
-            layout.Controls.Add(_btnApply, 0, 4);
+            layout.Controls.Add(applyRow, 0, 4);
             layout.Controls.Add(defaultsRow, 0, 5);
             Controls.Add(layout);
 
@@ -374,6 +386,15 @@ namespace TimberDraw
             if (!JoinSession.HasPair) { MessageBox.Show("Press \"Pick pair\" and select two timbers first.", "TimberDraw"); return; }
             JoinSession.ReleaseOnApply = true;
             Send("TJoinApply");
+        }
+
+        // CLEAR = remove the held pair's joint outright (every element + its saved spec, both timbers
+        // rebuilt plain). The pair stays held, so Apply right after re-cuts fresh at the CURRENT
+        // contact -- the one-click fix for a displaced joint (no more toggling an element off/on).
+        private void OnClear()
+        {
+            if (!JoinSession.HasPair) { MessageBox.Show("Press \"Pick pair\" and select two timbers first.", "TimberDraw"); return; }
+            Send("TJoinClear");
         }
 
         private void OnSessionChanged()
