@@ -119,7 +119,12 @@ namespace TimberDraw
                 el = FrameSpecStore.ElementFromJson(json);
                 return el != null;
             }
-            catch { return false; }
+            catch (System.Exception ex)
+            {
+                // The saved per-type template silently stops applying (fresh elements get factory sizes).
+                Diag.Warn("TypeDefaults.TryGet", key + " template unreadable: " + ex.Message);
+                return false;
+            }
         }
 
         private static Dictionary<string, string> Load()
@@ -131,7 +136,11 @@ namespace TimberDraw
                 return JsonSerializer.Deserialize<Dictionary<string, string>>(json)
                        ?? new Dictionary<string, string>();
             }
-            catch { return new Dictionary<string, string>(); }
+            catch (System.Exception ex)
+            {
+                Diag.Warn("TypeDefaults.Load", "TypeDefaultsJson corrupt, starting empty: " + ex.Message);
+                return new Dictionary<string, string>();
+            }
         }
     }
 }

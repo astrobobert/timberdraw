@@ -218,6 +218,10 @@ namespace TimberDraw
             Solid3d solid = new Solid3d();
             solid.CreateBox(f.W, f.D, boxLen);   // local X=width, Y=depth, Z=length (over-long)
             Point3d centroid = f.O + f.Z * (f.L / 2.0);
+            // Identity suffix for Diag lines -- a TFrame carries no handle/label, so the origin +
+            // length is the only locator available this deep.
+            string loc = " @(" + f.O.X.ToString("0.#") + "," + f.O.Y.ToString("0.#") + ","
+                       + f.O.Z.ToString("0.#") + ") L" + f.L.ToString("0.#");
             solid.TransformBy(Matrix3d.AlignCoordinateSystem(
                 Point3d.Origin, Vector3d.XAxis, Vector3d.YAxis, Vector3d.ZAxis,
                 centroid, f.X, f.Y, f.Z));
@@ -242,7 +246,7 @@ namespace TimberDraw
                     // A cut plane that doesn't intersect the body makes Slice throw (it wraps a null
                     // negative-half). Skip it -- the solid is simply left uncut by that plane.
                     try { using (Solid3d off = solid.Slice(new Plane(cut.P, n), true)) { } }
-                    catch { }
+                    catch (System.Exception ex) { Diag.Warn("BuildFramedSolid/Cut", "convex cut skipped: " + ex.Message + loc); }
                 }
             }
 
@@ -250,7 +254,7 @@ namespace TimberDraw
             // housing): each LOCAL elevation polygon is rebuilt at the -width face, extruded across the full
             // width, then UNIONED or SUBTRACTED. Shape Subtracts (untagged) always subtract; JointPolys carry
             // a sign (the rafter-foot post pocket subtracts, the rafter stub unions) -- they share this body.
-            void CutPoly(Point3d[] poly, bool subtract, double xlo, double xhi)
+            void CutPoly(Point3d[] poly, bool subtract, double xlo, double xhi, int joint)
             {
                 if (poly == null || poly.Length < 3 || xhi - xlo <= 1e-6) return;
                 try
@@ -274,11 +278,15 @@ namespace TimberDraw
                         }
                     }
                 }
-                catch { /* leave the stock as-is rather than abort the whole emit */ }
+                catch (System.Exception ex)   // leave the stock as-is rather than abort the whole emit
+                {
+                    Diag.Warn("BuildFramedSolid/Poly", (joint >= 0 ? "joint " + joint : "shape")
+                        + (subtract ? " subtract" : " union") + " skipped: " + ex.Message + loc);
+                }
             }
             // Same, but the polygon lives in the (X, Y) CROSS-SECTION and is extruded ALONG the length (f.Z)
             // over [zlo, zhi] -- a section-shaped feature running down the member (the ridge tongue).
-            void CutPolyZ(Point3d[] poly, bool subtract, double zlo, double zhi)
+            void CutPolyZ(Point3d[] poly, bool subtract, double zlo, double zhi, int joint)
             {
                 if (poly == null || poly.Length < 3 || zhi - zlo <= 1e-6) return;
                 try
@@ -302,13 +310,17 @@ namespace TimberDraw
                         }
                     }
                 }
-                catch { /* leave the stock as-is rather than abort the whole emit */ }
+                catch (System.Exception ex)   // leave the stock as-is rather than abort the whole emit
+                {
+                    Diag.Warn("BuildFramedSolid/PolyZ", (joint >= 0 ? "joint " + joint : "shape")
+                        + (subtract ? " subtract" : " union") + " skipped: " + ex.Message + loc);
+                }
             }
             // A PLANAR polygon (3D local pts) extruded PERPENDICULAR to its own plane by the local Extrude
             // vector -- a cut at ANY orientation in the local frame (the purlin dovetail housing in a sloped
             // rafter). Region.Extrude is perpendicular to the region; the signed perpendicular extent
             // reg.Normal . eWorld carries both magnitude and the correct direction regardless of winding.
-            void CutPrism(Point3d[] poly, Vector3d extrude, bool subtract)
+            void CutPrism(Point3d[] poly, Vector3d extrude, bool subtract, int joint)
             {
                 if (poly == null || poly.Length < 3 || extrude.Length <= 1e-6) return;
                 try
@@ -332,20 +344,24 @@ namespace TimberDraw
                         }
                     }
                 }
-                catch { /* leave the stock as-is rather than abort the whole emit */ }
+                catch (System.Exception ex)   // leave the stock as-is rather than abort the whole emit
+                {
+                    Diag.Warn("BuildFramedSolid/Prism", (joint >= 0 ? "joint " + joint : "shape")
+                        + (subtract ? " subtract" : " union") + " skipped: " + ex.Message + loc);
+                }
             }
             // Shape Subtracts cut clean THROUGH the full width (pad each side); their callers don't carry a band.
             if (f.Subtracts != null)
-                foreach (Point3d[] poly in f.Subtracts) CutPoly(poly, true, -f.W / 2.0 - 1.0, f.W / 2.0 + 1.0);
+                foreach (Point3d[] poly in f.Subtracts) CutPoly(poly, true, -f.W / 2.0 - 1.0, f.W / 2.0 + 1.0, -1);
             if (f.JointPolys != null)
                 foreach ((Point3d[] Poly, int Joint, bool Subtract, double Xlo, double Xhi) jp in f.JointPolys)
-                    CutPoly(jp.Poly, jp.Subtract, jp.Xlo, jp.Xhi);
+                    CutPoly(jp.Poly, jp.Subtract, jp.Xlo, jp.Xhi, jp.Joint);
             if (f.JointPolysZ != null)
                 foreach ((Point3d[] Poly, int Joint, bool Subtract, double Xlo, double Xhi) jp in f.JointPolysZ)
-                    CutPolyZ(jp.Poly, jp.Subtract, jp.Xlo, jp.Xhi);
+                    CutPolyZ(jp.Poly, jp.Subtract, jp.Xlo, jp.Xhi, jp.Joint);
             if (f.JointPrisms != null)
                 foreach ((Point3d[] Poly, Vector3d Extrude, int Joint, bool Subtract) jp in f.JointPrisms)
-                    CutPrism(jp.Poly, jp.Extrude, jp.Subtract);
+                    CutPrism(jp.Poly, jp.Extrude, jp.Subtract, jp.Joint);
 
             // Joinery features: each LOCAL axis-aligned box is rebuilt at its frame-mapped position and
             // either subtracted (mortise pocket) or united (tenon stub). A tenon stub overlaps the body
@@ -370,7 +386,11 @@ namespace TimberDraw
                                 ft.Subtract ? BooleanOperationType.BoolSubtract : BooleanOperationType.BoolUnite, box);
                         }
                     }
-                    catch { /* skip a degenerate feature rather than abort the emit */ }
+                    catch (System.Exception ex)   // skip a degenerate feature rather than abort the emit
+                    {
+                        Diag.Warn("BuildFramedSolid/Feature", "joint " + ft.Joint
+                            + (ft.Subtract ? " mortise" : " tenon") + " box skipped: " + ex.Message + loc);
+                    }
                 }
             }
 
@@ -398,7 +418,11 @@ namespace TimberDraw
                             solid.BooleanOperation(BooleanOperationType.BoolSubtract, cyl);
                         }
                     }
-                    catch { /* skip a degenerate peg rather than abort the emit */ }
+                    catch (System.Exception ex)   // skip a degenerate peg rather than abort the emit
+                    {
+                        Diag.Warn("BuildFramedSolid/Peg", "joint " + pg.Joint
+                            + " peg bore skipped: " + ex.Message + loc);
+                    }
                 }
             }
 

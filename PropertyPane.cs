@@ -301,7 +301,12 @@ namespace TimberDraw
         private void Commit(DisplayRow row, object value)
         {
             foreach (var (pd, owner) in row.Cells)
-                if (!pd.IsReadOnly) { try { pd.SetValue(owner, value); } catch { } }
+                if (!pd.IsReadOnly)
+                {
+                    // A throwing setter DROPS the user's edit to the model -- log which field.
+                    try { pd.SetValue(owner, value); }
+                    catch (Exception ex) { Diag.Warn("PropertyPane.Commit", pd.Name + " rejected: " + ex.Message); }
+                }
             // Defer the host reaction (it may rebuild the tree, disposing this editor) until the current
             // UI event unwinds.
             string name = row.Cells[0].pd.Name;

@@ -85,7 +85,14 @@ namespace TimberDraw
                 string json = vals != null && vals.Length > 0 ? vals[0].Value?.ToString() : null;
                 if (string.IsNullOrEmpty(json)) return null;
                 try { return JsonSerializer.Deserialize<FrameRecord>(json, JsonOpts); }
-                catch { return null; }
+                catch (System.Exception ex)
+                {
+                    // A corrupt record reads as "no record" -- which silently DISENGAGES the freeze
+                    // gate for the frame. Surface it; the fallback behavior is unchanged.
+                    Diag.Warn("FrameRegistry.Load", "frame " + frameTag
+                        + " record unreadable (treated as unfrozen): " + ex.Message);
+                    return null;
+                }
             }
         }
 

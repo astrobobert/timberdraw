@@ -37,7 +37,12 @@ namespace TimberDraw
             var map = Load();
             if (!map.TryGetValue(name.Trim(), out Entry e) || string.IsNullOrWhiteSpace(e?.Json)) return false;
             try { el = FrameSpecStore.ElementFromJson(e.Json); return el != null; }
-            catch { return false; }
+            catch (System.Exception ex)
+            {
+                // The named template silently stops applying.
+                Diag.Warn("TemplateLibrary.TryGet", name.Trim() + " unreadable: " + ex.Message);
+                return false;
+            }
         }
 
         public static void Remove(string name)
@@ -82,7 +87,12 @@ namespace TimberDraw
             string json = S.TemplateLibraryJson;
             if (string.IsNullOrWhiteSpace(json)) return new Dictionary<string, Entry>();
             try { return JsonSerializer.Deserialize<Dictionary<string, Entry>>(json) ?? new Dictionary<string, Entry>(); }
-            catch { return new Dictionary<string, Entry>(); }
+            catch (System.Exception ex)
+            {
+                // The whole template library is unreadable: every saved template disappears from menus.
+                Diag.Warn("TemplateLibrary.Load", "TemplateLibraryJson corrupt, starting empty: " + ex.Message);
+                return new Dictionary<string, Entry>();
+            }
         }
 
         private static void Store(Dictionary<string, Entry> map)

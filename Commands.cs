@@ -169,7 +169,8 @@ namespace TimberDraw
 			{
 				try { frameTag = string.IsNullOrWhiteSpace(FrameSpecStore.FromJson(json).FrameTag) ? "A"
 					: FrameSpecStore.FromJson(json).FrameTag.Trim(); }
-				catch { }
+				catch (System.Exception ex)
+				{ Diag.Warn("TGrid", "FrameSpecJson unreadable, frame tag defaults to A: " + ex.Message); }
 			}
 
 			Matrix3d placement = ManagedFrameEmitter.Compose(ed.CurrentUserCoordinateSystem);  // model basis

@@ -57,7 +57,12 @@ namespace TimberDraw
                 if (!map.TryGetValue(key, out string json) || string.IsNullOrWhiteSpace(json)) return factory;
                 return JsonSerializer.Deserialize<T>(json, JsonOpts);
             }
-            catch { return factory; }
+            catch (System.Exception ex)
+            {
+                // One corrupt saved default silently reverts that joint type to factory values.
+                Diag.Warn("JointDefaults.Get", key + " saved default unreadable, using factory: " + ex.Message);
+                return factory;
+            }
         }
 
         // Persist `spec` as the user default for `key`, then re-seed the matching console sticky so the
@@ -87,21 +92,31 @@ namespace TimberDraw
                 S.JointDefaultsJson = JsonSerializer.Serialize(map);
                 S.Save();
             }
-            catch { /* settings write denied (roaming profile) -- the in-memory value still applies */ }
+            catch (System.Exception ex)   // settings write denied (roaming profile) -- in-memory value still applies
+            { Diag.Warn("JointDefaults.Persist", "settings write failed (in-memory value still applies): " + ex.Message); }
         }
 
         private static Dictionary<string, string> Load()
         {
             string json;
             try { json = S.JointDefaultsJson; }
-            catch { return new Dictionary<string, string>(); }
+            catch (System.Exception ex)
+            {
+                Diag.Warn("JointDefaults.Load", "settings read failed: " + ex.Message);
+                return new Dictionary<string, string>();
+            }
             if (string.IsNullOrWhiteSpace(json)) return new Dictionary<string, string>();
             try
             {
                 return JsonSerializer.Deserialize<Dictionary<string, string>>(json)
                        ?? new Dictionary<string, string>();
             }
-            catch { return new Dictionary<string, string>(); }
+            catch (System.Exception ex)
+            {
+                // The whole saved-defaults store is unreadable: every joint type reverts to factory.
+                Diag.Warn("JointDefaults.Load", "saved defaults corrupt, starting empty: " + ex.Message);
+                return new Dictionary<string, string>();
+            }
         }
     }
 }

@@ -959,7 +959,11 @@ namespace TimberDraw
 
         private void Persist()
         {
-            try { S.FrameSpecJson = FrameSpecStore.ToJson(_spec); } catch { }
+            // The tree's autosave: a failure means the working spec is NOT persisted across a
+            // doc switch/restart -- log it (settings write denied / serialize fault) but never
+            // interrupt editing.
+            try { S.FrameSpecJson = FrameSpecStore.ToJson(_spec); }
+            catch (System.Exception ex) { Diag.Warn("FrameTree.Persist", "spec autosave failed: " + ex.Message); }
         }
 
         // ------------------------------------------------ per-item property maps
