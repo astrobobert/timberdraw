@@ -554,7 +554,7 @@ namespace TimberDraw
         {
             var rows = new List<(string, double)>();
             double z = 0;
-            foreach (BentSpec b in _spec.Bents) { rows.Add((b.Name, z)); z += b.Separation; }
+            foreach (BentSpec b in _spec.Bents) { z += b.Separation; rows.Add((b.Name, z)); }   // Separation = gap from the previous bent
             return new RosterView("Bents", rows);
         }
         private object WallRoster()
@@ -870,8 +870,8 @@ namespace TimberDraw
                 double zc = 0;
                 for (int i = 0; i < _spec.Bents.Count; i++)
                 {
+                    zc += _spec.Bents[i].Separation;   // Separation = gap from the previous bent (bent 1 = 0)
                     if (_spec.Bents[i].IsFreeAssembly) bentLines.Add((zc, (i + 1).ToString()));
-                    zc += _spec.Bents[i].Separation;
                 }
                 var wallLines = new List<(double, string)>();
                 double xc = 0;

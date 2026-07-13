@@ -20,8 +20,10 @@ namespace TimberDraw
         {
             var ic = CultureInfo.InvariantCulture;
             var sb = new StringBuilder();
+            // specVersion 2 (2026-07): bent Separation means "gap FROM the previous bent" (bent 1 = 0).
+            // A missing/older version is migrated on load (MigrateBentSeparationsFromNext).
             sb.AppendFormat(ic,
-                "{{\"frameTag\":\"{5}\",\"span\":{0},\"eaveHt\":{1},\"pitch\":{2},\"make3D\":{3},\"offsetType\":{4},\"bents\":[",
+                "{{\"specVersion\":2,\"frameTag\":\"{5}\",\"span\":{0},\"eaveHt\":{1},\"pitch\":{2},\"make3D\":{3},\"offsetType\":{4},\"bents\":[",
                 s.Span, s.EaveHt, s.Pitch, s.Make3D ? "true" : "false", s.OffsetType, Esc(s.FrameTag));
             for (int i = 0; i < s.Bents.Count; i++)
             {
@@ -113,6 +115,7 @@ namespace TimberDraw
             using JsonDocument doc = JsonDocument.Parse(json);
             JsonElement r = doc.RootElement;
 
+            int specVer = I(r, "specVersion");   // absent (0) = pre-2 "gap to next bent" saves -> migrate below
             s.FrameTag = Str(r, "frameTag", "A");
             s.EaveHt = D(r, "eaveHt");
             s.Pitch = D(r, "pitch");
@@ -140,6 +143,10 @@ namespace TimberDraw
             {
                 EnsureWalls(s, span);
             }
+            // specVersion < 2: bent separations were "gap to the NEXT bent" -- convert to "gap FROM the
+            // previous bent" (bent 1 = 0). Done AFTER every load path has populated s.Bents (bents,
+            // elements, or flat), and before the wall/role reconciliation (which doesn't touch bents).
+            if (specVer < 2) s.MigrateBentSeparationsFromNext();
             s.MigrateToWallLines();   // legacy two-wall frame -> materialized A-E lines (no-op if already new)
             s.SyncWallRoles();        // reconcile line count to the bent type (HammerBeam div6 -> A-G); no-op when matched
             return s;

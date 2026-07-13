@@ -141,14 +141,14 @@ namespace TimberDraw
             for (int i = 0; i < spec.Bents.Count; i++)
             {
                 BentSpec b = spec.Bents[i];
-                bentZs.Add(z);
+                z += b.Separation;   // Separation = the gap FROM the previous bent (bent 1's is 0, so it lands at z=0)
                 // A Free Assembly bent emits no parametric geometry; record its position (for numbering
                 // + the temp grid line) but add a null connector so the bay pass skips its intervals.
-                if (b.IsFreeAssembly) { conns.Add(default); z += b.Separation; continue; }
+                if (b.IsFreeAssembly) { bentZs.Add(z); conns.Add(default); continue; }
+                bentZs.Add(z);
                 int start = g.Edges.Count;
                 conns.Add(BuildBentByType(g, ToBentParams(spec, b), z, BentEnabled(b), b.BentType));
                 TagEdges(g, start, "" + (i + 1), "");
-                z += b.Separation;
             }
 
             // Pass B: one bay per gap between consecutive bents. Merge the two aligned wall-bays and

@@ -95,6 +95,16 @@ namespace TimberDraw
             return b;
         }
 
+        // Migrate the pre-2026-07 "distance to the NEXT bent" separations (the old last-bent value was
+        // unused) to the current "distance FROM the PREVIOUS bent" convention (bent 1 = 0, the datum):
+        // shift right, drop the old trailing value, zero the datum. Called on load for specVersion < 2.
+        public void MigrateBentSeparationsFromNext()
+        {
+            if (Bents.Count == 0) return;
+            for (int i = Bents.Count - 1; i >= 1; i--) Bents[i].Separation = Bents[i - 1].Separation;
+            Bents[0].Separation = 0.0;
+        }
+
         // Append the FIRST wall line (letter A, spanning the frame) and derive its bay cells.
         // Offered only while the tree has no walls -- growth after that is Insert Wall
         // Before/After on an existing wall. Returns the wall.
@@ -112,6 +122,9 @@ namespace TimberDraw
             int i = Bents.IndexOf(b);
             if (i < 0) return false;
             Bents.RemoveAt(i);
+            // Separation = "gap from the previous bent". Removing the datum (bent 1) promotes the next
+            // bent to datum, so zero its separation (its old gap-from-the-removed-bent is dropped).
+            if (i == 0 && Bents.Count > 0) Bents[0].Separation = 0.0;
             // Drop the bay cell at the collapsing interval (clamp to range) in each wall before resync.
             foreach (WallSpec w in Walls)
             {
@@ -134,7 +147,8 @@ namespace TimberDraw
             int j = before ? i : i + 1;          // new bent's array index
             bool hasUp = j > 0, hasDown = j < Bents.Count;
             interior = hasUp && hasDown;
-            return interior ? Bents[j - 1].Separation : 0.0;
+            // Separation is now "gap FROM the previous bent", so the straddled gap is owned by Bents[j].
+            return interior ? Bents[j].Separation : 0.0;
         }
 
         // Insert a new (Free Assembly) bent before/after `sel`, `sep` from its upstream neighbor.
@@ -150,21 +164,23 @@ namespace TimberDraw
 
             var nb = BentSpec.NewDefault();
             nb.BentType = "Free Assembly";
+            // Separation = "gap FROM the previous bent". The gap between Bents[j-1] and Bents[j] is
+            // stored on Bents[j].
             if (hasUp && hasDown)                       // interior split
             {
-                double G = Bents[j - 1].Separation;
+                double G = Bents[j].Separation;         // gap from Bents[j-1] to Bents[j]
                 if (sep <= 0.0 || sep >= G) return null;   // caller validates; guard anyway
-                Bents[j - 1].Separation = sep;
-                nb.Separation = G - sep;
+                nb.Separation = sep;                    // new bent sits `sep` from Bents[j-1]
+                Bents[j].Separation = G - sep;          // Bents[j] now measures from the new bent
             }
-            else if (hasUp)                              // extend past the last bent
+            else if (hasUp)                             // extend past the last bent
             {
-                Bents[j - 1].Separation = sep;
-                nb.Separation = 0.0;
+                nb.Separation = sep;                    // gap from the (old) last bent
             }
-            else                                         // extend before the first bent
+            else                                        // extend before the first bent -> new datum
             {
-                nb.Separation = sep;
+                nb.Separation = 0.0;                    // the new bent becomes the datum (bent 1)
+                Bents[0].Separation = sep;              // the old first bent now measures from it
             }
             Bents.Insert(j, nb);
 
@@ -657,8 +673,8 @@ namespace TimberDraw
     }
 
     // One bent instance. BentType is unset ("") until the user picks it; Timbers is empty until
-    // then, then RebuildTimbers() emits the default set. Separation = graph-Z distance to the NEXT
-    // bent (the last bent's is unused).
+    // then, then RebuildTimbers() emits the default set. Separation = graph-Z distance FROM the
+    // PREVIOUS bent (bent 1 is the datum, so its separation is 0).
     public class BentSpec : FrameElement, IMemberOwner
     {
         public override string Kind => "Bent";
@@ -673,6 +689,7 @@ namespace TimberDraw
         [Category("1 Type"), DisplayName("Bent Type"), TypeConverter(typeof(BentTypeConverter))]
         public string BentType { get; set; } = "";
 
+        // Gap from the previous bent (bent 1 = 0, the datum). See the class comment.
         [Category("1 Layout"), DisplayName("Separation")]
         public double Separation { get; set; }
 
@@ -843,8 +860,9 @@ namespace TimberDraw
         public static BentSpec NewDefault()
         {
             KPBentParams p = Commands.ReadKPParams();
-            double sep = (p.BaySpacings != null && p.BaySpacings.Length > 0) ? p.BaySpacings[0] : 96.0;
-            return new BentSpec { BentType = "", Separation = sep, QueenOffset = 48.0, HBDivisor = 4, GirtDrop = 6.0, OffsetType = p.OffsetType };
+            // Separation = "gap from the previous bent"; a bare bent is the datum (0). InsertBent sets
+            // the real gap for any inserted bent, and the first bent (AddBent) stays the datum at 0.
+            return new BentSpec { BentType = "", Separation = 0.0, QueenOffset = 48.0, HBDivisor = 4, GirtDrop = 6.0, OffsetType = p.OffsetType };
         }
     }
 
