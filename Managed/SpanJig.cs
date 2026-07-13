@@ -11,12 +11,11 @@ namespace TimberDraw
     // post base when the UCS origin sits there). The girt's justified face (Center / Bottom / Top) is
     // placed at s.
     //
-    // The cursor sets s = (pick - ucsOrigin) . railHat -- a rail projection, so horizontal cursor motion
-    // is ignored (the "filter for Y only"): only movement along the rail (the post) changes the height.
-    // In an elevation UCS (Bent/Wall, post vertical on screen) the cursor's vertical motion drives s and
-    // OSNAP to a feature gives that feature's height. In Plan UCS a free pick lands on the ground plane
-    // (s = 0) so the ghost rests at the base -- set the height in an elevation UCS or type it (Height).
-    // All geometry is WCS.
+    // Height is a DISTANCE along the rail from the s=0 floor datum: the ghost only ever slides along the
+    // rail (it moves in Z only on a post rail), so TYPING a number sets the exact height in any UCS and a
+    // free cursor / OSNAP drags it up the rail. In an elevation UCS (Bent/Wall, post vertical on screen)
+    // the cursor reads a feature's height by snapping; in Plan UCS the cursor can't read height, so type
+    // it. All geometry is WCS.
     public class SpanJig : DrawJig
     {
         public enum Justify { Center, Bottom, Top }
@@ -33,7 +32,6 @@ namespace TimberDraw
         private readonly Point3d _floorAnchor; // the s=0 point on the rail -- the pick base point
 
         private double _sTarget;            // rail coordinate of the placement line (init 0 = datum)
-        private bool _locked;               // a typed Height locks the value against pick override
         private Justify _just = Justify.Center;
 
         public Justify Mode => _just;
@@ -77,28 +75,30 @@ namespace TimberDraw
             }
         }
 
-        public void SetHeight(double s) { _sTarget = s; _locked = true; }
-
+        // Height as a DISTANCE along the rail from the floor datum -- so a TYPED number is the exact
+        // height directly (no "Height" keyword first, and no direct-distance cursor-direction error),
+        // and the ghost only ever slides along the rail (it only moves in Z on a post rail). Ortho
+        // locks a free cursor to the rail; snapping to an on-rail feature reads its height exactly.
         protected override SamplerStatus Sampler(JigPrompts prompts)
         {
-            var opts = new JigPromptPointOptions(
-                "\nPick or snap a point for the height (Y only); [Height/Center/Bottom/Top] <" + _just + " " + _sTarget.ToString("0.#") + ">: ")
+            var opts = new JigPromptDistanceOptions(
+                "\nHeight above base -- type a distance, or pick/snap up the rail; [Center/Bottom/Top] <"
+                + _just + " " + _sTarget.ToString("0.#") + ">: ")
             {
                 UseBasePoint = true,
-                BasePoint = _floorAnchor
+                BasePoint = _floorAnchor,
+                Cursor = CursorType.RubberBand,
+                DefaultValue = _sTarget,
+                UserInputControls = UserInputControls.GovernedByOrthoMode | UserInputControls.NullResponseAccepted
             };
-            opts.Keywords.Add("Height");
             opts.Keywords.Add("Center");
             opts.Keywords.Add("Bottom");
             opts.Keywords.Add("Top");
 
-            PromptPointResult r = prompts.AcquirePoint(opts);
+            PromptDoubleResult r = prompts.AcquireDistance(opts);
             if (r.Status != PromptStatus.OK) return SamplerStatus.NoChange;   // keyword/cancel surfaced by ed.Drag
-            if (_locked) return SamplerStatus.NoChange;
-
-            double s = S(r.Value);   // rail projection: horizontal cursor motion is ignored
-            if (Math.Abs(s - _sTarget) < 1e-6) return SamplerStatus.NoChange;
-            _sTarget = s;
+            if (Math.Abs(r.Value - _sTarget) < 1e-6) return SamplerStatus.NoChange;
+            _sTarget = r.Value;      // distance from the s=0 floor datum along the rail = height above base
             return SamplerStatus.OK;
         }
 

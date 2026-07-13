@@ -3537,31 +3537,20 @@ namespace TimberDraw
             Vector3d wAxis = railVertical ? fa.V : fa.U;
 
             // Ghost the span and let the user set its height along the post rail, measured from the UCS
-            // origin (datum s=0 = base). The girt's Center/Bottom/Top face lands on that line. The drag
-            // loop handles the live keywords; a pick commits. Height is picked in an elevation UCS (or
-            // typed via the Height keyword) -- in Plan UCS a pick can't read height, so warn.
+            // origin (datum s=0 = base). The girt's Center/Bottom/Top face lands on that line. Height is
+            // a rail distance: TYPE the number (exact, any UCS) or drag/snap up the rail; the drag loop
+            // handles the Center/Bottom/Top keywords. A free cursor reads height only in an elevation UCS.
             CoordinateSystem3d ucs = ed.CurrentUserCoordinateSystem.CoordinateSystem3d;
             var jig = new SpanJig(origin, fa, gap, railVertical ? d : w, railVertical ? w : d, ucs.Origin);
             bool canPickHeight = Math.Abs(fa.U.GetNormal().DotProduct(ucs.Zaxis.GetNormal())) < 0.5;
             if (!canPickHeight)
-                ed.WriteMessage("\nTip: a pick can't set the height in this UCS (post is end-on) -- " +
-                                "use an elevation UCS (Bent/Wall) or the Height keyword.");
+                ed.WriteMessage("\nTip: a cursor can't read the height in this UCS (post is end-on) -- " +
+                                "type the height, or switch to an elevation UCS (Bent/Wall).");
 
             while (true)
             {
                 PromptResult pr = ed.Drag(jig);
-                if (pr.Status == PromptStatus.Keyword)
-                {
-                    if (pr.StringResult == "Height")
-                    {
-                        var hopts = new PromptDistanceOptions("\nHeight above base: ")
-                        { DefaultValue = jig.LineY, UseDefaultValue = true, AllowNegative = true };
-                        PromptDoubleResult hr = ed.GetDistance(hopts);
-                        if (hr.Status == PromptStatus.OK) jig.SetHeight(hr.Value);
-                    }
-                    else jig.SetJustify(pr.StringResult);
-                    continue;
-                }
+                if (pr.Status == PromptStatus.Keyword) { jig.SetJustify(pr.StringResult); continue; }
                 if (pr.Status != PromptStatus.OK) return;
                 break;
             }
