@@ -6120,7 +6120,12 @@ namespace TimberDraw
                 PromptDoubleResult sr = ed.GetDistance(so);
                 if (sr.Status != PromptStatus.OK) return;
                 double S = sr.Value > 0 ? sr.Value : 36.0;
-                int N = System.Math.Max(1, (int)System.Math.Round(L / S));
+                // Symmetric field at exactly S on-center, but never an end margin below a half-space:
+                // N = floor(L/S) makes the end margin (L-(N-1)S)/2 >= S/2 in every case. Round() would
+                // cram in an extra joist when L sits past the half-step and push the outer joists to
+                // within S/4 of the ends (the "too close to the ends" bug). Epsilon so an exact multiple
+                // keeps the higher count -- a clean half-space at each end.
+                int N = System.Math.Max(1, (int)System.Math.Floor(L / S + 1e-6));
                 double first = r0 + (L - (N - 1) * S) / 2.0;   // center the field in the run
                 for (int k = 0; k < N; k++) stations.Add(first + k * S);
             }
