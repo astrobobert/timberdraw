@@ -40,7 +40,13 @@
     <PackageReference Include="System.Text.Json" Version="10.0.7" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- ObjectARX references. DEFAULT: the licensed local SDK by absolute path (dev machines;
+       byte-identical to the historical build). CI OPT-IN: -p:UseAcadNuGet=true swaps in
+       Autodesk's official reference packages (AutoCAD.NET 23.1.x = AutoCAD 2020; the .Model
+       dependency carries AcDbMgd + acdbmgdbrep) so the plugin COMPILES without the SDK.
+       The switch is an explicit property, so a local build can never silently change
+       reference sets. Never commit the SDK DLLs themselves (license). -->
+  <ItemGroup Condition="'$(UseAcadNuGet)' != 'true'">
     <Reference Include="AcCoreMgd">
       <HintPath>C:\Autodesk\ObjectARX_for_AutoCAD_2020_Win_64_bit\inc\AcCoreMgd.dll</HintPath>
       <Private>False</Private>
@@ -57,6 +63,11 @@
       <HintPath>C:\Autodesk\ObjectARX_for_AutoCAD_2020_Win_64_bit\inc\acdbmgdbrep.dll</HintPath>
       <Private>False</Private>
     </Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(UseAcadNuGet)' == 'true'">
+    <PackageReference Include="AutoCAD.NET" Version="23.1.0" ExcludeAssets="runtime" />
+  </ItemGroup>
+  <ItemGroup>
     <Reference Include="System.Management" />
   </ItemGroup>
 

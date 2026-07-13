@@ -20,9 +20,13 @@ editor:
 - **Domain characterization tests** — `dotnet test tests/TimberDraw.Domain.Tests`
   also runs anywhere: it compiles the pure production sources (FrameSpec /
   FrameSpecStore / UnitInput / peg standards) directly and pins the
-  `.framespec` format, the legacy migrations, and distance parsing. Both test
-  projects are what CI runs; the plugin itself compiles only locally (the
-  ObjectARX SDK is a licensed local install).
+  `.framespec` format, the legacy migrations, and distance parsing.
+- **Full plugin compile without the SDK** —
+  `dotnet build TimberDraw.csproj -c Release -p:UseAcadNuGet=true` builds the
+  whole plugin against Autodesk's official reference packages (AutoCAD.NET
+  23.1). CI runs both test projects plus this compile on every push. The
+  resulting DLL is compile-verification only — load the SDK-referenced local
+  build in AutoCAD, not this one.
 - **Design discussion** — issues about joinery geometry, labeling conventions,
   and shop workflow are welcome from working framers especially.
 

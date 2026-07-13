@@ -1,14 +1,17 @@
-# CI: architecture-boundary tests + domain characterization tests.
+# CI: architecture-boundary tests + domain characterization tests + a full
+# plugin COMPILE.
 #
 # The domain tests compile the PURE production sources (source-linked) on
 # net8 -- no AutoCAD needed -- and pin the .framespec format, every legacy
 # migration, distance parsing, and the peg standards. The arch tests are
 # dependency-free text scans guarding the generator/editor boundary.
 #
-# The plugin itself (net48 + ObjectARX) still cannot fully build in CI:
-# the SDK is a licensed local install referenced by absolute path, and
-# acdbmgdbrep (BRep -- used by scribe annotation, shop maps, face picking)
-# ships only with it. Plugin compilation stays a local gate.
+# The plugin-compile job builds the whole net48 plugin against Autodesk's
+# official reference packages (-p:UseAcadNuGet=true; AutoCAD.NET 23.1 =
+# AutoCAD 2020, whose .Model dependency carries AcDbMgd + acdbmgdbrep), so
+# a commit with ordinary C# compile errors can no longer pass CI. Local
+# dev builds keep the licensed ObjectARX SDK by absolute path -- the NuGet
+# path is an explicit opt-in property, never an autodetect.
 name: CI
 
 on:
@@ -28,3 +31,10 @@ jobs:
         run: dotnet test tests/TimberDraw.Architecture.Tests --nologo
       - name: Domain characterization tests
         run: dotnet test tests/TimberDraw.Domain.Tests --nologo
+
+  plugin-compile:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile the plugin (AutoCAD reference packages)
+        run: dotnet build TimberDraw.csproj -c Release -p:UseAcadNuGet=true --nologo
