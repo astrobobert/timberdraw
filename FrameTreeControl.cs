@@ -741,12 +741,7 @@ namespace TimberDraw
         private void InsertBentFromTemplate(BentSpec sel, string name)
         {
             if (!TemplateLibrary.TryGet(name, out FrameElement saved) || !(saved is BentSpec sb)) return;
-            double gap = _spec.GapForBentInsert(sel, false, out bool interior);
-            string prompt = interior
-                ? "Distance from the upstream bent (< " + Fmt(gap) + "), splits the bay:"
-                : "Separation for the new bent (extends the frame):";
-            if (!Dialogs.PromptDistance(this, prompt, interior ? gap : 0.0, out double d)) return;
-            BentSpec nb = _spec.InsertBent(sel, false, d);
+            BentSpec nb = _spec.InsertBent(sel, false, DefaultBentInsertDistance(sel, false));
             if (nb == null) { Dialogs.Info("Could not insert the bent (invalid distance)."); return; }
             nb.BentType = sb.BentType;
             nb.RebuildTimbers();                    // canonical members for the type
@@ -777,14 +772,21 @@ namespace TimberDraw
             Persist(); BuildTree(); SelectByTag(nw);
         }
 
-        private void InsertBentCmd(BentSpec sel, bool before)
+        // NO distance dialog (Robert's call -- Separation is already a bent property in the pane):
+        // the insert takes a DEFAULT and the pane fine-tunes it. An interior insert splits the bay
+        // in half; extending the frame repeats its bay rhythm (the last non-zero separation).
+        private double DefaultBentInsertDistance(BentSpec sel, bool before)
         {
             double gap = _spec.GapForBentInsert(sel, before, out bool interior);
-            string prompt = interior
-                ? "Distance from the upstream bent (< " + Fmt(gap) + "), splits the bay:"
-                : "Separation for the new bent (extends the frame):";
-            if (!Dialogs.PromptDistance(this, prompt, interior ? gap : 0.0, out double d)) return;
-            BentSpec nb = _spec.InsertBent(sel, before, d);
+            if (interior) return gap / 2.0;
+            for (int i = _spec.Bents.Count - 1; i >= 0; i--)
+                if (_spec.Bents[i].Separation > 1e-9) return _spec.Bents[i].Separation;
+            return 96.0;   // a lone-bent frame has no rhythm yet: the stock 8' bay
+        }
+
+        private void InsertBentCmd(BentSpec sel, bool before)
+        {
+            BentSpec nb = _spec.InsertBent(sel, before, DefaultBentInsertDistance(sel, before));
             if (nb == null) { Dialogs.Info("Could not insert the bent (invalid distance)."); return; }
             Persist(); BuildTree(); SelectByTag(nb);
         }
