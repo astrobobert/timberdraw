@@ -222,7 +222,9 @@ namespace TimberDraw
             MemberSize brace  = b.SizeOf("Brace:A") ?? b.SizeOf("QueenBrace:B")
                                  ?? b.SizeOf("CollarBrace:A") ?? b.SizeOf("FloorBrace:A");
             MemberSize strut  = b.SizeOf("Strut:A");
+            MemberSize strutR = b.SizeOf("Strut:E");     // per-side (batch-2 #12): R no longer mirrors L
             MemberSize vstrut = b.SizeOf("VStrut:A");
+            MemberSize vstrutR = b.SizeOf("VStrut:E");
             MemberSize queen  = b.SizeOf("Queen:B");
             MemberSize ugirt  = b.SizeOf("UpperGirt:BD");
             MemberSize hbeam  = b.SizeOf("HBeam:A");
@@ -249,9 +251,16 @@ namespace TimberDraw
                             : (brace?.Length ?? d.BraceLength) * Math.Tan((brace?.Angle ?? d.BraceAngle) * Math.PI / 180.0),
                 BraceHead = (brace != null && brace.Head > 0) ? brace.Head : (brace?.Length ?? d.BraceLength),
                 HasStrut = b.IsEnabled("Strut:A") || b.IsEnabled("Strut:E"),
+                StrutLOn = b.IsEnabled("Strut:A"), StrutROn = b.IsEnabled("Strut:E"),
                 StrutW = strut?.W ?? d.StrutW, StrutD = strut?.D ?? d.StrutD, StrutAngle = strut?.Angle ?? d.StrutAngle,
+                StrutWR = strutR?.W ?? strut?.W ?? d.StrutW,
+                StrutDR = strutR?.D ?? strut?.D ?? d.StrutD,
+                StrutAngleR = strutR?.Angle ?? strut?.Angle ?? d.StrutAngle,
                 HasVStrut = b.IsEnabled("VStrut:A") || b.IsEnabled("VStrut:E"),
+                VStrutLOn = b.IsEnabled("VStrut:A"), VStrutROn = b.IsEnabled("VStrut:E"),
                 VStrutW = vstrut?.W ?? d.VStrutW, VStrutD = vstrut?.D ?? d.VStrutD,
+                VStrutWR = vstrutR?.W ?? vstrut?.W ?? d.VStrutW,
+                VStrutDR = vstrutR?.D ?? vstrut?.D ?? d.VStrutD,
                 HasQueen = b.IsEnabled("Queen:B") || b.IsEnabled("Queen:D"),
                 HasUpperGirt = b.IsEnabled("UpperGirt:BD"),
                 QueenW = queen?.W ?? d.PostW, QueenD = queen?.D ?? d.PostD,
@@ -438,53 +447,73 @@ namespace TimberDraw
             }
 
             // Struts (king post -> rafter, starting TOG+6) + vertical struts at the
-            // strut/rafter intersection. StrutAngle (default 45) sets the lean.
+            // strut/rafter intersection. StrutAngle (default 45) sets the lean. PER SIDE (batch-2
+            // #12 -- the sides were hard-linked): the right strut takes its own leaf's size/angle
+            // (0 = mirror the left), and each side's checkbox gates only its own member.
             double theta = p.StrutAngle * Math.PI / 180.0;
             double ct = Math.Cos(theta), st = Math.Sin(theta);
+            double strutWR = p.StrutWR > 0 ? p.StrutWR : p.StrutW;
+            double strutDR = p.StrutDR > 0 ? p.StrutDR : p.StrutD;
+            double thetaR = (p.StrutAngleR > 0 ? p.StrutAngleR : p.StrutAngle) * Math.PI / 180.0;
+            double ctR = Math.Cos(thetaR), stR = Math.Sin(thetaR);
 
             Point3d  asL = new Point3d(xPeakL, p.TOG + 6.0, 0);   // left  king-post face
             Point3d  asR = new Point3d(xPeakR, p.TOG + 6.0, 0);   // right king-post face
             Point3d  hitL = IntersectRayLine(asL, new Vector3d(-ct, st, 0), lbP, ltD);
-            Point3d  hitR = IntersectRayLine(asR, new Vector3d( ct, st, 0), rbP, rtD);
+            Point3d  hitR = IntersectRayLine(asR, new Vector3d( ctR, stR, 0), rbP, rtD);
 
-            if (p.HasStrut && p.StrutD > 0 && On("Strut:S"))
+            if (p.HasStrut && On("Strut:S"))
             {
-                int aL = g.AddNode("StrutLKpost",  new Point3d(asL.X, asL.Y, bentZ));
-                int bL = g.AddNode("StrutLRafter", new Point3d(hitL.X, hitL.Y, bentZ));
-                FrameEdge sL = g.AddEdge("Strut", aL, bL, p.StrutW, p.StrutD, "S");
-                sL.Planes.Add(HalfPlane.KeepLeftOfX(xPeakL));      // king-post face
-                sL.Planes.Add(HalfPlane.KeepBelowLine(lbP, ltD));  // rafter underside
-                AddLongFacesOneSided(sL, asL, hitL, p.StrutD, PerpUp(asL.GetVectorTo(hitL)));
-                sL.ZOffset = ZOffsetFor(Math.Min(p.KpostW, p.RafterW), p.StrutW, p.PlaceOf("Strut:A"));
+                if (p.StrutLOn && p.StrutD > 0)
+                {
+                    int aL = g.AddNode("StrutLKpost",  new Point3d(asL.X, asL.Y, bentZ));
+                    int bL = g.AddNode("StrutLRafter", new Point3d(hitL.X, hitL.Y, bentZ));
+                    FrameEdge sL = g.AddEdge("Strut", aL, bL, p.StrutW, p.StrutD, "S");
+                    sL.Planes.Add(HalfPlane.KeepLeftOfX(xPeakL));      // king-post face
+                    sL.Planes.Add(HalfPlane.KeepBelowLine(lbP, ltD));  // rafter underside
+                    AddLongFacesOneSided(sL, asL, hitL, p.StrutD, PerpUp(asL.GetVectorTo(hitL)));
+                    sL.ZOffset = ZOffsetFor(Math.Min(p.KpostW, p.RafterW), p.StrutW, p.PlaceOf("Strut:A"));
+                }
 
-                int aR = g.AddNode("StrutRKpost",  new Point3d(asR.X, asR.Y, bentZ));
-                int bR = g.AddNode("StrutRRafter", new Point3d(hitR.X, hitR.Y, bentZ));
-                FrameEdge sR = g.AddEdge("Strut", aR, bR, p.StrutW, p.StrutD, "S");
-                sR.Planes.Add(HalfPlane.KeepRightOfX(xPeakR));     // king-post face (right)
-                sR.Planes.Add(HalfPlane.KeepBelowLine(rbP, rtD));  // rafter underside (right)
-                AddLongFacesOneSided(sR, asR, hitR, p.StrutD, PerpUp(asR.GetVectorTo(hitR)));
-                sR.ZOffset = ZOffsetFor(Math.Min(p.KpostW, p.RafterW), p.StrutW, p.PlaceOf("Strut:E"));
+                if (p.StrutROn && strutDR > 0)
+                {
+                    int aR = g.AddNode("StrutRKpost",  new Point3d(asR.X, asR.Y, bentZ));
+                    int bR = g.AddNode("StrutRRafter", new Point3d(hitR.X, hitR.Y, bentZ));
+                    FrameEdge sR = g.AddEdge("Strut", aR, bR, strutWR, strutDR, "S");
+                    sR.Planes.Add(HalfPlane.KeepRightOfX(xPeakR));     // king-post face (right)
+                    sR.Planes.Add(HalfPlane.KeepBelowLine(rbP, rtD));  // rafter underside (right)
+                    AddLongFacesOneSided(sR, asR, hitR, strutDR, PerpUp(asR.GetVectorTo(hitR)));
+                    sR.ZOffset = ZOffsetFor(Math.Min(p.KpostW, p.RafterW), strutWR, p.PlaceOf("Strut:E"));
+                }
             }
 
-            if (p.HasVStrut && p.VStrutD > 0 && On("VStrut:V"))
+            if (p.HasVStrut && On("VStrut:V"))
             {
-                Point3d vbL = new Point3d(hitL.X, p.TOG, 0);
-                int vaL = g.AddNode("VStrutLGirt",   new Point3d(vbL.X, vbL.Y, bentZ));
-                int vtL = g.AddNode("VStrutLRafter", new Point3d(hitL.X, hitL.Y, bentZ));
-                FrameEdge vL = g.AddEdge("VStrut", vaL, vtL, p.VStrutW, p.VStrutD, "V");
-                vL.Planes.Add(HalfPlane.KeepAboveY(p.TOG));         // girt top
-                vL.Planes.Add(HalfPlane.KeepBelowLine(lbP, ltD));   // rafter underside
-                AddLongFacesOneSided(vL, vbL, hitL, p.VStrutD, new Vector3d(hitL.X < hs ? -1 : 1, 0, 0));
-                vL.ZOffset = ZOffsetFor(Math.Min(p.GirtW, p.RafterW), p.VStrutW, p.PlaceOf("VStrut:A"));
+                double vstrutWR = p.VStrutWR > 0 ? p.VStrutWR : p.VStrutW;
+                double vstrutDR = p.VStrutDR > 0 ? p.VStrutDR : p.VStrutD;
+                if (p.VStrutLOn && p.VStrutD > 0)
+                {
+                    Point3d vbL = new Point3d(hitL.X, p.TOG, 0);
+                    int vaL = g.AddNode("VStrutLGirt",   new Point3d(vbL.X, vbL.Y, bentZ));
+                    int vtL = g.AddNode("VStrutLRafter", new Point3d(hitL.X, hitL.Y, bentZ));
+                    FrameEdge vL = g.AddEdge("VStrut", vaL, vtL, p.VStrutW, p.VStrutD, "V");
+                    vL.Planes.Add(HalfPlane.KeepAboveY(p.TOG));         // girt top
+                    vL.Planes.Add(HalfPlane.KeepBelowLine(lbP, ltD));   // rafter underside
+                    AddLongFacesOneSided(vL, vbL, hitL, p.VStrutD, new Vector3d(hitL.X < hs ? -1 : 1, 0, 0));
+                    vL.ZOffset = ZOffsetFor(Math.Min(p.GirtW, p.RafterW), p.VStrutW, p.PlaceOf("VStrut:A"));
+                }
 
-                Point3d vbR = new Point3d(hitR.X, p.TOG, 0);
-                int vaR = g.AddNode("VStrutRGirt",   new Point3d(vbR.X, vbR.Y, bentZ));
-                int vtR = g.AddNode("VStrutRRafter", new Point3d(hitR.X, hitR.Y, bentZ));
-                FrameEdge vR = g.AddEdge("VStrut", vaR, vtR, p.VStrutW, p.VStrutD, "V");
-                vR.Planes.Add(HalfPlane.KeepAboveY(p.TOG));
-                vR.Planes.Add(HalfPlane.KeepBelowLine(rbP, rtD));
-                AddLongFacesOneSided(vR, vbR, hitR, p.VStrutD, new Vector3d(hitR.X < hs ? -1 : 1, 0, 0));
-                vR.ZOffset = ZOffsetFor(Math.Min(p.GirtW, p.RafterW), p.VStrutW, p.PlaceOf("VStrut:E"));
+                if (p.VStrutROn && vstrutDR > 0)
+                {
+                    Point3d vbR = new Point3d(hitR.X, p.TOG, 0);
+                    int vaR = g.AddNode("VStrutRGirt",   new Point3d(vbR.X, vbR.Y, bentZ));
+                    int vtR = g.AddNode("VStrutRRafter", new Point3d(hitR.X, hitR.Y, bentZ));
+                    FrameEdge vR = g.AddEdge("VStrut", vaR, vtR, vstrutWR, vstrutDR, "V");
+                    vR.Planes.Add(HalfPlane.KeepAboveY(p.TOG));
+                    vR.Planes.Add(HalfPlane.KeepBelowLine(rbP, rtD));
+                    AddLongFacesOneSided(vR, vbR, hitR, vstrutDR, new Vector3d(hitR.X < hs ? -1 : 1, 0, 0));
+                    vR.ZOffset = ZOffsetFor(Math.Min(p.GirtW, p.RafterW), vstrutWR, p.PlaceOf("VStrut:E"));
+                }
             }
 
             AddFloorGirt(g, p, bentZ, enabled);

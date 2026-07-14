@@ -26,6 +26,14 @@ namespace TimberDraw
         public double VStrutW, VStrutD;
         public bool   HasVStrut;
         public double StrutAngle;   // degrees from horizontal; default 45
+        // Per-side strut overrides (Robert's bug, batch-2 #12: the L and R struts were hard-linked --
+        // both sides built from the Strut:A leaf and either checkbox enabled both, like the floor
+        // braces once were). Zero W/D/Angle means "same as the left"; the *On flags default true so
+        // older callers stay symmetric.
+        public bool   StrutLOn = true, StrutROn = true;
+        public bool   VStrutLOn = true, VStrutROn = true;
+        public double StrutWR, StrutDR, StrutAngleR;   // right strut; 0 = mirror the left
+        public double VStrutWR, VStrutDR;              // right vertical strut; 0 = mirror the left
         public int    OffsetType;   // 0 Back, 1 Centered, 2 Front (BraceStrutPlacement)
         public double[] BaySpacings; // center-to-center bent spacing per bay (face-to-same-face);
                                      // bent count = BaySpacings.Length + 1
