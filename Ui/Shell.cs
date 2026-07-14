@@ -57,7 +57,7 @@ namespace TimberDraw
         {
             bool created = EnsureCreated();
             _ps.Visible = true;
-            if (created) _ps.Size = new System.Drawing.Size(640, 860);
+            if (created) _ps.Size = new System.Drawing.Size(320, 860);   // half the old 640 (Robert's call)
             return created;
         }
 
@@ -88,7 +88,9 @@ namespace TimberDraw
             _ps.Add("Browser",  browserHost);
             _ps.Add("Output",   _output);
 
-            _ps.MinimumSize = new System.Drawing.Size(560, 680);
+            // Narrow enough to shrink to the half-width default above (every tab lays out at
+            // ~300px: the tree editor is designed at 300, the Assembly flow at 258).
+            _ps.MinimumSize = new System.Drawing.Size(300, 680);
             _ps.Style = PaletteSetStyles.ShowCloseButton | PaletteSetStyles.ShowPropertiesMenu
                       | PaletteSetStyles.ShowAutoHideButton;
 
