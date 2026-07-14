@@ -339,57 +339,17 @@ namespace TimberDraw
             }
         }
 
-        // Draw PROVISIONAL (dashed, yellow) grid lines for Free Assembly elements that don't yet have a
-        // derived line -- a reference for the user to align TPlace'd timbers to. A bent line (z,label)
-        // runs across the span; a wall line (x,label) runs along the building. Any position already
-        // matched by a derived line (a post landed there) is SKIPPED -- the solid grid line takes over.
-        // Extents are graph coords (caller derives from the spec span + bent run). Tagged per frame so
-        // the next redraw clears them along with the solid grid.
-        public void DrawTempLines(Matrix3d placement, string frameTag,
-            IEnumerable<(double coord, string label)> bentLines,
-            IEnumerable<(double coord, string label)> wallLines,
-            double xLo, double xHi, double zLo, double zHi)
+        // Fold the SPEC's free-assembly stations into the derived grid (Robert's call: the recipe
+        // knows exactly where a free-assembly bent stands, so its grid line is as real as any
+        // post-backed one -- same solid line, same bubble, numbered/lettered in sequence). This
+        // replaced the dashed provisional lines. Stations already matched by a derived line are
+        // skipped; the lists stay sorted so positional numbering follows the building.
+        public void MergeSpecStations(IEnumerable<double> bentZ, IEnumerable<double> colX)
         {
-            Document doc = Application.DocumentManager.MdiActiveDocument;
-            if (doc == null) return;
-            Database db = doc.Database;
-            Vector3d normal = placement.CoordinateSystem3d.Yaxis.GetNormal();
-            xLo -= Margin; xHi += Margin; zLo -= Margin; zHi += Margin;
-
-            using (doc.LockDocument())
-            using (Transaction tr = db.TransactionManager.StartTransaction())
-            {
-                ObjectId layer = EnsureTempLayer(tr, db);
-                var btr = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
-
-                foreach (var (z, label) in bentLines)
-                {
-                    if (NearAny(BentZ, z)) continue;                 // a post landed -> solid line wins
-                    AddLine(tr, btr, layer, frameTag, placement, Floor(xLo, z), Floor(xHi, z));
-                    AddBubble(tr, btr, layer, frameTag, placement, normal, db, Floor(xLo - Bubble, z), label);
-                }
-                foreach (var (x, label) in wallLines)
-                {
-                    if (NearAny(ColX, x)) continue;
-                    AddLine(tr, btr, layer, frameTag, placement, Floor(x, zLo), Floor(x, zHi));
-                    AddBubble(tr, btr, layer, frameTag, placement, normal, db, Floor(x, zLo - Bubble), label);
-                }
-
-                // EXTEND the solid wall (column) lines -- dashed, on this provisional layer -- past
-                // the last post-backed bent to reach a free-assembly bent's line beyond it (and
-                // likewise before the first), so the placement intersections exist to snap to. The
-                // solid lines still end at real bents; a post landing there upgrades the grid.
-                if (BentZ.Count > 0 && ColX.Count > 0)
-                {
-                    double solidLo = BentZ[0] - Margin, solidHi = BentZ[BentZ.Count - 1] + Margin;
-                    foreach (double x in ColX)
-                    {
-                        if (zHi > solidHi + 1e-6) AddLine(tr, btr, layer, frameTag, placement, Floor(x, solidHi), Floor(x, zHi));
-                        if (zLo < solidLo - 1e-6) AddLine(tr, btr, layer, frameTag, placement, Floor(x, zLo), Floor(x, solidLo));
-                    }
-                }
-                tr.Commit();
-            }
+            if (bentZ != null) foreach (double z in bentZ) if (!NearAny(BentZ, z)) BentZ.Add(z);
+            if (colX != null) foreach (double x in colX) if (!NearAny(ColX, x)) ColX.Add(x);
+            BentZ.Sort();
+            ColX.Sort();
         }
 
         private static bool NearAny(List<double> xs, double v)
@@ -444,30 +404,8 @@ namespace TimberDraw
             return id;
         }
 
-        // Ensure the TM_GRID_TEMP layer exists: YELLOW (ACI 2) + DASHED, deliberately distinct from the
-        // solid blue grid so provisional lines read as temporary (yellow/blue is colorblind-safe).
-        private static ObjectId EnsureTempLayer(Transaction tr, Database db)
-        {
-            var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
-            if (lt.Has(ManagedTimber.GridTempLayer)) return lt[ManagedTimber.GridTempLayer];
-            ObjectId dashed = LoadDashed(tr, db);
-            lt.UpgradeOpen();
-            var ltr = new LayerTableRecord { Name = ManagedTimber.GridTempLayer, Color = Color.FromColorIndex(ColorMethod.ByAci, 2) };
-            if (!dashed.IsNull) ltr.LinetypeObjectId = dashed;
-            ObjectId id = lt.Add(ltr);
-            tr.AddNewlyCreatedDBObject(ltr, true);
-            return id;
-        }
-
-        // The DASHED linetype id, loading it from acad.lin if absent; ObjectId.Null if unavailable
-        // (the layer then stays continuous -- the yellow color still distinguishes it).
-        private static ObjectId LoadDashed(Transaction tr, Database db)
-        {
-            var ltt = (LinetypeTable)tr.GetObject(db.LinetypeTableId, OpenMode.ForRead);
-            if (ltt.Has("DASHED")) return ltt["DASHED"];
-            try { db.LoadLineTypeFile("DASHED", "acad.lin"); } catch { return ObjectId.Null; }
-            ltt = (LinetypeTable)tr.GetObject(db.LinetypeTableId, OpenMode.ForRead);
-            return ltt.Has("DASHED") ? ltt["DASHED"] : ObjectId.Null;
-        }
+        // (The TM_GRID_TEMP dashed-yellow layer + its DASHED loader are GONE with the provisional
+        // lines -- free-assembly stations now merge into the solid grid. The layer const stays in
+        // ManagedTimber for older drawings + the shop-layout exclusion list.)
     }
 }

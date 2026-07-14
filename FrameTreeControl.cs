@@ -860,31 +860,15 @@ namespace TimberDraw
             // frame and shifts the numbering. Only floor-meeting timbers draw a line. (emitGrid is still
             // used inside Emit to stamp each timber's installer label.)
             FrameGrid grid = doc != null ? FrameGrid.BuildFromDrawing(doc.Database, frameTag, placement) : emitGrid;
+            // Free Assembly elements emit no geometry, but the RECIPE knows their stations -- fold
+            // them into the grid as FIRST-CLASS lines (Robert's call: same solid line, bubble, and
+            // sequence number as a post-backed bent; replaced the dashed provisional lines).
+            var freeBentZ = new List<double>();
+            var freeWallX = new List<double>();
+            _spec.FreeAssemblyStations(freeBentZ, freeWallX);
+            grid.MergeSpecStations(freeBentZ, freeWallX);
             grid.Draw(placement, frameTag);   // flat under the frame (model basis)
             if (doc != null) ManagedCommands.RelabelBraces(doc.Database);   // brace symbols (*, **) by size+shape
-
-            // Free Assembly elements emit no geometry -> draw a provisional dashed line at each (bent =
-            // cumulative Z, wall = cumulative X) so the user can align placed timbers; suppressed once a
-            // post lands there (the drawing-derived grid then supplies the solid line).
-            if (doc != null)
-            {
-                var bentLines = new List<(double, string)>();
-                double zc = 0;
-                for (int i = 0; i < _spec.Bents.Count; i++)
-                {
-                    zc += _spec.Bents[i].Separation;   // Separation = gap from the previous bent (bent 1 = 0)
-                    if (_spec.Bents[i].IsFreeAssembly) bentLines.Add((zc, (i + 1).ToString()));
-                }
-                var wallLines = new List<(double, string)>();
-                double xc = 0;
-                for (int i = 0; i < _spec.Walls.Count; i++)
-                {
-                    if (_spec.Walls[i].FreeAssembly) wallLines.Add((xc, _spec.Walls[i].Letter));
-                    xc += _spec.Walls[i].Separation;
-                }
-                if (bentLines.Count > 0 || wallLines.Count > 0)
-                    grid.DrawTempLines(placement, frameTag, bentLines, wallLines, 0.0, _spec.Span, 0.0, zc);
-            }
             Persist();
             doc?.Editor.WriteMessage(
                 "\nTDraw: frame " + frameTag + " -- cleared " + cleared + " managed timber(s); emitted "

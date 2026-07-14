@@ -164,17 +164,30 @@ namespace TimberDraw
 			// TPlace'd subs assigned via TAssign), so adding/removing a sub re-letters/re-numbers. Only
 			// timbers that MEET THE FLOOR draw a line.
 			string frameTag = "A";
+			FrameSpec spec = null;
 			string json = Properties.Settings.Default.FrameSpecJson;
 			if (!string.IsNullOrWhiteSpace(json))
 			{
-				try { frameTag = string.IsNullOrWhiteSpace(FrameSpecStore.FromJson(json).FrameTag) ? "A"
-					: FrameSpecStore.FromJson(json).FrameTag.Trim(); }
+				try
+				{
+					spec = FrameSpecStore.FromJson(json);
+					frameTag = string.IsNullOrWhiteSpace(spec.FrameTag) ? "A" : spec.FrameTag.Trim();
+				}
 				catch (System.Exception ex)
 				{ Diag.Warn("TGrid", "FrameSpecJson unreadable, frame tag defaults to A: " + ex.Message); }
 			}
 
 			Matrix3d placement = ManagedFrameEmitter.Compose(ed.CurrentUserCoordinateSystem);  // model basis
 			FrameGrid grid = FrameGrid.BuildFromDrawing(doc.Database, frameTag, placement);
+			// Free-assembly stations from the recipe join the grid as first-class lines (the same
+			// merge the tree's Draw does -- a TGrid redraw must not lose them).
+			if (spec != null)
+			{
+				var freeBentZ = new System.Collections.Generic.List<double>();
+				var freeWallX = new System.Collections.Generic.List<double>();
+				spec.FreeAssemblyStations(freeBentZ, freeWallX);
+				grid.MergeSpecStations(freeBentZ, freeWallX);
+			}
 			ManagedTimber.EraseGrid(doc.Database, frameTag);
 			grid.Draw(placement, frameTag);   // flat under the frame
 			ed.WriteMessage("\nTGrid: frame " + frameTag + " -- " + grid.ColX.Count + " columns x "

@@ -136,6 +136,26 @@ namespace TimberDraw
             return true;
         }
 
+        // The stations (graph coords) of the FREE-ASSEMBLY bents / walls -- recipe positions that
+        // emit no timbers. The grid folds them in as FIRST-CLASS lines (FrameGrid.MergeSpecStations;
+        // Robert's call: the spec knows exactly where a free-assembly bent stands, so its line is as
+        // real as a post-backed one).
+        public void FreeAssemblyStations(List<double> bentZ, List<double> wallX)
+        {
+            double z = 0;
+            for (int i = 0; i < Bents.Count; i++)
+            {
+                z += Bents[i].Separation;   // Separation = gap from the previous bent (bent 1 = 0)
+                if (Bents[i].IsFreeAssembly) bentZ.Add(z);
+            }
+            double x = 0;
+            for (int i = 0; i < Walls.Count; i++)
+            {
+                if (Walls[i].FreeAssembly) wallX.Add(x);
+                x += Walls[i].Separation;   // walls: Separation = gap to the NEXT wall
+            }
+        }
+
         // The gap (graph-Z) that an insert at `before`/`after` of `sel` would straddle. Returns 0 with
         // interior=false when the insert is at an END (before the first / after the last bent) -- there
         // the frame EXTENDS by the entered distance, so there's no split limit.
