@@ -294,6 +294,19 @@ namespace TimberDraw
                 }
             }
 
+            // SHAPE WINS (batch-2 #13): re-apply the shape Subtracts AFTER the joinery -- a union
+            // feature (tenon stub, rafter tongue) applied above would otherwise RE-ADD material
+            // inside a TProfile arch (the tenon appeared where the arch had removed wood). Removed
+            // is removed: the profile trims tenons and tongues like the rest of the body. The mate's
+            // pocket is still sized to the nominal joint -- resize the joint if the arch eats too
+            // much of it.
+            if (f.Subtracts != null && f.Subtracts.Count > 0
+                && ((f.Features != null && f.Features.Exists(x => !x.Subtract))
+                    || (f.JointPolys != null && f.JointPolys.Exists(x => !x.Subtract))
+                    || (f.JointPolysZ != null && f.JointPolysZ.Exists(x => !x.Subtract))
+                    || (f.JointPrisms != null && f.JointPrisms.Exists(x => !x.Subtract))))
+                foreach (Point3d[] poly in f.Subtracts) CutPoly(poly, true, -f.W / 2.0 - 1.0, f.W / 2.0 + 1.0, -1);
+
             // NOTE: the slice/boolean OPERATION HISTORY (which references the disposed off-cut / feature
             // operand solids and would otherwise break SAVE) is cleared by the callers AFTER the solid is
             // database-resident -- DrawFramedSolid / DrawBox -- because the history props can't be set on
