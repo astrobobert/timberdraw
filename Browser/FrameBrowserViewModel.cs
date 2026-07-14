@@ -187,11 +187,37 @@ namespace TimberDraw.Browser
         // THE assign surface -- the Assembly tab carries no assign controls. ----
         public System.Collections.Generic.List<string> AsmKinds { get; } = new() { "Bent", "Wall", "Floor" };
 
+        // Frames PRESENT in the drawing (distinct FrameTags on the loaded rows) -- the Frame
+        // pulldown's items, refreshed with the rows. The combo stays EDITABLE: type a new tag
+        // to start the next frame (assigning to it creates it); an empty drawing seeds "A".
+        public ObservableCollection<string> AsmFrames { get; } = new();
+
         private string _asmFrame = "A";
+        private bool _asmFrameTouched;   // the user chose/typed a frame -- never auto-snap over it
         public string AsmFrame
         {
             get => _asmFrame;
-            set { if (Set(ref _asmFrame, value) && !_loadingSel) _assignDirty = true; }
+            set { if (Set(ref _asmFrame, value) && !_loadingSel) { _assignDirty = true; _asmFrameTouched = true; } }
+        }
+
+        // Rebuild the Frame pulldown from the loaded rows, and DEFAULT the target to a frame that
+        // exists -- the hardcoded "A" seed pointed nowhere in a drawing whose frame is B. Snap only
+        // while the user hasn't chosen/typed one (and review-loading a row doesn't count: it goes
+        // through _loadingSel).
+        private void RefreshFrames()
+        {
+            var frames = new System.Collections.Generic.SortedSet<string>(System.StringComparer.OrdinalIgnoreCase);
+            foreach (FrameBrowserItem it in _all)
+                if (!string.IsNullOrEmpty(it.Frame)) frames.Add(it.Frame);
+            if (frames.Count == 0) frames.Add("A");   // nothing tagged yet: the seed frame
+
+            string keep = _asmFrame;   // rebuilding the ItemsSource can bounce an editable combo's Text
+            AsmFrames.Clear();
+            foreach (string tag in frames) AsmFrames.Add(tag);
+            if (!string.Equals(_asmFrame, keep)) { _loadingSel = true; AsmFrame = keep; _loadingSel = false; }
+
+            if (!_asmFrameTouched && !frames.Contains((keep ?? "").Trim()))
+            { _loadingSel = true; AsmFrame = frames.Min; _loadingSel = false; }
         }
 
         private string _asmKind = "Bent";
@@ -352,6 +378,7 @@ namespace TimberDraw.Browser
             _all.AddRange(ManagedView.LoadTimbers());
             int nodes = ManagedView.NodeCount();
             Status = _all.Count + " timber(s), " + nodes + " node(s)";
+            RefreshFrames();
             ApplyFilter();
         }
 

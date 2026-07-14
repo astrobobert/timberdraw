@@ -119,6 +119,53 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <!-- Editable variant (the Frame selector): the same dark chrome plus the
+             PART_EditableTextBox an editable ComboBox requires. Pick an existing frame from
+             the drop-down, or type a new tag to start the next frame. -->
+        <Style x:Key="TdEditableCombo" TargetType="ComboBox">
+            <Setter Property="Foreground" Value="{DynamicResource TdFg}"/>
+            <Setter Property="Background" Value="{DynamicResource TdSurface}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource TdBorder}"/>
+            <Setter Property="IsEditable" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton Focusable="False" ClickMode="Press"
+                                          Background="{TemplateBinding Background}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
+                                            <Path HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                  Margin="0,0,7,0" Data="M 0 0 L 4 4 L 8 0 Z"
+                                                  Fill="{DynamicResource TdSubtle}"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <TextBox x:Name="PART_EditableTextBox" Margin="1,1,22,1" Padding="3,0,0,0"
+                                     BorderThickness="0" VerticalContentAlignment="Center"
+                                     Background="{DynamicResource TdSurface}"
+                                     Foreground="{DynamicResource TdFg}"/>
+                            <Popup IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                   Placement="Bottom" AllowsTransparency="True">
+                                <Border Background="{DynamicResource TdSurface}"
+                                        BorderBrush="{DynamicResource TdBorder}" BorderThickness="1"
+                                        MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                        MaxHeight="220">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style TargetType="ComboBoxItem">
             <Setter Property="Foreground" Value="{DynamicResource TdFg}"/>
             <Setter Property="Padding" Value="6,3"/>
@@ -191,7 +238,8 @@
                            Text="{Binding EditD, UpdateSourceTrigger=PropertyChanged}"/>
 
                 <TextBlock Grid.Row="3" Grid.Column="0" Text="Frame" VerticalAlignment="Center" Margin="0,0,6,4"/>
-                <TextBox   Grid.Row="3" Grid.Column="1" Margin="0,0,0,4"
+                <ComboBox  Grid.Row="3" Grid.Column="1" Margin="0,0,0,4" Style="{StaticResource TdEditableCombo}"
+                           ItemsSource="{Binding AsmFrames}"
                            Text="{Binding AsmFrame, UpdateSourceTrigger=PropertyChanged}"/>
                 <TextBlock Grid.Row="4" Grid.Column="0" Text="Kind" VerticalAlignment="Center" Margin="0,0,6,4"/>
                 <ComboBox  Grid.Row="4" Grid.Column="1" Margin="0,0,0,4"
