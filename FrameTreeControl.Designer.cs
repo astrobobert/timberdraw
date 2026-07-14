@@ -77,6 +77,17 @@ namespace TimberDraw
                 ActionBar.Row(this.ButtonSetDefault, this.ButtonFreeze, this.ButtonGrid));
             this.panelButtons.Name = "panelButtons";
 
+            // Plain-language tooltips on every button (Robert's ask -- the tab explains itself).
+            var tip = new ToolTip(this.components) { AutoPopDelay = 20000, InitialDelay = 400, ReshowDelay = 100, ShowAlways = true };
+            tip.SetToolTip(this.ButtonDraw, "Clear this frame's skeleton and re-emit it from the recipe. Hand-placed timbers survive; their joints to the old skeleton are stripped (recipes kept -- TJointSync re-attaches).");
+            tip.SetToolTip(this.ButtonNew, "Start a fresh, empty frame recipe.");
+            tip.SetToolTip(this.ButtonSave, "Save the recipe to its .framespec file.");
+            tip.SetToolTip(this.ButtonSaveAs, "Save the recipe to a new .framespec file.");
+            tip.SetToolTip(this.ButtonLoad, "Load a saved .framespec recipe.");
+            tip.SetToolTip(this.ButtonSetDefault, "Save the selected bent or bay's settings as that type's default for new ones.");
+            tip.SetToolTip(this.ButtonFreeze, "ONE-WAY: end the parametric phase. The generator locks and the timbers carry on as the source of truth, edited with the Assembly verbs.");
+            tip.SetToolTip(this.ButtonGrid, "Redraw the structural grid from the timbers in the drawing (TGrid).");
+
             this.Controls.Add(this.split);
             this.Controls.Add(this.panelButtons);
             this.Name = "FrameTreeControl";

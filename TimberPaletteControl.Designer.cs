@@ -176,6 +176,35 @@ namespace TimberDraw
             flowEdit.Controls.Add(groupSection);
             flowEdit.Controls.Add(groupBrace);
 
+            // Plain-language tooltips on every control (Robert's ask -- the tab explains itself).
+            var tip = new ToolTip(this.components) { AutoPopDelay = 20000, InitialDelay = 400, ReshowDelay = 100, ShowAlways = true };
+            tip.SetToolTip(treeSections, "Your saved section catalog. Selecting a size makes it the STICKY section -- Place / Span / Brace / Joist use it without asking.");
+            tip.SetToolTip(txtType, "Member type for this catalog entry (Post, Girt, Brace, Joist, Summer...).");
+            tip.SetToolTip(txtWidth, "Section width in inches.");
+            tip.SetToolTip(txtDepth, "Section depth in inches.");
+            tip.SetToolTip(btnAdd, "Add Type / W / D as a new catalog entry.");
+            tip.SetToolTip(btnUpdate, "Change the selected entry to the fields' values.");
+            tip.SetToolTip(btnRemove, "Delete the selected entry from the catalog.");
+            tip.SetToolTip(chkFoot, "Brace FOOT leg: distance from the corner along the first member. Check TWO of the three -- the third is computed.");
+            tip.SetToolTip(chkHead, "Brace HEAD leg: distance from the corner along the second member. Check TWO of the three -- the third is computed.");
+            tip.SetToolTip(chkAngle, "Brace angle in degrees. Check TWO of the three -- the third is computed.");
+            tip.SetToolTip(txtFoot, "Foot leg length, inches.");
+            tip.SetToolTip(txtHead, "Head leg length, inches.");
+            tip.SetToolTip(txtAngle, "Brace angle, degrees.");
+            tip.SetToolTip(btnPlan, "Set the UCS flat on the floor (plan) for placing.");
+            tip.SetToolTip(btnBent, "Set the UCS to a bent elevation for placing.");
+            tip.SetToolTip(btnWall, "Set the UCS to a wall elevation for placing.");
+            tip.SetToolTip(btnPlace, "TPlace: one timber of the sticky section -- pick a point and a direction.");
+            tip.SetToolTip(btnSpan, "TSpan: pick two timbers; a new member fills the gap between their facing faces.");
+            tip.SetToolTip(btnJoin, "TJoin: pick two faces -- facing = square filler, angled = mitered knee brace (uses the Brace legs / angle above).");
+            tip.SetToolTip(btnJoist, "TJoist: fill between two picked carriers with a row of PLAIN joists -- cut the end dovetails later with TJointAll.");
+            tip.SetToolTip(btnFit, "TFit: trim or extend a picked end onto a target face; the other end stays put.");
+            tip.SetToolTip(btnScarf, "TScarf: split a timber into two pieces with a scarf splice.");
+            tip.SetToolTip(btnSection, "TSection: re-section a timber (new W x D) in place.");
+            tip.SetToolTip(btnMove, "Plain AutoCAD MOVE -- the button is identical to typing it. Joinery travels with the timber; run TJointSync after it lands.");
+            tip.SetToolTip(btnRotate, "Plain AutoCAD ROTATE -- the button is identical to typing it.");
+            tip.SetToolTip(btnScan, "TScan: rescan face coincidence and mark the connection nodes.");
+
             this.Controls.Add(flowEdit);
             this.Controls.Add(bar);
             this.Controls.Add(lblBuild);

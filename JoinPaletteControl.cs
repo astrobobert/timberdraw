@@ -93,6 +93,11 @@ namespace TimberDraw
             _btnClear.Dock = DockStyle.Fill; _btnClear.Text = "Clear joint";
             _btnClear.Click += (s, e) => OnClear();
             _tip.SetToolTip(_btnClear, "Remove the held pair's joint (both timbers rebuilt plain). The pair stays held -- Apply then re-cuts fresh at the current contact, re-snapping a displaced joint.");
+            _tip.SetToolTip(_cmbType, "The connection type to cut. Changing it re-cuts the held pair as the new type.");
+            _tip.SetToolTip(_btnPick, "Pick the timber being jointed, then its host. A fresh pair cuts immediately with the shown settings; a pair that already carries a joint loads its saved settings instead.");
+            _tip.SetToolTip(_btnApply, "Affix the joint (cut it + save its settings on both timbers) and release the pair, ready for the next.");
+            _tip.SetToolTip(_btnSetDefault, "Save the shown values as this connection type's default.");
+            _tip.SetToolTip(_btnResetDefault, "Drop the saved default -- the type goes back to factory values.");
             var applyRow = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = new Padding(0) };
             applyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
             applyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));

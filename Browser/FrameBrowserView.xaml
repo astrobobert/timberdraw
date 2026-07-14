@@ -196,14 +196,17 @@
         <!-- Filter (type / handle); also the ElementHost keyboard-focus spike -->
         <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="0,0,0,6">
             <TextBlock DockPanel.Dock="Left" Text="Filter" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <TextBox Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBox Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="Filter by type or handle, starts-with: 'Post' matches Post but not KingPost."/>
         </DockPanel>
 
         <!-- Bottom action row: full-span buttons (the shared bottom-bar idiom). ONE Apply
              commits whatever was edited: section fields re-section, address fields assign. -->
         <UniformGrid DockPanel.Dock="Bottom" Columns="2" Margin="0,6,0,0">
-            <Button Content="Refresh" Margin="2" Padding="0,4" Command="{Binding RefreshCommand}"/>
-            <Button Content="Apply"   Margin="2" Padding="0,4" Command="{Binding ApplyCommand}"/>
+            <Button Content="Refresh" Margin="2" Padding="0,4" Command="{Binding RefreshCommand}"
+                    ToolTip="Reload the list from the drawing."/>
+            <Button Content="Apply"   Margin="2" Padding="0,4" Command="{Binding ApplyCommand}"
+                    ToolTip="Commit what you edited: Type/W/D re-section the timber; the address fields assign the whole selection to what they show."/>
         </UniformGrid>
 
         <!-- Property editor + assign target: fully STACKED labeled rows, one edit box per
@@ -229,27 +232,34 @@
 
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Type" VerticalAlignment="Center" Margin="0,0,6,4"/>
                 <TextBox   Grid.Row="0" Grid.Column="1" Margin="0,0,0,4"
-                           Text="{Binding EditType, UpdateSourceTrigger=PropertyChanged}"/>
+                           Text="{Binding EditType, UpdateSourceTrigger=PropertyChanged}"
+                           ToolTip="The selected timber's member type (Post, Girt, Joist...). Edit + Apply re-types it."/>
                 <TextBlock Grid.Row="1" Grid.Column="0" Text="W" VerticalAlignment="Center" Margin="0,0,6,4"/>
                 <TextBox   Grid.Row="1" Grid.Column="1" Margin="0,0,0,4"
-                           Text="{Binding EditW, UpdateSourceTrigger=PropertyChanged}"/>
+                           Text="{Binding EditW, UpdateSourceTrigger=PropertyChanged}"
+                           ToolTip="Section width, inches. Edit + Apply re-sections the timber in place."/>
                 <TextBlock Grid.Row="2" Grid.Column="0" Text="D" VerticalAlignment="Center" Margin="0,0,6,4"/>
                 <TextBox   Grid.Row="2" Grid.Column="1" Margin="0,0,0,4"
-                           Text="{Binding EditD, UpdateSourceTrigger=PropertyChanged}"/>
+                           Text="{Binding EditD, UpdateSourceTrigger=PropertyChanged}"
+                           ToolTip="Section depth, inches. Edit + Apply re-sections the timber in place."/>
 
                 <TextBlock Grid.Row="3" Grid.Column="0" Text="Frame" VerticalAlignment="Center" Margin="0,0,6,4"/>
                 <ComboBox  Grid.Row="3" Grid.Column="1" Margin="0,0,0,4" Style="{StaticResource TdEditableCombo}"
                            ItemsSource="{Binding AsmFrames}"
-                           Text="{Binding AsmFrame, UpdateSourceTrigger=PropertyChanged}"/>
+                           Text="{Binding AsmFrame, UpdateSourceTrigger=PropertyChanged}"
+                           ToolTip="The frames in the drawing. Pick one, or type a new tag to start the next frame."/>
                 <TextBlock Grid.Row="4" Grid.Column="0" Text="Kind" VerticalAlignment="Center" Margin="0,0,6,4"/>
                 <ComboBox  Grid.Row="4" Grid.Column="1" Margin="0,0,0,4"
-                           ItemsSource="{Binding AsmKinds}" SelectedItem="{Binding AsmKind}"/>
+                           ItemsSource="{Binding AsmKinds}" SelectedItem="{Binding AsmKind}"
+                           ToolTip="What owns the selection: a Bent (cross frame), a Wall (with its Bay), or a Floor level."/>
                 <TextBlock Grid.Row="5" Grid.Column="0" Text="Owner" VerticalAlignment="Center" Margin="0,0,6,4"/>
                 <TextBox   Grid.Row="5" Grid.Column="1" Margin="0,0,0,4"
-                           Text="{Binding AsmOwner, UpdateSourceTrigger=PropertyChanged}"/>
+                           Text="{Binding AsmOwner, UpdateSourceTrigger=PropertyChanged}"
+                           ToolTip="The owner itself: a bent number (2, or 2C for a grid intersection), a wall letter, or a floor number (1 = first)."/>
                 <TextBlock Grid.Row="6" Grid.Column="0" Text="{Binding AsmExtraLabel}" VerticalAlignment="Center" Margin="0,0,6,4"/>
                 <TextBox   Grid.Row="6" Grid.Column="1" Margin="0,0,0,4" IsEnabled="{Binding AsmExtraEnabled}"
-                           Text="{Binding AsmBay, UpdateSourceTrigger=PropertyChanged}"/>
+                           Text="{Binding AsmBay, UpdateSourceTrigger=PropertyChanged}"
+                           ToolTip="The second grid coordinate: a Bent owner takes its column letter (the C in 2C); a Wall owner takes the bay numeral (I, II...)."/>
             </Grid>
         </Border>
 

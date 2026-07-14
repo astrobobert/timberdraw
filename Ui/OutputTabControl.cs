@@ -12,6 +12,7 @@ namespace TimberDraw
     internal class OutputTabControl : UserControl
     {
         private readonly BomGridControl _bom = new BomGridControl();
+        private readonly ToolTip _tip = new ToolTip { AutoPopDelay = 20000, InitialDelay = 400, ReshowDelay = 100, ShowAlways = true };
 
         // The hosted grid, for Shell.LoadBom.
         public BomGridControl Bom => _bom;
@@ -19,12 +20,12 @@ namespace TimberDraw
         public OutputTabControl()
         {
             Panel bar = ActionBar.Build(
-                ActionBar.Row(Tool("Refresh",    (s, e) => _bom.RefreshFromModel()),
-                              Tool("Export CSV", (s, e) => _bom.ExportCsv())),
-                ActionBar.Row(Tool("Shop",       (s, e) => Send("TShop")),
-                              Tool("Shop Clear", (s, e) => Send("TShopClear")),
-                              Tool("Scribe",     (s, e) => Send("TScribe")),
-                              Tool("Scribe All", (s, e) => Send("TScribeAll"))));
+                ActionBar.Row(Tool("Refresh", "Reload the cut list from the model.", (s, e) => _bom.RefreshFromModel()),
+                              Tool("Export CSV", "Write the cut list to a CSV file.", (s, e) => _bom.ExportCsv())),
+                ActionBar.Row(Tool("Shop", "TShop: build the shop-map layouts -- per bent, per wall, and floor plans.", (s, e) => Send("TShop")),
+                              Tool("Shop Clear", "TShopClear: remove the drawn shop maps.", (s, e) => Send("TShopClear")),
+                              Tool("Scribe", "TScribe: export .tsj laser scribe files for SELECTED timbers.", (s, e) => Send("TScribe")),
+                              Tool("Scribe All", "TScribeAll: export .tsj scribe files for every timber (identical sticks share one file).", (s, e) => Send("TScribeAll"))));
 
             _bom.Dock = DockStyle.Fill;
             Controls.Add(_bom);
@@ -33,10 +34,11 @@ namespace TimberDraw
             Theme.Apply(this);
         }
 
-        private static Button Tool(string text, EventHandler onClick)
+        private Button Tool(string text, string tip, EventHandler onClick)
         {
             Button b = Theme.Button(text);
             b.Click += onClick;
+            _tip.SetToolTip(b, tip);
             return b;
         }
 
