@@ -49,6 +49,7 @@ knowing about it.
 | `TJoist` | a bay/wall + spacing | Places a whole row of **plain** floor joists — flush tops, optional drop. Joinery is deliberate: cut the end dovetails later with a selection + `TJointAll` (Chapter 10.2), or opt in at place time via the **Joint** keyword. Chapter 7.3 for how floors are addressed. |
 | `TAdopt` | your own 3DSOLIDs | Converts solids you modeled yourself into managed timbers: measures each one's axes and stock size and **replaces it in place** — from then on it assigns, joints, lists, and scribes like any other stick. Box-like bodies only (a solid filling under 90% of its stock — an arch — is left as-is; shape it with `TProfile` instead). |
 | `TProfile` | a timber + a **closed curve** | Cuts the drawn profile straight through the timber's width — the **arched-timber** verb. Draw the arch on the timber's elevation (polyline, circle, or spline), and the cut is carried in the timber's own recipe: it survives moves and joint re-cuts, reads in shop maps, and scribes as real edges. A shape cut like `TScarf` — UNDO restores it. |
+| `TCopy` | timbers + base/destination points | Copies as **new sticks** (8.3): shape and joinery kept, joint ids re-minted, grid address and production number cleared. Repeats like COPY. |
 
 > **Figure 8-2 — TSpan before/after.**
 > *[capture: two posts with a gap, then the same view with the spanning girt
@@ -71,6 +72,13 @@ move command. Two cautions:
 - **Joinery travels with the timber.** Moving a jointed timber carries its
   cuts along; when it lands, select it and run `TJointSync` (Chapter 10.3) to
   re-cut its joints against its mates at the new contact.
+- **Copy with `TCopy`, not COPY.** Plain COPY clones the timber's *identity*
+  along with the solid — grid address, production number, joint ids — so the
+  copy masquerades as the original. `TCopy` makes real new sticks: shape and
+  joinery are kept but every joint id is re-minted (a copied jointed *pair*
+  stays jointed to each other), and the address and production number are
+  cleared. `TAssign` to address them, `TJointSync` to re-attach their joints
+  at the new location.
 
 ## 8.4 Seeing what you have: `TScan` and `TBrowse`
 

@@ -74,8 +74,9 @@ overlap helpers, shared review loops, PickTimber/prompts), `PlaceCommands.cs` (T
 TSection), `AssignCommands.cs` (TAssign + label minting), `ScarfCommands.cs`, `GirtPostCommands.cs`
 (TJoint/TJointAll/TJointSync/TJointDel), `RafterRidgeCommands.cs`, `RoofInfillCommands.cs`,
 `StrutBraceCommands.cs`, `ScanCommands.cs`, `JoistCommands.cs`, `AdoptCommands.cs` (TAdopt),
-`ProfileCommands.cs` (TProfile) -- plus the pre-existing siblings `JoinCommands.cs` (Joints pane),
-`RelabelCommands.cs`, `BomCommands.cs`, `ShopCommands.cs`, `ScribeCommands.cs`.
+`ProfileCommands.cs` (TProfile), `CopyCommands.cs` (TCopy) -- plus the pre-existing siblings
+`JoinCommands.cs` (Joints pane), `RelabelCommands.cs`, `BomCommands.cs`, `ShopCommands.cs`,
+`ScribeCommands.cs`.
 
 The rest of `Managed\`: jigs (`PlaceJig`/`SpanJig`/`ScarfJig`/`JigGeometry`), sticky section + assembly
 model (`ManagedSection`/`ManagedAssembly`), connection types (`ConnectionType`/`JointDefaults`), shop
@@ -107,6 +108,7 @@ Editor verbs (`Managed\ManagedTimber.cs` unless noted):
 | `TJoist` | Place a row of PLAIN floor joists in a wall/bay (Joist role, FLUSH tops, Drop). Joinery is DELIBERATE (Robert's rule): dovetails cut later via TJointAll's joist pass (or the opt-in Joint keyword). |
 | `TAdopt` | Convert USER-MODELED 3DSOLIDs into managed timbers in place: axes from the longest straight Brep edges, measured stock W x D x L, DrawBox replace (Free marker, layer kept). Box-like only -- fill < 90% of stock (an arch) is left as-is, pointed at TProfile. `AdoptCommands.cs`. |
 | `TProfile` | Cut a CLOSED drawn curve straight through a timber's width -- the arched-timber verb. Faceted (arcs ~2 deg) + projected onto the elevation plane, stored as a `Subtracts` polygon in the recipe (survives moves/re-cuts; shop maps + scribe read the real edges). No ...Del (a shape cut, like TScarf); UNDO restores. `ProfileCommands.cs`. |
+| `TCopy` | Copy managed timbers as NEW sticks (plain COPY clones identity -- address, production number, joint ids). Shape + joinery kept; joint ids RE-KEYED consistently per placement (a copied jointed pair stays paired; joints to timbers left behind become fresh-id orphan halves for TJointSync re-attach); tags/label/TagHandle cleared, Free set, current layer. `CopyCommands.cs`. |
 | `TAssign` | Assign free timber(s) to a group for addressing -- hierarchy Frame -> Bent\|Wall -> Bay\|FLOOR. |
 | `TScan` | Rescan all managed timbers for coincident faces; mark the derived nodes. |
 | `TPickFace` | Debug/util: interactively pick one analytic face. |
