@@ -13,9 +13,9 @@ namespace TimberDraw
     // deliberate via TJointAll's joist pass) + its sticky dovetail spec and review loop.
     public partial class ManagedCommands
     {
-        // Fill a rectangle with flat floor JOISTS by FOUR face picks: the two facing SPAN faces (the
-        // carriers -- girt / summer / sill sides -- the joists run flush between) + the two
-        // DISTRIBUTION faces (the run bounds), then Count or center Spacing. Each joist is a flat box
+        // Fill a rectangle with flat floor JOISTS: pick the two CARRIER timbers (girt / summer /
+        // sill -- FindFacingPair locates the facing bearing faces the joists run flush between),
+        // then the two RUN-BOUND faces (the run ends), then Count or center Spacing. Each joist is a flat box
         // hung between the span faces (square ends -> TScan finds the seat nodes), arrayed along the
         // run, with its TOP FLUSH with the carrier tops (the dropped-in dovetail arrangement) minus
         // the sticky Drop (recessed-deck practice; 0 = flush). Role is always "Joist" (the verb IS the
@@ -41,18 +41,6 @@ namespace TimberDraw
             var s = JointDefaults.Purlin;
             s.On = false;
             return s;
-        }
-
-        // A managed box's extent along a world direction: its center projected onto dir, plus/minus the
-        // box half-dimensions projected the same way. Used to find where two carriers overlap along the
-        // joist run without any face picking.
-        private static void ExtentAlong(ManagedTimber.TFrame f, Vector3d dir, out double lo, out double hi)
-        {
-            double c = (f.O + f.Z * (f.L / 2.0)).GetAsVector().DotProduct(dir);
-            double half = System.Math.Abs(f.X.DotProduct(dir)) * (f.W / 2.0)
-                        + System.Math.Abs(f.Y.DotProduct(dir)) * (f.D / 2.0)
-                        + System.Math.Abs(f.Z.DotProduct(dir)) * (f.L / 2.0);
-            lo = c - half; hi = c + half;
         }
 
         [CommandMethod("TJoist")]
@@ -106,13 +94,15 @@ namespace TimberDraw
                 ed.WriteMessage("\nCarrier tops differ by " + System.Math.Abs(topA - topB).ToString("0.###")
                                 + "\" -- using the lower.");
 
-            // Run bounds: default to where the two carriers OVERLAP along the run direction -- no picks
-            // (the joists fill the shared bearing length). The Bounds keyword below overrides this with
-            // two explicit run-bound faces for a partial fill.
-            ExtentAlong(carAfr, runDir, out double loA, out double hiA);
-            ExtentAlong(carBfr, runDir, out double loB, out double hiB);
-            double r0 = System.Math.Max(loA, loB), r1 = System.Math.Min(hiA, hiB);
-            if (r1 - r0 <= 1e-6) { ed.WriteMessage("\nThe carriers don't overlap along their length -- nothing to fill."); return; }
+            // Run bounds: the TWO RUN-BOUND PICKS are REQUIRED (Robert's call, batch-2 #10 -- the
+            // auto carrier-overlap span could run past the bay being filled, cramming the spacing
+            // over girts longer than the bay). Pick a face at each end of the run (post sides,
+            // girt ends, ...); the Bounds keyword below re-picks them.
+            if (!ManagedTimber.PickFace(ed, db, "\nPick the FIRST run-bound face: ", out _, out ManagedTimber.TFace fb1)) return;
+            if (!ManagedTimber.PickFace(ed, db, "\nPick the SECOND run-bound face: ", out _, out ManagedTimber.TFace fb2)) return;
+            double r0 = fb1.C.GetAsVector().DotProduct(runDir), r1 = fb2.C.GetAsVector().DotProduct(runDir);
+            if (r1 < r0) { double tmp = r0; r0 = r1; r1 = tmp; }
+            if (r1 - r0 <= 1e-6) { ed.WriteMessage("\nThose faces don't bound a run along the carriers."); return; }
             double L = r1 - r0;
 
             // Count (N even, end-inset) or on-center Spacing (default 36", centered in the run). Bounds
@@ -136,10 +126,10 @@ namespace TimberDraw
                     if (!ManagedTimber.PickFace(ed, db, "\nPick the FIRST run-bound face: ", out _, out ManagedTimber.TFace fc)) continue;
                     if (!ManagedTimber.PickFace(ed, db, "\nPick the SECOND run-bound face: ", out _, out ManagedTimber.TFace fd)) continue;
                     double a = fc.C.GetAsVector().DotProduct(runDir), b = fd.C.GetAsVector().DotProduct(runDir);
-                    r0 = System.Math.Min(a, b); r1 = System.Math.Max(a, b);
-                    L = r1 - r0;
-                    if (L <= 1e-6) { ed.WriteMessage("\nThose faces don't bound a run along the carriers."); r0 = System.Math.Max(loA, loB); r1 = System.Math.Min(hiA, hiB); L = r1 - r0; }
-                    else ed.WriteMessage("\nRun bounds set: " + L.ToString("0.#") + "\" along the carriers.");
+                    double n0 = System.Math.Min(a, b), n1 = System.Math.Max(a, b);
+                    if (n1 - n0 <= 1e-6) { ed.WriteMessage("\nThose faces don't bound a run along the carriers."); continue; }
+                    r0 = n0; r1 = n1; L = r1 - r0;
+                    ed.WriteMessage("\nRun bounds set: " + L.ToString("0.#") + "\" along the carriers.");
                     continue;
                 }
                 if (kr.StringResult != "Drop") { mode = kr.StringResult; break; }
