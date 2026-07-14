@@ -374,6 +374,20 @@ namespace TimberDraw
                     AddLine(tr, btr, layer, frameTag, placement, Floor(x, zLo), Floor(x, zHi));
                     AddBubble(tr, btr, layer, frameTag, placement, normal, db, Floor(x, zLo - Bubble), label);
                 }
+
+                // EXTEND the solid wall (column) lines -- dashed, on this provisional layer -- past
+                // the last post-backed bent to reach a free-assembly bent's line beyond it (and
+                // likewise before the first), so the placement intersections exist to snap to. The
+                // solid lines still end at real bents; a post landing there upgrades the grid.
+                if (BentZ.Count > 0 && ColX.Count > 0)
+                {
+                    double solidLo = BentZ[0] - Margin, solidHi = BentZ[BentZ.Count - 1] + Margin;
+                    foreach (double x in ColX)
+                    {
+                        if (zHi > solidHi + 1e-6) AddLine(tr, btr, layer, frameTag, placement, Floor(x, solidHi), Floor(x, zHi));
+                        if (zLo < solidLo - 1e-6) AddLine(tr, btr, layer, frameTag, placement, Floor(x, zLo), Floor(x, solidLo));
+                    }
+                }
                 tr.Commit();
             }
         }
