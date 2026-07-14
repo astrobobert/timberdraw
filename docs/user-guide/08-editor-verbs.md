@@ -47,6 +47,8 @@ knowing about it.
 | `TSection` | a timber | Re-sections it (new W x D) in place. |
 | `TScarf` | a timber + a point | Splits it into two pieces with a scarf, and remembers the splice interface. |
 | `TJoist` | a bay/wall + spacing | Places a whole row of **plain** floor joists — flush tops, optional drop. Joinery is deliberate: cut the end dovetails later with a selection + `TJointAll` (Chapter 10.2), or opt in at place time via the **Joint** keyword. Chapter 7.3 for how floors are addressed. |
+| `TAdopt` | your own 3DSOLIDs | Converts solids you modeled yourself into managed timbers: measures each one's axes and stock size and **replaces it in place** — from then on it assigns, joints, lists, and scribes like any other stick. Box-like bodies only (a solid filling under 90% of its stock — an arch — is left as-is; shape it with `TProfile` instead). |
+| `TProfile` | a timber + a **closed curve** | Cuts the drawn profile straight through the timber's width — the **arched-timber** verb. Draw the arch on the timber's elevation (polyline, circle, or spline), and the cut is carried in the timber's own recipe: it survives moves and joint re-cuts, reads in shop maps, and scribes as real edges. A shape cut like `TScarf` — UNDO restores it. |
 
 > **Figure 8-2 — TSpan before/after.**
 > *[capture: two posts with a gap, then the same view with the spanning girt

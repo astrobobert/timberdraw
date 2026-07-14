@@ -73,9 +73,9 @@ The `ManagedCommands` partial class (the command shells) spans the `<Area>Comman
 overlap helpers, shared review loops, PickTimber/prompts), `PlaceCommands.cs` (TPlace/TSpan/TJoin/TFit/
 TSection), `AssignCommands.cs` (TAssign + label minting), `ScarfCommands.cs`, `GirtPostCommands.cs`
 (TJoint/TJointAll/TJointSync/TJointDel), `RafterRidgeCommands.cs`, `RoofInfillCommands.cs`,
-`StrutBraceCommands.cs`, `ScanCommands.cs`, `JoistCommands.cs` -- plus the pre-existing siblings
-`JoinCommands.cs` (Joints pane), `RelabelCommands.cs`, `BomCommands.cs`, `ShopCommands.cs`,
-`ScribeCommands.cs`.
+`StrutBraceCommands.cs`, `ScanCommands.cs`, `JoistCommands.cs`, `AdoptCommands.cs` (TAdopt),
+`ProfileCommands.cs` (TProfile) -- plus the pre-existing siblings `JoinCommands.cs` (Joints pane),
+`RelabelCommands.cs`, `BomCommands.cs`, `ShopCommands.cs`, `ScribeCommands.cs`.
 
 The rest of `Managed\`: jigs (`PlaceJig`/`SpanJig`/`ScarfJig`/`JigGeometry`), sticky section + assembly
 model (`ManagedSection`/`ManagedAssembly`), connection types (`ConnectionType`/`JointDefaults`), shop
@@ -105,6 +105,8 @@ Editor verbs (`Managed\ManagedTimber.cs` unless noted):
 | `TSection` | Re-section a managed timber (change W x D) in place. |
 | `TScarf` | Scarf-splice a timber into two pieces; stores the scarf interface node. |
 | `TJoist` | Place a row of PLAIN floor joists in a wall/bay (Joist role, FLUSH tops, Drop). Joinery is DELIBERATE (Robert's rule): dovetails cut later via TJointAll's joist pass (or the opt-in Joint keyword). |
+| `TAdopt` | Convert USER-MODELED 3DSOLIDs into managed timbers in place: axes from the longest straight Brep edges, measured stock W x D x L, DrawBox replace (Free marker, layer kept). Box-like only -- fill < 90% of stock (an arch) is left as-is, pointed at TProfile. `AdoptCommands.cs`. |
+| `TProfile` | Cut a CLOSED drawn curve straight through a timber's width -- the arched-timber verb. Faceted (arcs ~2 deg) + projected onto the elevation plane, stored as a `Subtracts` polygon in the recipe (survives moves/re-cuts; shop maps + scribe read the real edges). No ...Del (a shape cut, like TScarf); UNDO restores. `ProfileCommands.cs`. |
 | `TAssign` | Assign free timber(s) to a group for addressing -- hierarchy Frame -> Bent\|Wall -> Bay\|FLOOR. |
 | `TScan` | Rescan all managed timbers for coincident faces; mark the derived nodes. |
 | `TPickFace` | Debug/util: interactively pick one analytic face. |

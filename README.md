@@ -77,8 +77,8 @@ TimberDraw\
                             builders/faces), Persist (xrecords), Query (enumeration/picking)
     *Commands.cs         -- The command shells (partial class ManagedCommands): Core (shared
                             spine), Place, Assign, Scarf, GirtPost, RafterRidge, RoofInfill,
-                            StrutBrace, Scan, Joist + JoinCommands (Joints pane), Relabel,
-                            Bom, Shop, Scribe
+                            StrutBrace, Scan, Joist, Adopt, Profile + JoinCommands (Joints pane),
+                            Relabel, Bom, Shop, Scribe
     ShopMaps.cs / ShopLayouts.cs -- TShop shop drawings
     Scribe*.cs           -- TScribe / TScribeAll .tsj export + annotations
 

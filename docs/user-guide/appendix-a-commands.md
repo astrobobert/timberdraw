@@ -32,6 +32,8 @@ palette** — Frame / Assembly / Joints / Browser / Output.
 | `TSection` | Re-section a timber (W x D) in place. Ch. 8 |
 | `TScarf` | Split a timber in two with a scarf splice. Ch. 8 |
 | `TJoist` | Place a row of plain floor joists in a bay (dovetails cut later via TJointAll). Ch. 8 |
+| `TAdopt` | Convert your own box-like 3DSOLIDs into managed timbers, in place (measured stock). Ch. 8 |
+| `TProfile` | Cut a closed drawn curve through a timber's width (the arched-timber verb). Ch. 8 |
 | `TScan` | Rescan face coincidence; mark connection nodes. Ch. 8 |
 | `TBrowse` | Open the Browser tab: filter, highlight, zoom, re-section, assign. Ch. 8 |
 | `TUcsPlan` / `TUcsBent` / `TUcsWall` | UCS presets for comfortable placement. Ch. 8 |
