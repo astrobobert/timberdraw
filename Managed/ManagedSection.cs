@@ -15,12 +15,18 @@ namespace TimberDraw
         public static double Width;
         public static double Depth;
 
+        // Fired on every Set -- a pending placement preview (TPlace/TSpan/TJoin solid ghost)
+        // listens via SolidGhost.Nudge so a mid-command catalog click re-sections the preview.
+        // Raised on the UI thread; handlers must not write the db (see SolidGhost).
+        public static event System.Action Changed;
+
         public static void Set(string type, double width, double depth)
         {
             Type = string.IsNullOrWhiteSpace(type) ? "Timber" : type;
             Width = width;
             Depth = depth;
             HasCurrent = true;
+            Changed?.Invoke();
         }
 
         public static void Clear() { HasCurrent = false; }

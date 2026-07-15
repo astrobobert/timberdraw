@@ -35,7 +35,7 @@ public class BoundaryTests
     private static readonly string[] EditorTokens =
     {
         "ManagedTimber", "ManagedBrace", "ManagedSection",
-        "PlaceJig", "SpanJig", "ScarfJig", "JigGeometry", "ManagedTransformOverrule",
+        "SolidGhost", "BraceGhost", "ScarfJig", "JigGeometry", "ManagedTransformOverrule",
     };
 
     // Recipe / generator-only types the editor must not name.

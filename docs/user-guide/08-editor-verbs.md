@@ -42,6 +42,13 @@ comfortable.
 One per job. Each asks you to pick, does one thing, and leaves the timber
 knowing about it.
 
+**Placement previews are real solids.** While `TPlace`, `TSpan`, or `TJoin`
+is waiting for you, the pending timber shows as a **blue solid** rendered in
+whatever visual style is current — not a wireframe. Every screen pick and
+every palette change (a different section leaf, a Brace spec edit)
+reconstructs the preview in place; **Enter applies it**. Escape cancels and
+the preview vanishes.
+
 | Verb | You pick | It does |
 |---|---|---|
 | `TPlace` | a point + extrusion direction | Places one timber of the sticky section. |

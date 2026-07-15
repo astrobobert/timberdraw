@@ -81,7 +81,12 @@ TSection), `AssignCommands.cs` (TAssign + label minting), `ScarfCommands.cs`, `G
 `JoinCommands.cs` (Joints pane), `RelabelCommands.cs`, `BomCommands.cs`, `ShopCommands.cs`,
 `ScribeCommands.cs`.
 
-The rest of `Managed\`: jigs (`PlaceJig`/`SpanJig`/`ScarfJig`/`JigGeometry`), sticky section + assembly
+The rest of `Managed\`: placement previews (`SolidGhost`/`BraceGhost` -- real db solids, blue ACI 5,
+rendered in the current visual style; every screen pick or palette change reconstructs the preview
+until Enter applies, and palette edits reach the pending prompt via SolidGhost's hidden nudge keyword
++ the no-op `TMNUDGE` backstop, because a palette handler holds no document lock -- Robert's call
+2026-07-15, no transient/wireframe ghosts; `ScarfJig`/`JigGeometry` keep the scarf-REGION wire ghost,
+which marks a cut on an existing timber, not a free timber), sticky section + assembly
 model (`ManagedSection`/`ManagedAssembly`), connection types (`ConnectionType`/`JointDefaults`), shop
 drawings (`ShopMaps`/`ShopLayouts`), and scribe export (`Scribe*.cs`). The frame browser palette lives
 in `Browser\`.

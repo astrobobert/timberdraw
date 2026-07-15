@@ -12,6 +12,13 @@ namespace TimberDraw
     // ManagedCommands part: placement verbs -- TPlace, TSpan, TJoin, TFit, TSection.
     public partial class ManagedCommands
     {
+        // No-op backstop for SolidGhost's palette nudge: the hidden keyword a palette edit queues
+        // into a pending ghost prompt normally lands AS that keyword; if the loop ended a beat
+        // earlier (race), the queued word reaches the bare command line instead -- where it runs
+        // this and does nothing, rather than erroring "Unknown command". Not a user verb.
+        [CommandMethod(SolidGhost.NudgeKeyword, CommandFlags.NoHistory)]
+        public static void PaletteNudgeNoop() { }
+
         // Place one managed timber. Pick the EXTRUSION DIRECTION with the cursor: a start point (the near
         // end-face centre) and a direction point. The timber extrudes the given LENGTH along that
         // direction, so you DON'T have to re-roll the UCS Z per member. The W x D section's roll comes
@@ -35,21 +42,57 @@ namespace TimberDraw
             CoordinateSystem3d cs = ucs.CoordinateSystem3d;
             Vector3d ux = cs.Xaxis.GetNormal(), uy = cs.Yaxis.GetNormal(), uz = cs.Zaxis.GetNormal();
 
-            // Two-phase ghost jig: phase 1 rolls the W x D section about the base point, phase 2
-            // drags the length out along UCS Z. Both phases preview the timber live.
-            var jig = new PlaceJig(a, ux, uy, uz, w, d, 96.0);
-            jig.Phase = PlaceJig.JigPhase.Roll;
-            if (ed.Drag(jig).Status != PromptStatus.OK) return;
-            jig.Phase = PlaceJig.JigPhase.Length;
-            if (ed.Drag(jig).Status != PromptStatus.OK) return;
-
-            double angle = jig.Angle, len = jig.Length;
+            // Two-phase SOLID preview (Robert's call 2026-07-15: no transient wireframes): phase 1
+            // rolls the W x D section about the base point, phase 2 sets the length along UCS Z.
+            // Every pick/typed value reconstructs the preview solid in place; Enter accepts the
+            // phase. A palette catalog click mid-command re-sections it (the SolidGhost nudge).
+            double angle = 0.0, len = 96.0;
             // Roll the section axes about UCS Z (right-handed: widthAxis x depthAxis = lengthAxis).
-            Vector3d widthAxis  = ux * Math.Cos(angle) + uy * Math.Sin(angle);
-            Vector3d depthAxis  = ux * (-Math.Sin(angle)) + uy * Math.Cos(angle);
-            Vector3d lengthAxis = uz;
+            Vector3d RollW() => ux * Math.Cos(angle) + uy * Math.Sin(angle);
+            Vector3d RollD() => ux * (-Math.Sin(angle)) + uy * Math.Cos(angle);
+            void Reread()
+            {
+                if (!ManagedSection.HasCurrent) return;
+                w = ManagedSection.Width; d = ManagedSection.Depth; type = ManagedSection.Type;
+            }
+            using (var ghost = new SolidGhost())
+            {
+                void Rebuild() => ghost.Update(SolidGhost.BoxFrame(a, uz, RollD(), RollW(), len, d, w));
+                System.Action follow = SolidGhost.Nudge;
+                ManagedSection.Changed += follow;
+                try
+                {
+                    Rebuild();
+                    while (true)   // phase 1: roll
+                    {
+                        var ao = new PromptAngleOptions("\nRoll the section -- pick/type an angle, Enter accepts <"
+                            + (angle * 180.0 / Math.PI).ToString("0.#") + " deg>: ")
+                        { UseBasePoint = true, BasePoint = a, AllowNone = true };
+                        SolidGhost.AddNudge(ao.Keywords);
+                        PromptDoubleResult r = ed.GetAngle(ao);
+                        if (r.Status == PromptStatus.Keyword) { Reread(); Rebuild(); continue; }
+                        if (r.Status == PromptStatus.None) break;
+                        if (r.Status != PromptStatus.OK) return;
+                        angle = r.Value; Rebuild();
+                    }
+                    while (true)   // phase 2: length
+                    {
+                        var lo = new PromptDistanceOptions("\nLength -- pick/type a distance, Enter accepts <"
+                            + len.ToString("0.#") + ">: ")
+                        { UseBasePoint = true, BasePoint = a, AllowNone = true };
+                        SolidGhost.AddNudge(lo.Keywords);
+                        PromptDoubleResult r = ed.GetDistance(lo);
+                        if (r.Status == PromptStatus.Keyword) { Reread(); Rebuild(); continue; }
+                        if (r.Status == PromptStatus.None) break;
+                        if (r.Status != PromptStatus.OK) return;
+                        if (r.Value > 1e-6) len = r.Value;
+                        Rebuild();
+                    }
+                }
+                finally { ManagedSection.Changed -= follow; }
+            }
 
-            ObjectId id = ManagedTimber.DrawBox(a, lengthAxis, depthAxis, widthAxis, len, d, w, type, "", "butt", "butt");
+            ObjectId id = ManagedTimber.DrawBox(a, uz, RollD(), RollW(), len, d, w, type, "", "butt", "butt");
             ed.WriteMessage("\nTPlace: " + type + " " + (int)w + "x" + (int)d + "x" + len.ToString("0.#") +
                             " roll " + (angle * 180.0 / Math.PI).ToString("0.#") + " deg (" + id.Handle + ").");
         }
@@ -89,39 +132,88 @@ namespace TimberDraw
             Vector3d dAxis = railVertical ? fa.U : fa.V;
             Vector3d wAxis = railVertical ? fa.V : fa.U;
 
-            // Ghost the span and let the user set its height along the post rail, measured from the UCS
-            // origin (datum s=0 = base). The girt's Center/Bottom/Top face lands on that line. Height
-            // comes from PICKED POINTS -- the point's rail (Z) component is used, so a snap anywhere
-            // transfers its height; the drag loop handles the Center/Bottom/Top keywords.
+            // SOLID preview (Robert's call 2026-07-15: no transient wireframes): the span slides on
+            // one rail coordinate s along the connected timbers (fa.U oriented up), measured from
+            // the UCS-origin datum (s=0 = base). The girt's Center/Bottom/Top face lands on that
+            // line. Height comes from PICKED POINTS -- the point's rail component only, so a snap
+            // anywhere transfers its HEIGHT, never its diagonal distance; each pick reconstructs
+            // the preview in place and Enter applies. Exact keyboard entry stays via the Height
+            // keyword; a palette catalog click mid-command re-sections it (the SolidGhost nudge).
             CoordinateSystem3d ucs = ed.CurrentUserCoordinateSystem.CoordinateSystem3d;
-            var jig = new SpanJig(origin, fa, gap, railVertical ? d : w, railVertical ? w : d, ucs.Origin);
+            Vector3d rail = fa.U.GetNormal();
+            if (rail.DotProduct(Vector3d.ZAxis) < 0.0) rail = rail.Negate();   // +s is upward
+            Point3d ucsOrg = ucs.Origin;
+            double S(Point3d p) => (p - ucsOrg).DotProduct(rail);
+            // The s=0 point on the rail = origin slid down to the UCS-origin datum. Used as the
+            // pick base point so a typed "0" (zero from the base) lands on the floor.
+            Point3d floorAnchor = origin - rail * S(origin);
+            double sTarget = 0.0;
+            string just = "Center";
+            // Near end-face centre that puts the justified face on the line s == sTarget. Only the
+            // rail component of origin moves; fa.V / fa.N stay as set by origin.
+            Point3d SpanOrigin()
+            {
+                double railDim = railVertical ? d : w;
+                double centerS = sTarget;
+                if (just == "Bottom") centerS += railDim / 2.0;        // lower face on the line
+                else if (just == "Top") centerS -= railDim / 2.0;      // upper face on the line
+                return origin + rail * (centerS - S(origin));
+            }
             bool canPickHeight = Math.Abs(fa.U.GetNormal().DotProduct(ucs.Zaxis.GetNormal())) < 0.5;
             if (!canPickHeight)
                 ed.WriteMessage("\nTip: a cursor can't read the height in this UCS (post is end-on) -- " +
                                 "snap to a feature at the height you want, or switch to an elevation UCS (Bent/Wall).");
 
-            while (true)
+            using (var ghost = new SolidGhost())
             {
-                PromptResult pr = ed.Drag(jig);
-                if (pr.Status == PromptStatus.Keyword)
+                void Rebuild() => ghost.Update(SolidGhost.BoxFrame(SpanOrigin(), fa.N, dAxis, wAxis, gap, d, w));
+                System.Action follow = SolidGhost.Nudge;
+                ManagedSection.Changed += follow;
+                try
                 {
-                    // Height = exact keyboard entry (a number typed at the point prompt would be
-                    // direct-distance along the cursor -- this stays exact in any UCS).
-                    if (pr.StringResult == "Height")
+                    Rebuild();
+                    while (true)
                     {
-                        if (GetDouble(ed, "Height above base", jig.LineY, true, out double hv))
-                            jig.SetHeight(hv);
+                        var ppo = new PromptPointOptions(
+                            "\nHeight above base -- pick/snap a point at the height, Enter accepts; [Center/Bottom/Top/Height]: ")
+                        { UseBasePoint = true, BasePoint = floorAnchor, AllowNone = true };
+                        ppo.Keywords.Add("Center");
+                        ppo.Keywords.Add("Bottom");
+                        ppo.Keywords.Add("Top");
+                        ppo.Keywords.Add("Height");
+                        SolidGhost.AddNudge(ppo.Keywords);
+                        PromptPointResult pr = ed.GetPoint(ppo);
+                        if (pr.Status == PromptStatus.Keyword)
+                        {
+                            if (pr.StringResult == SolidGhost.NudgeKeyword)
+                            {
+                                if (ManagedSection.HasCurrent)
+                                { w = ManagedSection.Width; d = ManagedSection.Depth; type = ManagedSection.Type; }
+                            }
+                            // Height = exact keyboard entry (a number typed at the point prompt
+                            // would be direct-distance along the cursor -- this stays exact in
+                            // any UCS).
+                            else if (pr.StringResult == "Height")
+                            {
+                                if (GetDouble(ed, "Height above base", sTarget, true, out double hv))
+                                    sTarget = hv;
+                            }
+                            else just = pr.StringResult;
+                            Rebuild();
+                            continue;
+                        }
+                        if (pr.Status == PromptStatus.OK)
+                        { sTarget = S(pr.Value); Rebuild(); continue; }   // pick reconstructs; Enter applies
+                        if (pr.Status == PromptStatus.None) break;
+                        return;
                     }
-                    else jig.SetJustify(pr.StringResult);
-                    continue;
                 }
-                if (pr.Status == PromptStatus.OK || pr.Status == PromptStatus.None) break;   // click / Enter
-                return;
+                finally { ManagedSection.Changed -= follow; }
             }
 
-            ObjectId id = ManagedTimber.DrawBox(jig.Origin, fa.N, dAxis, wAxis, gap, d, w, type, "", "matchface", "matchface");
+            ObjectId id = ManagedTimber.DrawBox(SpanOrigin(), fa.N, dAxis, wAxis, gap, d, w, type, "", "matchface", "matchface");
             ed.WriteMessage("\nTSpan: " + type + " " + (int)w + "x" + (int)d + "x" + gap.ToString("0.#") +
-                            " " + jig.Mode + " @ height " + jig.LineY.ToString("0.#") + " (" + id.Handle + ").");
+                            " " + just + " @ height " + sTarget.ToString("0.#") + " (" + id.Handle + ").");
         }
 
         // Connect two EXPLICITLY-picked faces with a member. You pick the exact face on each timber
@@ -183,20 +275,22 @@ namespace TimberDraw
                 Point3d bodyA = frA.O + frA.Z * (frA.L / 2.0);
                 Point3d bodyB = frB.O + frB.Z * (frB.L / 2.0);
 
-                // LIVE ghost (Robert's call: the TSpan feel, INSTANT palette follow): a retained
-                // transient wire box that re-solves the moment the palette's Brace spec changes
-                // (ManagedBrace.Changed -- a jig only sampled on drawing input, so palette edits
-                // sat invisible until the cursor left the palette). Click/Enter places, Flip swaps
-                // a Back/Front side, Escape cancels.
+                // LIVE SOLID preview (Robert's call 2026-07-15: no transient wireframes): a real db
+                // solid that re-solves the moment the palette's Brace spec OR section changes. The
+                // palette handler can't write the db (no document lock), so its Changed handler
+                // queues SolidGhost's hidden nudge keyword into this prompt and the loop rebuilds
+                // in command context. Click/Enter places, Flip swaps a Back/Front side, Escape
+                // cancels.
                 double footRun = ManagedBrace.HasCurrent ? ManagedBrace.FootRun : 18.0;
                 double headRun = ManagedBrace.HasCurrent ? ManagedBrace.HeadRun : 18.0;
                 int bplace = ManagedBrace.HasCurrent ? ManagedBrace.Placement : 1;
-                double gFoot, gHead; int gPlace;
+                double gFoot, gHead, gD, gW; int gPlace;
                 using (var ghost = new BraceGhost(fa, fb, d, w, footRun, headRun, bplace, bodyA, bodyB, true))
                 {
                     if (!ghost.Solve()) { ed.WriteMessage("\nThose faces don't form a brace corner."); return; }
-                    System.Action follow = ghost.OnPaletteChanged;
+                    System.Action follow = SolidGhost.Nudge;
                     ManagedBrace.Changed += follow;
+                    ManagedSection.Changed += follow;
                     bool place = false;
                     try
                     {
@@ -206,21 +300,29 @@ namespace TimberDraw
                                 "\nPlace the brace -- Enter/click places; the palette's Brace spec moves it live")
                             { AllowNone = true };
                             if (ghost.Placement != 1) ppo.Keywords.Add("Flip");
+                            SolidGhost.AddNudge(ppo.Keywords);
                             PromptPointResult pr = ed.GetPoint(ppo);
-                            if (pr.Status == PromptStatus.Keyword) { ghost.Flip(); continue; }
+                            if (pr.Status == PromptStatus.Keyword)
+                            {
+                                if (pr.StringResult == "Flip") ghost.Flip();
+                                else ghost.OnPaletteChanged();
+                                continue;
+                            }
                             place = pr.Status == PromptStatus.OK || pr.Status == PromptStatus.None;
                             break;
                         }
                     }
-                    finally { ManagedBrace.Changed -= follow; }
+                    finally { ManagedBrace.Changed -= follow; ManagedSection.Changed -= follow; }
                     if (!place) { ed.WriteMessage("\nBrace cancelled."); return; }
                     gFoot = ghost.FootRun; gHead = ghost.HeadRun; gPlace = ghost.Placement;
+                    gD = ghost.Depth; gW = ghost.Width;
                 }
 
-                id = ManagedTimber.DrawMiteredBrace(fa, fb, d, w, gFoot, gHead, type, "",
+                if (ManagedSection.HasCurrent) type = ManagedSection.Type;   // a mid-loop catalog click retypes too
+                id = ManagedTimber.DrawMiteredBrace(fa, fb, gD, gW, gFoot, gHead, type, "",
                                                     bodyA, bodyB, gPlace);
                 if (id.IsNull) { ed.WriteMessage("\nCouldn't build a brace between those faces."); return; }
-                ed.WriteMessage("\nTJoin (knee brace): " + type + " " + (int)w + "x" + (int)d +
+                ed.WriteMessage("\nTJoin (knee brace): " + type + " " + (int)gW + "x" + (int)gD +
                                 " foot " + gFoot.ToString("0.#") + " head " + gHead.ToString("0.#") +
                                 " " + PlaceName(gPlace) + " (" + id.Handle + ").");
             }
@@ -269,7 +371,7 @@ namespace TimberDraw
             if (!GetPositive(ed, "Foot (corner to toe)", Math.Round(curFoot, 1), out double footRun)) return;
             if (!GetPositive(ed, "Head (corner to toe)", Math.Round(curHead, 1), out double headRun)) return;
 
-            // Ghost + confirm via the same transient ghost as the place path (Flip available for
+            // Preview + confirm via the same SOLID ghost as the place path (Flip available for
             // Back/Front); the PROMPTED legs stay authoritative here (no live palette tracking)
             // and nothing mutates on an Escape.
             ManagedTimber.TFrame nf;
