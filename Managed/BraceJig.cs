@@ -1,4 +1,3 @@
-using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.GraphicsInterface;
@@ -11,8 +10,8 @@ namespace TimberDraw
     // the ghost RE-SOLVES as the palette changes: with trackPalette on (TJoin), every sampler tick
     // re-reads ManagedBrace, so editing Foot/Head/Angle or Placement on the palette moves the ghost
     // on the next cursor move. Click or Enter places, Flip swaps a Back/Front placement side,
-    // Escape cancels. Renders the REAL mitered solid (BuildFramedSolid), rebuilt only when the
-    // inputs actually change.
+    // Escape cancels. Draws the mitered box as a WIREFRAME, matching TSpan's ghost (Robert's note:
+    // the solid rendered x-ray) -- and skipping the boolean solid build per update.
     public class BraceJig : DrawJig
     {
         private readonly ManagedTimber.TFace _fa, _fb;
@@ -24,7 +23,7 @@ namespace TimberDraw
         private int _placeRaw;                 // palette/seed placement (0 Back / 1 Center / 2 Front)
         private bool _flip;                    // Flip keyword state, applied ON TOP of _placeRaw
         private ManagedTimber.TFrame _frame;
-        private Solid3d _ghost;
+        private bool _solved;
 
         public double FootRun => _foot;
         public double HeadRun => _head;
@@ -44,24 +43,19 @@ namespace TimberDraw
         // palette re-read (which restores the palette's own value) doesn't silently undo a Flip.
         private static int Effective(int raw, bool flip) => flip && raw != 1 ? (raw == 0 ? 2 : 0) : raw;
 
-        // Re-solve the frame + rebuild the ghost solid from the current values. False = degenerate
-        // corner (an existing ghost is kept, so the jig keeps rendering the last good solve).
+        // Re-solve the frame from the current values. False = degenerate corner (the previous
+        // frame is kept, so the jig keeps rendering the last good solve).
         public bool Solve()
         {
             if (!ManagedTimber.TryBraceFrame(_fa, _fb, _d, _w, _foot, _head, _bodyA, _bodyB,
                                              Effective(_placeRaw, _flip), out ManagedTimber.TFrame f))
                 return false;
             _frame = f;
-            _ghost?.Dispose();
-            _ghost = ManagedTimber.BuildFramedSolid(_frame);
-            _ghost.ColorIndex = 5;   // blue, colour-blind safe
+            _solved = true;
             return true;
         }
 
         public void Flip() { _flip = !_flip; Solve(); }
-
-        // The ghost is a non-database solid owned by the jig -- the command's finally disposes it.
-        public void DisposeGhost() { _ghost?.Dispose(); _ghost = null; }
 
         protected override SamplerStatus Sampler(JigPrompts prompts)
         {
@@ -83,7 +77,10 @@ namespace TimberDraw
 
         protected override bool WorldDraw(WorldDraw draw)
         {
-            if (_ghost != null) draw.Geometry.Draw(_ghost);
+            if (!_solved) return true;
+            // Wireframe from the frame's two mitered end caps -- the TSpan ghost look (blue ACI 5).
+            ManagedTimber.TFace[] faces = ManagedTimber.Faces(_frame);
+            JigGeometry.DrawMiteredWire(draw, faces[0], faces[1], 5);
             return true;
         }
     }

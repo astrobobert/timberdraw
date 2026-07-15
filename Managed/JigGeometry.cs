@@ -34,6 +34,32 @@ namespace TimberDraw
             }
         }
 
+        // Wireframe of a MITERED box (the TJoin knee-brace ghost) from its two end-cap faces
+        // (Faces(frame)[0]/[1]: centre + in-plane axes, VHalf already tilt-corrected). The far
+        // cap's V axis can come out sign-flipped relative to the near one (V = X x N and the two
+        // cap normals point opposite ways) -- harmless for a face, but the long edges must connect
+        // corresponding corners, so it is re-aligned here.
+        public static void DrawMiteredWire(WorldDraw draw, ManagedTimber.TFace near, ManagedTimber.TFace far, short aci)
+        {
+            draw.SubEntityTraits.Color = aci;
+            double sv = far.V.DotProduct(near.V) >= 0.0 ? 1.0 : -1.0;
+            double su = far.U.DotProduct(near.U) >= 0.0 ? 1.0 : -1.0;
+            Point3d n0 = near.C + near.U * near.UHalf + near.V * near.VHalf;
+            Point3d n1 = near.C + near.U * near.UHalf - near.V * near.VHalf;
+            Point3d n2 = near.C - near.U * near.UHalf - near.V * near.VHalf;
+            Point3d n3 = near.C - near.U * near.UHalf + near.V * near.VHalf;
+            Point3d f0 = far.C + far.U * (su * far.UHalf) + far.V * (sv * far.VHalf);
+            Point3d f1 = far.C + far.U * (su * far.UHalf) - far.V * (sv * far.VHalf);
+            Point3d f2 = far.C - far.U * (su * far.UHalf) - far.V * (sv * far.VHalf);
+            Point3d f3 = far.C - far.U * (su * far.UHalf) + far.V * (sv * far.VHalf);
+            Rect(draw, n0, n1, n2, n3);
+            Rect(draw, f0, f1, f2, f3);
+            draw.Geometry.WorldLine(n0, f0);
+            draw.Geometry.WorldLine(n1, f1);
+            draw.Geometry.WorldLine(n2, f2);
+            draw.Geometry.WorldLine(n3, f3);
+        }
+
         private static void Rect(WorldDraw draw, Point3d a, Point3d b, Point3d c, Point3d d)
         {
             draw.Geometry.WorldLine(a, b);

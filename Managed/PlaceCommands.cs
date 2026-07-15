@@ -194,17 +194,13 @@ namespace TimberDraw
                     "\nPlace the brace -- Enter/click places; the palette's Brace spec moves it live: ");
                 if (!jig.Solve()) { ed.WriteMessage("\nThose faces don't form a brace corner."); return; }
                 bool place = false;
-                try
+                while (true)
                 {
-                    while (true)
-                    {
-                        PromptResult pr = ed.Drag(jig);
-                        if (pr.Status == PromptStatus.Keyword) { jig.Flip(); continue; }
-                        place = pr.Status == PromptStatus.OK || pr.Status == PromptStatus.None;
-                        break;
-                    }
+                    PromptResult pr = ed.Drag(jig);
+                    if (pr.Status == PromptStatus.Keyword) { jig.Flip(); continue; }
+                    place = pr.Status == PromptStatus.OK || pr.Status == PromptStatus.None;
+                    break;
                 }
-                finally { jig.DisposeGhost(); }
                 if (!place) { ed.WriteMessage("\nBrace cancelled."); return; }
 
                 id = ManagedTimber.DrawMiteredBrace(fa, fb, d, w, jig.FootRun, jig.HeadRun, type, "",
@@ -266,17 +262,13 @@ namespace TimberDraw
                 "\nRe-seat the brace -- Enter/click accepts: ");
             if (!jig.Solve()) { ed.WriteMessage("\nThose legs don't solve a brace in this corner."); return; }
             bool go = false;
-            try
+            while (true)
             {
-                while (true)
-                {
-                    PromptResult pr = ed.Drag(jig);
-                    if (pr.Status == PromptStatus.Keyword) { jig.Flip(); continue; }
-                    go = pr.Status == PromptStatus.OK || pr.Status == PromptStatus.None;
-                    break;
-                }
+                PromptResult pr = ed.Drag(jig);
+                if (pr.Status == PromptStatus.Keyword) { jig.Flip(); continue; }
+                go = pr.Status == PromptStatus.OK || pr.Status == PromptStatus.None;
+                break;
             }
-            finally { jig.DisposeGhost(); }
             if (!go) { ed.WriteMessage("\nRe-seat cancelled."); return; }
             ManagedTimber.TFrame nf = jig.Frame;
             bplace = jig.Placement;
