@@ -218,6 +218,16 @@ namespace TimberDraw
                 return;
 
             FrameRegistry.SetFrozen(db, frame, true);
+            // The tree still holds this frame's recipe at the break -- stamp it (recall-on-open)
+            // in case the drawing was drawn before the Draw-time stamp existed.
+            try
+            {
+                FrameRecord rec = FrameRegistry.Load(db, frame) ?? new FrameRecord { Frozen = true };
+                if (string.IsNullOrEmpty(rec.SpecJson))
+                { rec.SpecJson = FrameSpecStore.ToJson(_spec); FrameRegistry.Save(db, frame, rec); }
+            }
+            catch (System.Exception ex)
+            { Diag.Warn("FrameTree.Freeze", "spec stamp failed (recall-on-open unavailable): " + ex.Message); }
             doc.Editor.WriteMessage("\nTFreeze: frame " + frame +
                 " frozen -- parametric palette locked; edit via the managed verbs.");
             RefreshFrozenState();
