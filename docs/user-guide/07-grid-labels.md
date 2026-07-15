@@ -60,6 +60,23 @@ Two label economies to know:
 - **Commons and purlins number per bay** (`C1...`, `P1...` restarting each
   bay), owned by the wall their eave girt sits on.
 
+**Brace groups.** Two braces share a symbol when three things match: the
+**cross-section** (to the quarter inch), the **angle** from horizontal (to the
+degree), and the **overall length of the finished stick** (to the inch).
+Overall length is measured on the cut solid, *projecting tenons included* — so
+two braces with the same section and the same leg runs can still land in
+**different groups when their tenons differ**: a longer tenon makes a longer
+stick, and the group answers *what do I cut*, not just where the brace spans.
+Same reasoning in reverse: a bent brace and a wall brace that finish identical
+collapse to one symbol however they were placed. Symbols are assigned in a
+stable order (section, then angle, then length), and they're re-derived from
+the model automatically at every **Draw**. After hand edits between Draws —
+a `TSection`, a `TJoin > Modify` re-seat, a joint re-cut — run
+**`TRelabelBraces`**: it regroups everything and echoes a table (symbol,
+section, angle, length, count), which is also the place to look when grouping
+seems wrong — near-identical braces splitting over an inch of tenon show up
+right there.
+
 The label is one of the timber's three IDs (Chapter 3.4) — it answers *where
 does this install*, while the cut-mark answers *what do I cut*.
 

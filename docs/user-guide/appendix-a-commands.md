@@ -18,7 +18,8 @@ palette** — Frame / Assembly / Joints / Browser / Output.
 |---|---|
 | `TGrid` | Redraw the structural grid, derived from the drawing. Ch. 7 |
 | `TAssign` | Give free timbers an address (bent intersection / wall+bay / floor). Ch. 7 |
-| `TRelabel` | Retrofit current label conventions onto an older frame. Ch. 7 |
+| `TRelabel` | Retrofit current label conventions onto an older frame (runs the brace-symbol pass too). Ch. 7 |
+| `TRelabelBraces` | Re-derive every brace's group symbol (`*`, `**`, ...) from the current model and echo the grouping table. Run after re-sectioning or re-seating braces; Draw runs it automatically. Ch. 7 |
 
 ## Editor verbs
 
