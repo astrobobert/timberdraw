@@ -13,12 +13,19 @@ namespace TimberDraw
         public static double HeadRun;
         public static int Placement = 1;   // 0 Back / 1 Center / 2 Front
 
+        // Fired on every Set -- the palette calls Set per edit, and a pending TJoin brace ghost
+        // listens so it re-solves the INSTANT a value changes (a jig can't: its sampler only runs
+        // on drawing-input events, so palette edits sat invisible until the cursor re-entered the
+        // drawing -- Robert's catch). Raised on the UI thread.
+        public static event System.Action Changed;
+
         public static void Set(double footRun, double headRun, int placement)
         {
             FootRun = footRun;
             HeadRun = headRun;
             Placement = placement < 0 ? 0 : placement > 2 ? 2 : placement;
             HasCurrent = footRun > 0.0 && headRun > 0.0;
+            Changed?.Invoke();
         }
 
         public static void Clear() { HasCurrent = false; }

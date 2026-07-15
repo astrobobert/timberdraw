@@ -183,32 +183,46 @@ namespace TimberDraw
                 Point3d bodyA = frA.O + frA.Z * (frA.L / 2.0);
                 Point3d bodyB = frB.O + frB.Z * (frB.L / 2.0);
 
-                // LIVE ghost (Robert's call: the TSpan feel): the jig re-reads the palette's Brace
-                // spec every sampler tick, so editing Foot/Head/Angle or Placement while the ghost
-                // is up moves it (on the next cursor move). Click/Enter places, Flip swaps a
-                // Back/Front side, Escape cancels.
+                // LIVE ghost (Robert's call: the TSpan feel, INSTANT palette follow): a retained
+                // transient wire box that re-solves the moment the palette's Brace spec changes
+                // (ManagedBrace.Changed -- a jig only sampled on drawing input, so palette edits
+                // sat invisible until the cursor left the palette). Click/Enter places, Flip swaps
+                // a Back/Front side, Escape cancels.
                 double footRun = ManagedBrace.HasCurrent ? ManagedBrace.FootRun : 18.0;
                 double headRun = ManagedBrace.HasCurrent ? ManagedBrace.HeadRun : 18.0;
                 int bplace = ManagedBrace.HasCurrent ? ManagedBrace.Placement : 1;
-                var jig = new BraceJig(fa, fb, d, w, footRun, headRun, bplace, bodyA, bodyB, true,
-                    "\nPlace the brace -- Enter/click places; the palette's Brace spec moves it live: ");
-                if (!jig.Solve()) { ed.WriteMessage("\nThose faces don't form a brace corner."); return; }
-                bool place = false;
-                while (true)
+                double gFoot, gHead; int gPlace;
+                using (var ghost = new BraceGhost(fa, fb, d, w, footRun, headRun, bplace, bodyA, bodyB, true))
                 {
-                    PromptResult pr = ed.Drag(jig);
-                    if (pr.Status == PromptStatus.Keyword) { jig.Flip(); continue; }
-                    place = pr.Status == PromptStatus.OK || pr.Status == PromptStatus.None;
-                    break;
+                    if (!ghost.Solve()) { ed.WriteMessage("\nThose faces don't form a brace corner."); return; }
+                    System.Action follow = ghost.OnPaletteChanged;
+                    ManagedBrace.Changed += follow;
+                    bool place = false;
+                    try
+                    {
+                        while (true)
+                        {
+                            var ppo = new PromptPointOptions(
+                                "\nPlace the brace -- Enter/click places; the palette's Brace spec moves it live")
+                            { AllowNone = true };
+                            if (ghost.Placement != 1) ppo.Keywords.Add("Flip");
+                            PromptPointResult pr = ed.GetPoint(ppo);
+                            if (pr.Status == PromptStatus.Keyword) { ghost.Flip(); continue; }
+                            place = pr.Status == PromptStatus.OK || pr.Status == PromptStatus.None;
+                            break;
+                        }
+                    }
+                    finally { ManagedBrace.Changed -= follow; }
+                    if (!place) { ed.WriteMessage("\nBrace cancelled."); return; }
+                    gFoot = ghost.FootRun; gHead = ghost.HeadRun; gPlace = ghost.Placement;
                 }
-                if (!place) { ed.WriteMessage("\nBrace cancelled."); return; }
 
-                id = ManagedTimber.DrawMiteredBrace(fa, fb, d, w, jig.FootRun, jig.HeadRun, type, "",
-                                                    bodyA, bodyB, jig.Placement);
+                id = ManagedTimber.DrawMiteredBrace(fa, fb, d, w, gFoot, gHead, type, "",
+                                                    bodyA, bodyB, gPlace);
                 if (id.IsNull) { ed.WriteMessage("\nCouldn't build a brace between those faces."); return; }
                 ed.WriteMessage("\nTJoin (knee brace): " + type + " " + (int)w + "x" + (int)d +
-                                " foot " + jig.FootRun.ToString("0.#") + " head " + jig.HeadRun.ToString("0.#") +
-                                " " + PlaceName(jig.Placement) + " (" + id.Handle + ").");
+                                " foot " + gFoot.ToString("0.#") + " head " + gHead.ToString("0.#") +
+                                " " + PlaceName(gPlace) + " (" + id.Handle + ").");
             }
         }
 
@@ -255,23 +269,28 @@ namespace TimberDraw
             if (!GetPositive(ed, "Foot (corner to toe)", Math.Round(curFoot, 1), out double footRun)) return;
             if (!GetPositive(ed, "Head (corner to toe)", Math.Round(curHead, 1), out double headRun)) return;
 
-            // Ghost + confirm via the same jig as the place path (Flip available for Back/Front);
-            // the PROMPTED legs stay authoritative here (no live palette tracking) and nothing
-            // mutates on an Escape.
-            var jig = new BraceJig(fa, fb, bf.D, bf.W, footRun, headRun, bplace, bodyA, bodyB, false,
-                "\nRe-seat the brace -- Enter/click accepts: ");
-            if (!jig.Solve()) { ed.WriteMessage("\nThose legs don't solve a brace in this corner."); return; }
-            bool go = false;
-            while (true)
+            // Ghost + confirm via the same transient ghost as the place path (Flip available for
+            // Back/Front); the PROMPTED legs stay authoritative here (no live palette tracking)
+            // and nothing mutates on an Escape.
+            ManagedTimber.TFrame nf;
+            using (var ghost = new BraceGhost(fa, fb, bf.D, bf.W, footRun, headRun, bplace, bodyA, bodyB, false))
             {
-                PromptResult pr = ed.Drag(jig);
-                if (pr.Status == PromptStatus.Keyword) { jig.Flip(); continue; }
-                go = pr.Status == PromptStatus.OK || pr.Status == PromptStatus.None;
-                break;
+                if (!ghost.Solve()) { ed.WriteMessage("\nThose legs don't solve a brace in this corner."); return; }
+                bool go = false;
+                while (true)
+                {
+                    var ppo = new PromptPointOptions("\nRe-seat the brace -- Enter/click accepts")
+                    { AllowNone = true };
+                    if (ghost.Placement != 1) ppo.Keywords.Add("Flip");
+                    PromptPointResult pr = ed.GetPoint(ppo);
+                    if (pr.Status == PromptStatus.Keyword) { ghost.Flip(); continue; }
+                    go = pr.Status == PromptStatus.OK || pr.Status == PromptStatus.None;
+                    break;
+                }
+                if (!go) { ed.WriteMessage("\nRe-seat cancelled."); return; }
+                nf = ghost.Frame;
+                bplace = ghost.Placement;
             }
-            if (!go) { ed.WriteMessage("\nRe-seat cancelled."); return; }
-            ManagedTimber.TFrame nf = jig.Frame;
-            bplace = jig.Placement;
 
             // The re-seat obsoletes the brace's joints GEOMETRICALLY: strip each joint id from the
             // partner too (the mate's pocket at the old seat is stale wood). Recipes/stamps stay on

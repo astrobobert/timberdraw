@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.GraphicsInterface;
 
@@ -34,17 +35,18 @@ namespace TimberDraw
             }
         }
 
-        // Wireframe of a MITERED box (the TJoin knee-brace ghost) from its two end-cap faces
-        // (Faces(frame)[0]/[1]: centre + in-plane axes, VHalf already tilt-corrected). The long
-        // edges must connect CORRESPONDING corners -- the toe side of one cap to the toe side of
-        // the other. Each cap's V axis is tilted in its own miter plane, so the caps cannot be
+        // The 12 wire segments of a MITERED box (the TJoin knee-brace ghost) from its two end-cap
+        // faces (Faces(frame)[0]/[1]: centre + in-plane axes, VHalf already tilt-corrected). The
+        // long edges must connect CORRESPONDING corners -- the toe side of one cap to the toe side
+        // of the other. Each cap's V axis is tilted in its own miter plane, so the caps cannot be
         // aligned against EACH OTHER (at a 45-degree brace the two Vs are exactly perpendicular
         // and the pairing flipped: heel joined toe -- Robert's catch); each cap is aligned to the
         // FRAME's own width/depth axes (refU/refV) instead, whose signs are end-independent.
-        public static void DrawMiteredWire(WorldDraw draw, ManagedTimber.TFace near, ManagedTimber.TFace far,
-            Vector3d refU, Vector3d refV, short aci)
+        // Returns segments (not draws) so the caller can render them as retained TRANSIENTS -- the
+        // brace ghost must repaint on palette events, which a jig's WorldDraw can't.
+        public static List<(Point3d A, Point3d B)> MiteredWireSegments(
+            ManagedTimber.TFace near, ManagedTimber.TFace far, Vector3d refU, Vector3d refV)
         {
-            draw.SubEntityTraits.Color = aci;
             double nsu = near.U.DotProduct(refU) >= 0.0 ? 1.0 : -1.0;
             double nsv = near.V.DotProduct(refV) >= 0.0 ? 1.0 : -1.0;
             double fsu = far.U.DotProduct(refU) >= 0.0 ? 1.0 : -1.0;
@@ -57,12 +59,12 @@ namespace TimberDraw
             Point3d f1 = far.C + far.U * (fsu * far.UHalf) - far.V * (fsv * far.VHalf);
             Point3d f2 = far.C - far.U * (fsu * far.UHalf) - far.V * (fsv * far.VHalf);
             Point3d f3 = far.C - far.U * (fsu * far.UHalf) + far.V * (fsv * far.VHalf);
-            Rect(draw, n0, n1, n2, n3);
-            Rect(draw, f0, f1, f2, f3);
-            draw.Geometry.WorldLine(n0, f0);
-            draw.Geometry.WorldLine(n1, f1);
-            draw.Geometry.WorldLine(n2, f2);
-            draw.Geometry.WorldLine(n3, f3);
+            return new List<(Point3d A, Point3d B)>
+            {
+                (n0, n1), (n1, n2), (n2, n3), (n3, n0),
+                (f0, f1), (f1, f2), (f2, f3), (f3, f0),
+                (n0, f0), (n1, f1), (n2, f2), (n3, f3)
+            };
         }
 
         private static void Rect(WorldDraw draw, Point3d a, Point3d b, Point3d c, Point3d d)
