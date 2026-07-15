@@ -31,6 +31,20 @@ namespace TimberDraw
             return s;
         }
 
+        // Joint ids that appear on a UNION feature (Subtract == false) -- the MALE side of the joint
+        // (tenon/tongue/stub). Pegs carry no union/subtract sign and are excluded. Used by the regen
+        // joint ledger as an ordering hint at replay (male-first Apply).
+        public static HashSet<int> UnionJointIds(TFrame f)
+        {
+            var s = new HashSet<int>();
+            if (f.Features    != null) foreach (var x in f.Features)    if (!x.Subtract) s.Add(x.Joint);
+            if (f.JointPolys  != null) foreach (var x in f.JointPolys)  if (!x.Subtract) s.Add(x.Joint);
+            if (f.JointPolysZ != null) foreach (var x in f.JointPolysZ) if (!x.Subtract) s.Add(x.Joint);
+            if (f.JointPrisms != null) foreach (var x in f.JointPrisms) if (!x.Subtract) s.Add(x.Joint);
+            s.Remove(0);
+            return s;
+        }
+
         // Erase a joint from a frame COMPLETELY -- every feature kind that can carry an id.
         public static void StripJoint(ref TFrame f, int id)
         {

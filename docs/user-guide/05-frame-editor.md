@@ -96,10 +96,18 @@ the current UCS origin — with the structural grid beneath and every stick
 labeled. Generating again **replaces this frame's skeleton only**: hand-placed
 timbers (joists, summers, braces, anything from the editor verbs) survive a
 re-Generate, assigned to the frame or not — the generator erases only what it
-emitted itself. Hand edits **to the skeleton members themselves** (a re-fit
-girt, joinery cut into a post) do not survive; that is what the freeze is for
-(Chapter 6). Joinery that a surviving timber shared with a replaced skeleton
-member re-cuts with `TJointSync` (Chapter 10.3).
+emitted itself. **Your joinery survives too**: before the old skeleton is
+erased, every joint's recipe is harvested, and after the new skeleton is
+emitted each joint is re-cut onto it automatically — matched by role and
+position, so it works even after an inserted bent renumbers the labels, and
+custom per-joint edits (extra pegs, an odd tenon) replay exactly. Joints to
+surviving free timbers re-attach in the same pass; joints the replay could not
+confidently restore (a member that moved too far, or two equally near
+candidates) are **reported, never guessed** — heal those with `TJointSync`
+(Chapter 10.3) or re-cut with `TJointAll`. Replay only restores joints you had
+already cut; it never creates new ones. Other hand edits **to the skeleton
+members themselves** (a re-fit girt, a profile) do not survive; that is what
+the freeze is for (Chapter 6).
 
 **Save / Save As / Load** manage named `.framespec` templates — your barn
 starter, your saltbox. Loading one replaces the palette's spec; Draw makes it

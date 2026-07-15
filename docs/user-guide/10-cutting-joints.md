@@ -84,12 +84,17 @@ has a matching `...Del`.
   whatever the timber now touches (a fresh id). A partner that no longer
   touches at all is reported and left alone; delete that joint deliberately if
   the separation is final.
-- **Regenerate strips orphaned halves.** When the tree's Draw replaces the
-  skeleton, any surviving free timber jointed to it has those joints' cuts
-  stripped automatically — the fresh skeleton member is uncut wood, so the old
-  half-joint was stale. The timbers come back plain but **keep their joint
-  recipes**; re-cut deliberately with `TJointSync` (re-attaches each stick
-  from its stored recipe) or `TJointAll` (cuts fresh).
+- **Regenerate replays your joinery.** When the tree's Draw replaces the
+  skeleton, every joint's recipe is harvested first and re-cut onto the new
+  skeleton automatically — skeleton-to-skeleton joints and free-timber halves
+  alike, custom edits included. Matching is by role and position (labels may
+  renumber; positions don't lie), and the replay is conservative: a joint it
+  cannot confidently re-pair — the member moved too far, or two candidates are
+  equally near — is **reported and skipped, never guessed**. The command line
+  tallies `replayed / no-contact / unmatched / ambiguous / no-recipe`; heal
+  the reported ones with `TJointSync` (survivors kept their stamps) or re-cut
+  with `TJointAll`. Replay restores only joints you had already cut — a new
+  bent's contacts stay uncut until you cut them.
 
 ---
 

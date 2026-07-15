@@ -105,12 +105,28 @@ namespace TimberDraw
         // the Joints pane cuts fresh. Non-managed solids untouched. Reversible via AutoCAD UNDO.
         // Returns the count erased.
         public static int EraseFrame(Database db, string frameTag)
+            => EraseFrame(db, frameTag, out _);
+
+        // The regen overload: additionally HARVESTS a joint LEDGER -- one entry per joint id that is
+        // about to lose at least one side to the erase, carrying the stored recipe state plus each
+        // side's geometric identity (role + frame midpoint + length; NO ObjectIds -- the orphan sweep
+        // and the replay itself rebuild entities, so ids captured here would go stale). The caller
+        // replays the ledger onto the fresh skeleton after Emit (ManagedCommands.ReplayJoints) --
+        // Robert's call 2026-07-15: hours of joinery must survive a skeleton regen. Stamps are read
+        // BEFORE the erase (a both-skeleton joint's stamps die with its two entities). A null
+        // frameTag (whole wipe) harvests nothing.
+        public static int EraseFrame(Database db, string frameTag, out List<JointLedgerEntry> ledger)
         {
             int n = 0;
+            ledger = new List<JointLedgerEntry>();
             Document doc = Application.DocumentManager.MdiActiveDocument;
             if (doc == null) return 0;
             var erasedJoints = new HashSet<int>();   // joint ids the erased skeleton carried
             var survivors = new List<ObjectId>();    // managed timbers kept (free / floor-owned / other frames)
+            // Harvest records: every managed timber carrying at least one joint id, erased AND
+            // surviving alike (a survivor matches itself at distance ~0 during replay).
+            var harvest = new List<(bool Erased, string Role, Point3d Mid, double Len,
+                                    HashSet<int> Jids, Dictionary<int, string> Specs, HashSet<int> UnionIds)>();
             using (doc.LockDocument())
             {
                 using (Transaction tr = db.TransactionManager.StartTransaction())
@@ -122,15 +138,37 @@ namespace TimberDraw
                         if (!TryReadFrame(tr, ent, out TFrame f)) continue;
                         if (frameTag != null)
                         {
-                            if (ReadXTextField(tr, ent, "FrameTag") != frameTag         // another frame's: keep
-                                || ReadXTextField(tr, ent, "Free") == "1"               // hand-placed: keep
-                                || ReadXTextField(tr, ent, "FloorTag") != "")           // floor-owned: keep
-                            { survivors.Add(id); continue; }
-                            foreach (int j in JointIds(f)) erasedJoints.Add(j);
+                            bool keep = ReadXTextField(tr, ent, "FrameTag") != frameTag   // another frame's: keep
+                                     || ReadXTextField(tr, ent, "Free") == "1"            // hand-placed: keep
+                                     || ReadXTextField(tr, ent, "FloorTag") != "";        // floor-owned: keep
+                            HashSet<int> jids = JointIds(f);
+                            if (jids.Count > 0)
+                                harvest.Add((!keep, ReadXTextField(tr, ent, "Type"),
+                                             f.O + f.Z * (f.L / 2.0), f.L,
+                                             jids, ReadJointSpecs(tr, ent), UnionJointIds(f)));
+                            if (keep) { survivors.Add(id); continue; }
+                            foreach (int j in jids) erasedJoints.Add(j);
                         }
                         ent.UpgradeOpen(); ent.Erase(); n++;
                     }
                     tr.Commit();
+                }
+
+                // Build the ledger: an id in erasedJoints lost at least one side. Sides = every
+                // harvested carrier of the id; the recipe = the first stamp found across them
+                // (StampJoint wrote the identical state to both). Entries with no recipe or a
+                // side count != 2 still ride along -- ReplayJoints reports them instead of cutting.
+                foreach (int jid in erasedJoints)
+                {
+                    var entry = new JointLedgerEntry { OldJid = jid, Sides = new List<JointLedgerSide>() };
+                    foreach (var h in harvest)
+                    {
+                        if (!h.Jids.Contains(jid)) continue;
+                        if (entry.State == null && h.Specs.TryGetValue(jid, out string st)) entry.State = st;
+                        entry.Sides.Add(new JointLedgerSide
+                        { Role = h.Role, Mid = h.Mid, Len = h.Len, Erased = h.Erased, Male = h.UnionIds.Contains(jid) });
+                    }
+                    ledger.Add(entry);
                 }
 
                 // The ORPHAN SWEEP: a joint id is pairwise, so an erased timber's id found on a survivor

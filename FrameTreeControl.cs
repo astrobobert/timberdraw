@@ -921,7 +921,15 @@ namespace TimberDraw
             // frame tag (+ per-edge bent/bay tags from the graph walk) -- the grouping layer.
             string frameTag = string.IsNullOrWhiteSpace(_spec.FrameTag) ? "A" : _spec.FrameTag.Trim();
             int cleared = 0;
-            if (doc != null) { cleared = ManagedTimber.EraseFrame(doc.Database, frameTag); ManagedTimber.EraseGrid(doc.Database, frameTag); }
+            List<JointLedgerEntry> ledger = null;
+            if (doc != null)
+            {
+                // The erase HARVESTS the joint ledger (recipes + geometric identities) before the
+                // skeleton dies; the replay below restores the joinery onto the fresh skeleton --
+                // hours of TJointAll / Joints-pane work survive the regen (Robert's ask).
+                cleared = ManagedTimber.EraseFrame(doc.Database, frameTag, out ledger);
+                ManagedTimber.EraseGrid(doc.Database, frameTag);
+            }
             int drawn = ManagedFrameEmitter.Emit(g, placement, frameTag, out FrameGrid emitGrid);
             // Structural grid: DRAWING-DERIVED so it includes any TPlace'd sub timbers assigned to this
             // frame and shifts the numbering. Only floor-meeting timbers draw a line. (emitGrid is still
@@ -935,6 +943,9 @@ namespace TimberDraw
             _spec.FreeAssemblyStations(freeBentZ, freeWallX);
             grid.MergeSpecStations(freeBentZ, freeWallX);
             grid.Draw(placement, frameTag);   // flat under the frame (model basis)
+            // Replay BEFORE the brace relabel: a replayed brace tenon changes measured Overall, and
+            // the size+shape group symbols should reflect the final jointed geometry.
+            string replay = doc != null ? ManagedCommands.ReplayJoints(doc.Database, ledger) : null;
             if (doc != null) ManagedCommands.RelabelBraces(doc.Database);   // brace symbols (*, **) by size+shape
             Persist();
             // Stamp the emitted recipe into the frame's registry record (batch-3 #3), so re-opening
@@ -954,7 +965,8 @@ namespace TimberDraw
             doc?.Editor.WriteMessage(
                 "\nTDraw: frame " + frameTag + " -- cleared " + cleared + " managed timber(s); emitted "
                 + drawn + " managed timbers across " + g.Nodes.Count + " nodes (grid "
-                + grid.ColX.Count + " cols x " + grid.BentZ.Count + " bents).");
+                + grid.ColX.Count + " cols x " + grid.BentZ.Count + " bents)."
+                + (replay != null ? " " + replay : ""));
         }
 
         // Start a fresh frame project: an UN-SEEDED empty tree (Robert's call) -- grow it with

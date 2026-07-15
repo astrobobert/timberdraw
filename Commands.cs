@@ -104,10 +104,14 @@ namespace TimberDraw
 			// Clear the prior skeleton before re-emitting (this was missing -- a second TRoughIn
 			// stacked duplicates; only the tree's Draw button erased). Same rule as the tree:
 			// EraseFrame keeps every hand-placed (free-assembly / floor-owned) timber.
-			ManagedTimber.EraseFrame(db, "A");
+			ManagedTimber.EraseFrame(db, "A", out System.Collections.Generic.List<JointLedgerEntry> ledger);
 			ManagedTimber.EraseGrid(db, "A");
 			int drawn = ManagedFrameEmitter.Emit(g, placement, "A", out FrameGrid grid);
 			grid.Draw(placement, "A");   // flat under the frame (model basis -> floor on WCS XY)
+			// Restore the harvested joinery onto the fresh skeleton, then relabel (a replayed brace
+			// tenon changes measured Overall, which the size+shape group symbols read).
+			string replay = ManagedCommands.ReplayJoints(db, ledger);
+			if (replay != null) ed.WriteMessage("\n" + replay);
 			ManagedCommands.RelabelBraces(db);   // authoritative brace symbols (*, **) by size+shape
 
 			// Store the recipe on the frame (pre-break, frozen=false): bent type + seed params + the

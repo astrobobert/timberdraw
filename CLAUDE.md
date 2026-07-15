@@ -53,9 +53,18 @@ sections further below are the GENERATOR's internals only.
   hand-placed timbers survive a re-Generate, assigned or not. **The orphan sweep (2026-07-13):**
   after the erase, `EraseFrame` strips from every survivor the joint FEATURES whose id lived on an
   erased skeleton timber (the half-joint's mate is fresh uncut wood) and rebuilds it plain; the
-  per-joint recipe STAMPS are kept, so the joint is re-cuttable. Joinery is DELAYED AND DELIBERATE
+  per-joint recipe STAMPS are kept, so the joint is re-cuttable. **Joinery survives the regen
+  (2026-07-15, Robert's ask):** the erase HARVESTS a joint ledger (`EraseFrame` overload -> one
+  `JointLedgerEntry` per joint id losing a side: the recipe state + each side's role/midpoint/length,
+  NO ObjectIds) and after Emit both Draw paths call `ManagedCommands.ReplayJoints`
+  (`Managed\JointReplay.cs`): geometric re-pairing (role + nearest midpoint, 24" cap / tie-band
+  ambiguity = skip + report -- labels renumber, midpoints don't), male-first
+  `ConnectionType.Apply` both orders behind an expanded-AABB touch gate, re-stamp, guarded
+  stale-stamp cleanup. RESTORATION ONLY -- replay never creates a joint that wasn't cut, so the
+  deliberate-joinery rule holds. Joinery is DELAYED AND DELIBERATE
   (Robert's rule): nothing auto-cuts at place time; `TJointAll` (selection-scoped) cuts, `TJointSync`
-  re-cuts after moves / re-attaches after a regen (from those kept stamps).
+  re-cuts after moves / re-attaches after a regen (from those kept stamps -- now the manual fallback
+  for whatever the automatic replay reports as unmatched/no-contact).
 
 `Managed\` -- the managed timber model, the editor, and the output layer. The core is the
 `ManagedTimber` static class, SPLIT (2026-07-13, behavior-neutral) across six partial files:
