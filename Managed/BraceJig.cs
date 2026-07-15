@@ -79,8 +79,9 @@ namespace TimberDraw
         {
             if (!_solved) return true;
             // Wireframe from the frame's two mitered end caps -- the TSpan ghost look (blue ACI 5).
+            // The frame's own X/Y are the corner-pairing reference (see DrawMiteredWire).
             ManagedTimber.TFace[] faces = ManagedTimber.Faces(_frame);
-            JigGeometry.DrawMiteredWire(draw, faces[0], faces[1], 5);
+            JigGeometry.DrawMiteredWire(draw, faces[0], faces[1], _frame.X, _frame.Y, 5);
             return true;
         }
     }
