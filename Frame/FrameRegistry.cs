@@ -19,6 +19,8 @@ namespace TimberDraw
         public KPBentParams Params;    // the seed recipe (may be null for a frozen legacy frame)
         public double[] Placement;     // graph->WCS placement matrix, Matrix3d.ToArray() (16 doubles)
         public bool Frozen;            // the break: true => parametric locked for this frame
+        public string SpecJson;        // the tree's FrameSpec at the last Draw (recall-on-open,
+                                       // batch-3 #3) -- null on records from before the stamp
     }
 
     public static class FrameRegistry
@@ -93,6 +95,39 @@ namespace TimberDraw
                         + " record unreadable (treated as unfrozen): " + ex.Message);
                     return null;
                 }
+            }
+        }
+
+        // The first stored recipe among the drawing's frame records, with its tag -- the
+        // recall-on-open source (batch-3 #3: opening a drawing refills the tree with ITS frame).
+        // Tags scan in NOD order; null when no record carries a spec (pre-stamp drawings).
+        public static string FirstSpecJson(Database db)
+        {
+            if (db == null) return null;
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return null;
+
+            using (doc.LockDocument())
+            using (Transaction tr = db.TransactionManager.StartTransaction())
+            {
+                var nod = (DBDictionary)tr.GetObject(db.NamedObjectsDictionaryId, OpenMode.ForRead);
+                foreach (DBDictionaryEntry e in nod)
+                {
+                    if (!e.Key.StartsWith(KeyPrefix)) continue;
+                    var xrec = tr.GetObject(e.Value, OpenMode.ForRead, false) as Xrecord;
+                    TypedValue[] vals = xrec?.Data?.AsArray();
+                    string json = vals != null && vals.Length > 0 ? vals[0].Value?.ToString() : null;
+                    if (string.IsNullOrEmpty(json)) continue;
+                    try
+                    {
+                        FrameRecord rec = JsonSerializer.Deserialize<FrameRecord>(json, JsonOpts);
+                        if (!string.IsNullOrEmpty(rec?.SpecJson)) { tr.Commit(); return rec.SpecJson; }
+                    }
+                    catch (System.Exception ex)
+                    { Diag.Warn("FrameRegistry.FirstSpecJson", e.Key + " record unreadable, skipped: " + ex.Message); }
+                }
+                tr.Commit();
+                return null;
             }
         }
 

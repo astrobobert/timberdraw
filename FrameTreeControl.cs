@@ -65,7 +65,8 @@ namespace TimberDraw
         {
             SetupMenu();
             WireEvents();
-            ResetToEmpty();   // open EMPTY -- the user starts a frame (New) or loads one (Load)
+            ResetToEmpty();       // the deterministic start; then...
+            TryRecallDrawing();   // ...refill from the ACTIVE drawing's stamped recipe when it has one
 
             // Re-render distance cells when the drawing's units change (DistanceConverter formats via
             // LUNITS/LUPREC). Reset to the empty start when the active drawing changes (the start is
@@ -84,11 +85,35 @@ namespace TimberDraw
             if (e.Name == "LUNITS" || e.Name == "LUPREC") BindGrid();   // re-format distances per units
         }
 
-        // Switching drawings restarts the tree from the empty start (drawing-clean contract).
+        // Switching drawings restarts the tree from the empty start (drawing-clean contract), then
+        // recalls the NEW drawing's own frame when it carries one (batch-3 #3).
         private void OnDocumentActivated(object sender, Autodesk.AutoCAD.ApplicationServices.DocumentCollectionEventArgs e)
         {
             if (e.Document == null) return;   // last document closed -> nothing to reflect
-            try { ResetToEmpty(); } catch { /* best-effort; activation can fire mid-init */ }
+            try { ResetToEmpty(); TryRecallDrawing(); } catch { /* best-effort; activation can fire mid-init */ }
+        }
+
+        // Recall-on-open (Robert's ask, batch-3 #3): a drawing whose frame was drawn by the tree
+        // carries its recipe in the frame registry record (stamped at every Draw), so activating
+        // that drawing refills the tree with ITS frame -- exact recall, nothing derived from the
+        // solids (the spec is a generator, not the model). Drawings from before the stamp, or
+        // with no drawn frame, keep the empty start.
+        private void TryRecallDrawing()
+        {
+            try
+            {
+                var doc = AcadApp.DocumentManager.MdiActiveDocument;
+                if (doc == null) return;
+                string json = FrameRegistry.FirstSpecJson(doc.Database);
+                if (string.IsNullOrEmpty(json)) return;
+                _spec = FrameSpecStore.FromJson(json);
+                _currentPath = null;
+                Persist();   // sync the FrameSpecJson signal (TGrid's frame tag) to the recalled frame
+                BuildTree();
+                RefreshFrozenState();
+            }
+            catch (System.Exception ex)
+            { Diag.Warn("FrameTree.Recall", "drawing spec recall failed (tree stays empty): " + ex.Message); }
         }
 
         // The start state everywhere (open, doc-switch, AND the New button): an EMPTY tree.
@@ -870,6 +895,20 @@ namespace TimberDraw
             grid.Draw(placement, frameTag);   // flat under the frame (model basis)
             if (doc != null) ManagedCommands.RelabelBraces(doc.Database);   // brace symbols (*, **) by size+shape
             Persist();
+            // Stamp the emitted recipe into the frame's registry record (batch-3 #3), so re-opening
+            // this DRAWING refills the tree with THIS frame -- the spec follows the drawing, not the
+            // machine. Other record fields (the freeze gate, the TRoughIn seed) are preserved.
+            if (doc != null)
+            {
+                try
+                {
+                    FrameRecord rec = FrameRegistry.Load(doc.Database, frameTag) ?? new FrameRecord();
+                    rec.SpecJson = FrameSpecStore.ToJson(_spec);
+                    FrameRegistry.Save(doc.Database, frameTag, rec);
+                }
+                catch (System.Exception ex)
+                { Diag.Warn("FrameTree.Draw", "spec stamp failed (recall-on-open unavailable): " + ex.Message); }
+            }
             doc?.Editor.WriteMessage(
                 "\nTDraw: frame " + frameTag + " -- cleared " + cleared + " managed timber(s); emitted "
                 + drawn + " managed timbers across " + g.Nodes.Count + " nodes (grid "
