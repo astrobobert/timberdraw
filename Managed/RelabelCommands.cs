@@ -96,7 +96,7 @@ namespace TimberDraw
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;
             if (doc == null) return;
-            int n = RelabelBraces(doc.Database);
+            int n = RelabelBraces(doc.Database, doc.Editor);   // the command run REPORTS its grouping
             doc.Editor.WriteMessage("\nTRelabelBraces: " + n + " brace symbol(s) updated.");
         }
 
@@ -108,12 +108,17 @@ namespace TimberDraw
         // in a stable numeric order (section, then angle, then length ascending), so the mapping is
         // reproducible across runs. Returns the number of GridLabels changed. The single authority --
         // the emitter's FrameGrid.BraceLabel is a provisional stamp this supersedes.
-        public static int RelabelBraces(Database db)
+        public static int RelabelBraces(Database db, Editor report = null)
         {
             var braces = ManagedTimber.EnumerateForBom(db)
                 .Where(t => string.Equals(t.Type, "Brace", StringComparison.OrdinalIgnoreCase))
                 .ToList();
-            if (braces.Count == 0) return 0;
+            if (braces.Count == 0)
+            {
+                report?.WriteMessage("\n  no Brace-TYPE timbers found -- braces must carry Type \"Brace\""
+                    + " (check the row's Type in TBom; re-type via TSection / the Browser).");
+                return 0;
+            }
 
             (int W, int D, int A, int L) Key(ManagedTimber.TimberBom t) =>
                 (QInt(t.F.W), QInt(t.F.D), (int)Math.Round(BraceAngleDeg(t.F)), (int)Math.Round(t.Overall));
@@ -123,6 +128,20 @@ namespace TimberDraw
                 .ToList();
             var symbol = new Dictionary<(int, int, int, int), string>();
             for (int i = 0; i < order.Count; i++) symbol[order[i]] = new string('*', i + 1);
+
+            // The grouping table (command runs only): symbol -> section, angle, trimmed length, count.
+            // This is the diagnosis surface for "the grouping is a mess" -- near-identical braces
+            // splitting over a 1" length or 1-degree angle difference show up right here.
+            if (report != null)
+            {
+                report.WriteMessage("\n  " + braces.Count + " brace(s) in " + order.Count + " group(s):");
+                foreach ((int W, int D, int A, int L) k in order)
+                {
+                    int count = braces.Count(t => Key(t).Equals(k));
+                    report.WriteMessage("\n  " + symbol[k].PadRight(6) + (k.W / 4.0) + "x" + (k.D / 4.0)
+                        + ", " + k.A + " deg, " + k.L + "\" -- " + count + " brace(s)");
+                }
+            }
 
             int changed = 0;
             foreach (var t in braces)
