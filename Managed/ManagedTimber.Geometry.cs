@@ -1179,13 +1179,22 @@ namespace TimberDraw
             Vector3d na = fa.N; if ((fa.C - bodyA).DotProduct(na) < 0.0) na = na.Negate();
             Vector3d nb = fb.N; if ((fb.C - bodyB).DotProduct(nb) < 0.0) nb = nb.Negate();
 
+            // Legs measure CORNER -> TOE (Robert's rule, batch-2 #15 -- the generator's braces have
+            // always drawn this way): foot/head are the brace's OUTER-EDGE (toe) anchors on the host
+            // faces, so the box CENTERLINE sits depth/2 in from that line, toward the corner. Without
+            // this shift a free-assembly brace came out a different stick than an emitted brace with
+            // the same legs (and grouped under its own symbol).
+            Point3d mid = foot + (head - foot) * 0.5;
+            double side = (pa - mid).DotProduct(yb) >= 0.0 ? 1.0 : -1.0;   // which yb sign faces the corner
+            Vector3d toCorner = yb * (side * depth / 2.0);
+
             // Map to the section-in-XY / length-along-Z convention: length = Z (the brace axis xb),
             // depth = Y (yb), width = X (recomputed as Y x Z so the frame stays right-handed; width is
             // symmetric so its sign doesn't matter). Mitered ends face back toward their mates so
             // FacesMate sees opposing normals -> nodes.
             frame = new TFrame
             {
-                O = foot, X = yb.CrossProduct(xb).GetNormal(), Y = yb, Z = xb,
+                O = foot + toCorner, X = yb.CrossProduct(xb).GetNormal(), Y = yb, Z = xb,
                 L = (head - foot).Length, D = depth, W = width,
                 NearN = na.Negate(), FarN = nb.Negate()
             };
