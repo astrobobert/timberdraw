@@ -119,7 +119,7 @@ Joinery commands (each family below; every cutter has a matching `...Del`):
 
 | Command | Connection |
 |---|---|
-| `TJoint` / `TJointAll` / `TJointDel` | Girt end -> post side: tenon + housing + pegs. `TJointAll` = the DELIBERATE batch: All-or-Selection scope (selection = who GETS joints), then girt->post / post->sill / summer->girt / joist->carrier passes, each with its own sticky recipe. |
+| `TJoint` / `TJointAll` / `TJointDel` | Girt end -> post side: tenon + housing + pegs. `TJointAll` = the DELIBERATE batch: SELECTION-scoped only (no All -- Robert's call; pickfirst honored, selection = who GETS joints), then girt->post / post->sill / summer->girt / joist->carrier passes, each with its own sticky recipe. |
 | `TJointSync` | Re-cut a selected timber's joints from their STORED recipes after a move (same id) or a re-Generate (geometric re-attach to the fresh skeleton member); no-contact joints reported + left. |
 | `TJoinPick` / `TJoinApply` / `TJoinClear` | Joints pane flow (`TPanel` -> Joints): pick pair, edit the element stack, live re-cut. Clear strips the held pair's joint (features + spec) and KEEPS the pair -- Apply after re-cuts fresh at the current contact (the displaced-joint re-snap). |
 | `TStrut` / `TStrutDel` | Strut / v-strut -> rafter underside, post side, king-post side, girt underside (any angle). |

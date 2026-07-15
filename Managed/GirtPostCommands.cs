@@ -100,9 +100,11 @@ namespace TimberDraw
                             " (girt " + ngirt.Handle + ", post " + npost.Handle + ").");
         }
 
-        // Batch-cut the frame's end->side joinery, DELIBERATELY: the first prompt scopes the batch to
-        // All timbers or a SELECTION -- the selected timbers are the ones that GET joints (the male
-        // side: girt ends, post feet, summer ends, joist ends); hosts are always found drawing-wide.
+        // Batch-cut the frame's end->side joinery, DELIBERATELY: the batch is SELECTION-scoped
+        // (Robert's call, batch-2 #8 -- the old All keyword is gone). The selected timbers are the
+        // ones that GET joints (the male side: girt ends, post feet, summer ends, joist ends);
+        // hosts are always found drawing-wide. A pickfirst set is honored -- select the timbers,
+        // then run the command; otherwise it asks (AutoCAD's Previous option re-uses the last set).
         // Passes, each with its own sticky recipe, reviewed only when its role is in scope:
         //   girt-family end -> post side  (mortise & tenon + pegs; _joint)
         //   post foot -> sill             (short unpegged stub; _sillJoint)
@@ -110,7 +112,7 @@ namespace TimberDraw
         //   joist end -> carrier          (housed dovetail; _joistDove -- the deliberate half of TJoist)
         // Contacts that already carry a joint are SKIPPED (idempotent -- safe to re-run after manual
         // tweaks); a host fed by several members rebuilds once.
-        [CommandMethod("TJointAll")]
+        [CommandMethod("TJointAll", CommandFlags.Modal | CommandFlags.UsePickSet)]
         public static void JointAll()
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;
@@ -119,21 +121,15 @@ namespace TimberDraw
             Database db = doc.Database;
 
             // DELIBERATE scope (Robert's rule: joinery is applied to selected timbers or groups).
-            HashSet<ObjectId> scope = null;
-            var sko = new PromptKeywordOptions("\nCut joinery for") { AllowNone = true };
-            sko.Keywords.Add("All");
-            sko.Keywords.Add("Select");
-            sko.Keywords.Default = "All";
-            PromptResult skr = ed.GetKeywords(sko);
-            if (skr.Status != PromptStatus.OK && skr.Status != PromptStatus.None) return;
-            if (skr.Status == PromptStatus.OK && skr.StringResult == "Select")
+            PromptSelectionResult sel = ed.SelectImplied();
+            if (sel.Status != PromptStatus.OK || sel.Value == null || sel.Value.Count == 0)
             {
                 var filter = new SelectionFilter(new[] { new TypedValue((int)DxfCode.Start, "3DSOLID") });
                 var pso = new PromptSelectionOptions { MessageForAdding = "\nSelect the timbers to joint: " };
-                PromptSelectionResult sel = ed.GetSelection(pso, filter);
+                sel = ed.GetSelection(pso, filter);
                 if (sel.Status != PromptStatus.OK) return;
-                scope = new HashSet<ObjectId>(sel.Value.GetObjectIds());
             }
+            var scope = new HashSet<ObjectId>(sel.Value.GetObjectIds());
 
             var all = ManagedTimber.EnumerateWithRole(db);
             // Working frames carry the accumulating Features/Pegs; geometry (O/axes/L/D/W) never changes and
@@ -145,7 +141,7 @@ namespace TimberDraw
             int nextId = NextJointId(db);
             int cut = 0, skipped = 0, failed = 0;
 
-            bool InScope(ObjectId id) => scope == null || scope.Contains(id);
+            bool InScope(ObjectId id) => scope.Contains(id);
             bool RolePresent(HashSet<string> roles)
             {
                 foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) t in all)
