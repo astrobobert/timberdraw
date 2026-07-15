@@ -372,6 +372,27 @@ namespace TimberDraw
             return found && best < -0.1;   // the foot must actually point into a side face
         }
 
+        // TOUCHING end-into-side contact, for the AUTO paths (TJointAll's joist + common passes,
+        // TJointSync's re-attach): a male END face that actually MATES a host SIDE face (coplanar,
+        // opposing, overlapping -- FacesMate, the cutters' tolerance). FindFootContact above is
+        // DIRECTION-only -- right for the user-picked cutters, where the pair is deliberate, but
+        // gating a drawing-wide pass with it cut PHANTOM joints: every joist end "contacted" every
+        // parallel girt, so the tie girts collected the floor girt's dovetail pockets and each
+        // joist end double-counted (Robert's CSV catch, 2026-07-15).
+        private static bool FindTouchingFootContact(ManagedTimber.TFrame male, ManagedTimber.TFrame host,
+            out ManagedTimber.TFace hostFace)
+        {
+            hostFace = default;
+            ManagedTimber.TFace[] ends = ManagedTimber.Faces(male);
+            foreach (ManagedTimber.TFace hs in ManagedTimber.Faces(host))
+            {
+                if (Math.Abs(hs.N.DotProduct(host.Z)) >= 0.5) continue;   // host SIDE faces only
+                for (int ei = 0; ei <= 1; ei++)
+                    if (ManagedTimber.FacesMate(ends[ei], hs, 0.25, out _)) { hostFace = hs; return true; }
+            }
+            return false;
+        }
+
         // The joint id shared by both frames' polygon lists (JointPolys + JointPolysZ) -- a polygon joint
         // (rafter foot/head, ridge) already cut between them, or 0 if none. v1: at most one per pair.
         private static int ExistingRafterFootId(ManagedTimber.TFrame a, ManagedTimber.TFrame b)

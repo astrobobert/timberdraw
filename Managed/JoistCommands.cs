@@ -198,7 +198,8 @@ namespace TimberDraw
                     for (int side = 0; side <= 1; side++)
                     {
                         ManagedTimber.TFrame host = side == 0 ? carA : carB;
-                        if (!FindFootContact(jf, host, out ManagedTimber.TFace hFace)
+                        // TOUCHING contact (the row was just placed flush, so a miss here is real).
+                        if (!FindTouchingFootContact(jf, host, out ManagedTimber.TFace hFace)
                             || !ManagedTimber.PurlinRafterJoint(jf, host, hFace, _joistDove,
                                    out List<(Point3d[] Poly, Vector3d Extrude, bool OnRafter)> prisms, out _))
                         { missedEnds++; continue; }

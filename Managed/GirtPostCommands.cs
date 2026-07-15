@@ -255,7 +255,8 @@ namespace TimberDraw
             if (RolePresent(JoistRoles))
             {
                 ed.WriteMessage("\nJoist pass -- joist end -> carrier housed dovetail:");
-                _joistDove.On = true;
+                bool doveWasOn = _joistDove.On;   // the pass forces On for its own run; a later
+                _joistDove.On = true;             // TJoist must NOT inherit it (deliberate joinery)
                 if (!ReviewJoistDove(ed) || !_joistDove.On)
                     ed.WriteMessage("\nJoist dovetails skipped.");
                 else
@@ -270,7 +271,9 @@ namespace TimberDraw
                             ManagedTimber.TFrame joist = work[j.Id];
                             ManagedTimber.TFrame host = work[h.Id];
                             if (ExistingRafterFootId(joist, host) != 0) { skipped++; continue; }
-                            if (!FindFootContact(joist, host, out ManagedTimber.TFace hFace)) continue;
+                            // TOUCHING contact required -- the direction-only test cut PHANTOM
+                            // dovetails into every parallel girt (Robert's CSV catch).
+                            if (!FindTouchingFootContact(joist, host, out ManagedTimber.TFace hFace)) continue;
                             if (!ManagedTimber.PurlinRafterJoint(joist, host, hFace, _joistDove,
                                     out List<(Point3d[] Poly, Vector3d Extrude, bool OnRafter)> prisms, out _))
                             { failed++; continue; }
@@ -286,6 +289,7 @@ namespace TimberDraw
                         }
                     }
                 }
+                _joistDove.On = doveWasOn;   // the sticky leak made a later TJoist auto-cut at place time
             }
             int joistCuts = cut - girtCuts - sillCuts - summerCuts;
 
@@ -309,7 +313,9 @@ namespace TimberDraw
                             ManagedTimber.TFrame common = work[c.Id];
                             ManagedTimber.TFrame ridge = work[r.Id];
                             if (ExistingRafterFootId(common, ridge) != 0) { skipped++; continue; }
-                            if (!FindFootContact(common, ridge, out ManagedTimber.TFace rFace)) continue;
+                            // TOUCHING contact, like the joist pass -- direction-only would cut a
+                            // phantom housing for every common/ridge pairing in the drawing.
+                            if (!FindTouchingFootContact(common, ridge, out ManagedTimber.TFace rFace)) continue;
                             if (!ManagedTimber.CommonRidgeJoint(common, ridge, rFace, _comridge,
                                     out List<(Point3d[] Poly, Vector3d Extrude, bool OnRidge)> prisms, out _))
                             { failed++; continue; }
@@ -464,14 +470,15 @@ namespace TimberDraw
                     }
 
                     // RE-ATTACH: the partner died (a regenerate replaced it). Find the timber this one
-                    // now touches end-into-side, in either direction, skipping mates it is already
+                    // now TOUCHES end-into-side (FacesMate -- the direction-only test could re-attach
+                    // to a non-touching host), in either direction, skipping mates it is already
                     // jointed to -- only then strip the orphaned features and cut the recipe fresh.
                     ObjectId hostId = ObjectId.Null; ManagedTimber.TFrame hfr = default; bool selIsMale = true;
                     foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) t in ManagedTimber.EnumerateWithRole(db))
                     {
                         if (t.Id == selId || SharedJointId(sf, t.F) != 0) continue;
-                        if (FindFootContact(sf, t.F, out _)) { hostId = t.Id; hfr = t.F; selIsMale = true; break; }
-                        if (FindFootContact(t.F, sf, out _)) { hostId = t.Id; hfr = t.F; selIsMale = false; break; }
+                        if (FindTouchingFootContact(sf, t.F, out _)) { hostId = t.Id; hfr = t.F; selIsMale = true; break; }
+                        if (FindTouchingFootContact(t.F, sf, out _)) { hostId = t.Id; hfr = t.F; selIsMale = false; break; }
                     }
                     if (hostId.IsNull)
                     {
