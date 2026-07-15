@@ -103,9 +103,20 @@ namespace TimberDraw
             while (true)
             {
                 PromptResult pr = ed.Drag(jig);
-                if (pr.Status == PromptStatus.Keyword) { jig.SetJustify(pr.StringResult); continue; }
-                if (pr.Status != PromptStatus.OK) return;
-                break;
+                if (pr.Status == PromptStatus.Keyword)
+                {
+                    // Height = exact keyboard entry (a number typed at the point prompt would be
+                    // direct-distance along the cursor -- this stays exact in any UCS).
+                    if (pr.StringResult == "Height")
+                    {
+                        if (GetDouble(ed, "Height above base", jig.LineY, true, out double hv))
+                            jig.SetHeight(hv);
+                    }
+                    else jig.SetJustify(pr.StringResult);
+                    continue;
+                }
+                if (pr.Status == PromptStatus.OK || pr.Status == PromptStatus.None) break;   // click / Enter
+                return;
             }
 
             ObjectId id = ManagedTimber.DrawBox(jig.Origin, fa.N, dAxis, wAxis, gap, d, w, type, "", "matchface", "matchface");

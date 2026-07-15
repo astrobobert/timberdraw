@@ -75,16 +75,21 @@ namespace TimberDraw
             }
         }
 
+        // Exact KEYBOARD height (the Height keyword): the drag loop prompts a plain number -- exact
+        // in any UCS -- and pushes it here, then the drag continues at that height.
+        public void SetHeight(double s) => _sTarget = s;
+
         // Height from PICKED POINTS (Robert's call, 2026-07-15): the cursor/snap point is FILTERED to
         // its rail component -- (p - datum) . rail, the point's delta-Z on a vertical rail -- so
         // snapping to ANY feature anywhere transfers its HEIGHT, never its diagonal rubber-band
-        // distance (the old AcquireDistance read the 3D distance to an off-rail snap). The prompt is
-        // STATIC -- no live height in the text, so the command line stops scroll-updating on every
-        // cursor move; the height lands once in TSpan's completion echo.
+        // distance (the old AcquireDistance read the 3D distance to an off-rail snap). Exact
+        // KEYBOARD entry stays via the Height keyword (a point acquisition can't take a bare
+        // scalar): H, then the number. The prompt is STATIC -- no live height in the text, so the
+        // command line stops scroll-updating; the height lands once in TSpan's completion echo.
         protected override SamplerStatus Sampler(JigPrompts prompts)
         {
             var opts = new JigPromptPointOptions(
-                "\nHeight above base -- pick/snap a point at the height; [Center/Bottom/Top]: ")
+                "\nHeight above base -- pick/snap a point at the height; [Center/Bottom/Top/Height]: ")
             {
                 UseBasePoint = true,
                 BasePoint = _floorAnchor,
@@ -94,6 +99,7 @@ namespace TimberDraw
             opts.Keywords.Add("Center");
             opts.Keywords.Add("Bottom");
             opts.Keywords.Add("Top");
+            opts.Keywords.Add("Height");
 
             PromptPointResult r = prompts.AcquirePoint(opts);
             if (r.Status != PromptStatus.OK) return SamplerStatus.NoChange;   // keyword/cancel surfaced by ed.Drag
