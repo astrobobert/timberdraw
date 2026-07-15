@@ -73,13 +73,24 @@ namespace TimberDraw
                 yield return (kv.Key, kv.Value.Type);
         }
 
-        // Names whose template type matches `target`'s type (so applying them is meaningful), in name order.
+        // Names whose template type matches `target`'s type (so applying them is meaningful), in name
+        // order. An UNTYPED target (a fresh bent, a bay with neither roof box checked -> "Bay:None")
+        // matches EVERY template of its kind instead -- the template carries the type, and applying
+        // it adopts that type first (Robert's ask: Apply Template shouldn't wait for the roof to be
+        // set by hand). A typed element still lists only its own type (a KingPost bent never offers
+        // a QueenPost overlay).
         public static IEnumerable<string> CompatibleNames(FrameElement target)
         {
             string key = TypeDefaults.Key(target);
-            if (key == null) yield break;
+            string prefix = key == null && target is BentSpec ? "Bent:"
+                          : key == "Bay:None" ? "Bay:"
+                          : null;
+            if (key == null && prefix == null) yield break;
             foreach (KeyValuePair<string, Entry> kv in Load().OrderBy(k => k.Key))
-                if (kv.Value.Type == key) yield return kv.Key;
+                if (prefix != null
+                        ? kv.Value.Type != null && kv.Value.Type.StartsWith(prefix)
+                        : kv.Value.Type == key)
+                    yield return kv.Key;
         }
 
         private static Dictionary<string, Entry> Load()

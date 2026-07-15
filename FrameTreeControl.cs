@@ -791,6 +791,16 @@ namespace TimberDraw
         private void ApplyTemplate(IMemberOwner owner, string name)
         {
             if (!TemplateLibrary.TryGet(name, out FrameElement saved)) return;
+            // An UNTYPED bent adopts the template's type first -- the canonical member list must
+            // exist before the overlay (same order as Insert Bent from Template). A no-roof bay
+            // needs nothing here: its timber list is fixed, and ApplyElement copies the roof
+            // checkboxes + SyncRoofType()s, which IS setting the roof.
+            if (owner is BentSpec b && !b.TypeIsSet && saved is BentSpec sb)
+            {
+                b.BentType = sb.BentType;
+                b.RebuildTimbers();
+                _spec.SyncWallRoles();
+            }
             TypeDefaults.ApplyElement(owner, saved);   // overlays sizes + config; never span/eave/pitch/Separation
             Persist(); BuildTree(); SelectByTag(owner);
         }
