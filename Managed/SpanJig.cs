@@ -75,30 +75,31 @@ namespace TimberDraw
             }
         }
 
-        // Height as a DISTANCE along the rail from the floor datum -- so a TYPED number is the exact
-        // height directly (no "Height" keyword first, and no direct-distance cursor-direction error),
-        // and the ghost only ever slides along the rail (it only moves in Z on a post rail). Ortho
-        // locks a free cursor to the rail; snapping to an on-rail feature reads its height exactly.
+        // Height from PICKED POINTS (Robert's call, 2026-07-15): the cursor/snap point is FILTERED to
+        // its rail component -- (p - datum) . rail, the point's delta-Z on a vertical rail -- so
+        // snapping to ANY feature anywhere transfers its HEIGHT, never its diagonal rubber-band
+        // distance (the old AcquireDistance read the 3D distance to an off-rail snap). The prompt is
+        // STATIC -- no live height in the text, so the command line stops scroll-updating on every
+        // cursor move; the height lands once in TSpan's completion echo.
         protected override SamplerStatus Sampler(JigPrompts prompts)
         {
-            var opts = new JigPromptDistanceOptions(
-                "\nHeight above base -- type a distance, or pick/snap up the rail; [Center/Bottom/Top] <"
-                + _just + " " + _sTarget.ToString("0.#") + ">: ")
+            var opts = new JigPromptPointOptions(
+                "\nHeight above base -- pick/snap a point at the height; [Center/Bottom/Top]: ")
             {
                 UseBasePoint = true,
                 BasePoint = _floorAnchor,
                 Cursor = CursorType.RubberBand,
-                DefaultValue = _sTarget,
                 UserInputControls = UserInputControls.GovernedByOrthoMode | UserInputControls.NullResponseAccepted
             };
             opts.Keywords.Add("Center");
             opts.Keywords.Add("Bottom");
             opts.Keywords.Add("Top");
 
-            PromptDoubleResult r = prompts.AcquireDistance(opts);
+            PromptPointResult r = prompts.AcquirePoint(opts);
             if (r.Status != PromptStatus.OK) return SamplerStatus.NoChange;   // keyword/cancel surfaced by ed.Drag
-            if (Math.Abs(r.Value - _sTarget) < 1e-6) return SamplerStatus.NoChange;
-            _sTarget = r.Value;      // distance from the s=0 floor datum along the rail = height above base
+            double s = S(r.Value);   // the picked point's rail (height) component only
+            if (Math.Abs(s - _sTarget) < 1e-6) return SamplerStatus.NoChange;
+            _sTarget = s;
             return SamplerStatus.OK;
         }
 
