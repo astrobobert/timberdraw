@@ -52,6 +52,8 @@ namespace TimberDraw
         // and selecting them clears the grid rather than binding the raw list.
         private readonly object _bentsTag = new object();
         private readonly object _wallsTag = new object();
+        // Stable tag for the per-element "Assigned" folders (batch-3 #5) -- same expand-state deal.
+        private readonly object _assignedTag = new object();
 
         public FrameTreeControl()
         {
@@ -446,16 +448,17 @@ namespace TimberDraw
                     TreeNode wnode = new TreeNode(NodeLabel(w)) { Tag = w, Checked = IsGroupVisible(GroupLayerFor(w)) };
                     wallsFolder.Nodes.Add(wnode);
                     // A Free Assembly wall has no parametric bays -- list its assigned timbers directly.
-                    if (w.FreeAssembly) { AddDrawnLeaves(wnode, "", w.Letter); continue; }
+                    if (w.FreeAssembly) { AddDrawnLeaves(wnode, "", w.Letter, false); continue; }
                     // An addressing-only line (a KingPost vstrut B/D) carries no longitudinal members --
-                    // show the line, but no (empty) bay nodes.
-                    if (w.Role == BayRole.Vstrut) continue;
+                    // show the line, but no (empty) bay nodes. Assigned FREE timbers still list.
+                    if (w.Role == BayRole.Vstrut) { AddAssignedFolder(wnode, "", w.Letter); continue; }
                     foreach (BaySpec y in w.Bays)
                     {
                         TreeNode ynode = new TreeNode(NodeLabel(y)) { Tag = y };
                         wnode.Nodes.Add(ynode);
                         AddTimberLeaves(ynode, y);
                     }
+                    AddAssignedFolder(wnode, "", w.Letter);   // batch-3 #5: the wall's assigned free timbers
                 }
                 wallsFolder.Checked = AllChecked(wallsFolder);
 
@@ -541,12 +544,14 @@ namespace TimberDraw
 
         // Once typed, an owner's folder lists ALL its timbers as checkboxes; checked = enabled. A Free
         // Assembly bent has no parametric timbers -- it lists the managed timbers assigned to its number.
+        // A TYPED bent additionally lists its assigned FREE timbers under an "Assigned" folder
+        // (batch-3 #5) -- free-only, so the recipe's own skeleton members don't double up.
         private void AddTimberLeaves(TreeNode node, IMemberOwner owner)
         {
             if (!owner.TypeIsSet) return;
             if (owner is BentSpec bs && bs.IsFreeAssembly)
             {
-                AddDrawnLeaves(node, (_spec.Bents.IndexOf(bs) + 1).ToString(), "");
+                AddDrawnLeaves(node, (_spec.Bents.IndexOf(bs) + 1).ToString(), "", false);
                 return;
             }
             foreach (Timber t in owner.Timbers)
@@ -555,12 +560,28 @@ namespace TimberDraw
                     Tag = new TimberLeaf { Owner = owner, Timber = t },
                     Checked = t.Enabled
                 });
+            if (owner is BentSpec tb)
+                AddAssignedFolder(node, (_spec.Bents.IndexOf(tb) + 1).ToString(), "");
+        }
+
+        // The "Assigned" folder under a TYPED bent/wall (batch-3 #5): the same read-only DrawnLeaf
+        // view the Free Assembly elements always had, held apart from the recipe's checkbox leaves.
+        // FREE timbers only (hand-placed / adopted / floor infill) -- the generator's own skeleton
+        // members carry the same address and would otherwise list twice. Added only when the
+        // drawing actually has matches (no empty folders).
+        private void AddAssignedFolder(TreeNode node, string bentTag, string wallTag)
+        {
+            var folder = new TreeNode("Assigned") { Tag = _assignedTag };
+            AddDrawnLeaves(folder, bentTag, wallTag, true);
+            if (folder.Nodes.Count > 0) node.Nodes.Add(folder);
         }
 
         // List (read-only) the managed timbers in the drawing assigned to this frame + bent number
         // (bentTag) or wall letter (wallTag) via TAssign. The tree is a VIEW of the drawing here --
-        // geometry editing stays in the managed commands (TPlace/TSpan/...).
-        private void AddDrawnLeaves(TreeNode node, string bentTag, string wallTag)
+        // geometry editing stays in the managed commands (TPlace/TSpan/...). freeOnly limits the
+        // list to hand-placed survivors (Free == "1" or a FloorTag -- EraseFrame's keep test), for
+        // the typed-owner Assigned folders.
+        private void AddDrawnLeaves(TreeNode node, string bentTag, string wallTag, bool freeOnly)
         {
             var doc = AcadApp.DocumentManager.MdiActiveDocument;
             if (doc == null) return;
@@ -571,6 +592,7 @@ namespace TimberDraw
                 if (xd == null) continue;
                 string ft = string.IsNullOrWhiteSpace(xd.FrameTag) ? "" : xd.FrameTag.Trim();
                 if (ft != frame) continue;
+                if (freeOnly && xd.Free != "1" && string.IsNullOrEmpty(xd.FloorTag)) continue;
                 bool match = bentTag.Length > 0
                     ? (xd.BentNumber ?? "") == bentTag
                     : string.Equals(xd.WallTag ?? "", wallTag, StringComparison.OrdinalIgnoreCase);
