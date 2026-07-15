@@ -98,6 +98,10 @@ namespace TimberDraw
                 placements++;
             }
 
+            // Copied braces join their size+shape groups immediately (symbols are model-wide).
+            if (made > 0 && sources.Exists(s => string.Equals(s.Type, "Brace", StringComparison.OrdinalIgnoreCase)))
+                RelabelBraces(db);
+
             ed.WriteMessage("\nTCopy: " + made + " new timber(s) across " + placements + " placement(s)"
                 + (rekeyed > 0 ? ", " + rekeyed + " joint id(s) re-keyed" : "")
                 + " -- unassigned + free. TAssign to address; TJointSync to re-attach joints at the new location.");

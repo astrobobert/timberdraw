@@ -157,6 +157,22 @@ namespace TimberDraw
             return changed;
         }
 
+        // Re-derive the brace group symbols after an edit that touched a Brace (Robert's call
+        // 2026-07-15: relabel at EDIT time, not just at Draw). Symbols track size + shape (section
+        // + angle + finished-stick Overall), so placing, re-seating, re-sectioning, or (re/un)cutting
+        // a brace's joints can move it between groups. Quiet (no table); a cheap no-op when none of
+        // the touched timbers is a Brace.
+        internal static void RelabelBracesIfBrace(Database db, params ObjectId[] ids)
+        {
+            foreach (ObjectId id in ids)
+            {
+                if (id.IsNull || id.IsErased) continue;
+                Module1.DataStructure xd = Module1.GetXdata(id);
+                if (xd != null && string.Equals(xd.Type, "Brace", StringComparison.OrdinalIgnoreCase))
+                { RelabelBraces(db); return; }
+            }
+        }
+
         private static int QInt(double v) => (int)Math.Round(v * 4.0);   // quarter-inch section bucket
 
         // Brace angle from horizontal (0 = flat, 90 = plumb), from the world-Z rise of the length axis --

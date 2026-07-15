@@ -19,7 +19,7 @@ palette** — Frame / Assembly / Joints / Browser / Output.
 | `TGrid` | Redraw the structural grid, derived from the drawing. Ch. 7 |
 | `TAssign` | Give free timbers an address (bent intersection / wall+bay / floor). Ch. 7 |
 | `TRelabel` | Retrofit current label conventions onto an older frame (runs the brace-symbol pass too). Ch. 7 |
-| `TRelabelBraces` | Re-derive every brace's group symbol (`*`, `**`, ...) from the current model and echo the grouping table. Run after re-sectioning or re-seating braces; Draw runs it automatically. Ch. 7 |
+| `TRelabelBraces` | Re-derive every brace's group symbol (`*`, `**`, ...) and echo the grouping table. Runs automatically at Draw and after any brace edit; run it by hand for the table. Ch. 7 |
 
 ## Editor verbs
 
@@ -45,7 +45,8 @@ palette** — Frame / Assembly / Joints / Browser / Output.
 | Command | One line |
 |---|---|
 | `TJoinPick` / `TJoinApply` / `TJoinClear` | The Joints pane: pick a pair, edit the element stack, cut; Clear removes the held pair's joint (Apply right after = re-snap). Ch. 10 |
-| `TJoint` / `TJointDel` | Girt end -> post: tenon + housing + pegs. Ch. 10 |
+| `TJoint` | Girt end -> post: tenon + housing + pegs. Ch. 10 |
+| `TJointDel` | Delete the joint between ANY two picked jointed timbers (features + stored recipe, both sides); nearest pick wins when a pair shares two. Ch. 10 |
 | `TJointAll` | Batch-cut joinery for a SELECTION (the selected timbers get joints): girt-post, post-sill, summer-girt, joist-carrier, and common (ridge + eave) passes. Ch. 10 |
 | `TJointSync` | Re-cut a moved timber's joints from their stored recipes; re-attach orphans after a re-Generate. Ch. 10 |
 | `TBrace` / `TBraceDel` | Knee brace: 1 1/2" barefaced tenon. Ch. 10 |

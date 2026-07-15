@@ -69,13 +69,13 @@ two braces with the same section and the same leg runs can still land in
 stick, and the group answers *what do I cut*, not just where the brace spans.
 Same reasoning in reverse: a bent brace and a wall brace that finish identical
 collapse to one symbol however they were placed. Symbols are assigned in a
-stable order (section, then angle, then length), and they're re-derived from
-the model automatically at every **Draw**. After hand edits between Draws —
-a `TSection`, a `TJoin > Modify` re-seat, a joint re-cut — run
-**`TRelabelBraces`**: it regroups everything and echoes a table (symbol,
-section, angle, length, count), which is also the place to look when grouping
-seems wrong — near-identical braces splitting over an inch of tenon show up
-right there.
+stable order (section, then angle, then length), and they're re-derived
+**automatically** — at every Draw, and the moment a brace is edited: placed,
+copied, re-seated, re-sectioned, refit, or any of its joints cut, cleared,
+deleted, or re-synced. `TRelabelBraces` runs the same regroup on demand and
+echoes a table (symbol, section, angle, length, count), which is the place to
+look when grouping seems wrong — near-identical braces splitting over an inch
+of tenon show up right there.
 
 The label is one of the timber's three IDs (Chapter 3.4) — it answers *where
 does this install*, while the cut-mark answers *what do I cut*.

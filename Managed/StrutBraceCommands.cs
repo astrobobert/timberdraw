@@ -203,6 +203,7 @@ namespace TimberDraw
             // Stamp as the BRACE-named type so re-picking the pair loads the Brace preset in the pane
             // (older brace stamps say "Strut tenon" -- FromState resolves those by name unchanged).
             StampJoint(ns, nh, jid, ConnectionType.BraceTenon(spec));
+            RelabelBracesIfBrace(db, ns);   // the tenon changes the finished stick's Overall -> its group
             ed.WriteMessage("\n[diag] " + diag + (_braceBarefaced ? " (barefaced offset " + spec.Offset.ToString("0.00") + ")" : ""));
             ed.WriteMessage("\nTBrace: joint #" + jid + " cut -- " + diag +
                             " (brace " + ns.Handle + ", host " + nh.Handle + ").");
@@ -227,6 +228,7 @@ namespace TimberDraw
 
             ObjectId ns = ManagedTimber.RebuildFromFrame(sId, brace);
             ObjectId nh = ManagedTimber.RebuildFromFrame(hId, host);
+            RelabelBracesIfBrace(db, ns);   // losing the tenon changes Overall -> its group
             ed.WriteMessage("\nTBraceDel: tenon #" + id + " removed (brace " + ns.Handle + ", host " + nh.Handle + ").");
         }
 

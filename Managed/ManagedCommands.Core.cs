@@ -498,14 +498,21 @@ namespace TimberDraw
         // Pick a managed timber (whole entity); returns its id + stored placement frame.
         private static bool PickTimber(Editor ed, Database db, string msg,
             out ObjectId id, out ManagedTimber.TFrame frame)
+            => PickTimber(ed, db, msg, out id, out frame, out _);
+
+        // Overload exposing WHERE the timber was picked (WCS) -- e.g. TJointDel uses it to choose
+        // which of two shared joints to delete (near end vs far end).
+        private static bool PickTimber(Editor ed, Database db, string msg,
+            out ObjectId id, out ManagedTimber.TFrame frame, out Point3d pick)
         {
-            id = ObjectId.Null; frame = default;
+            id = ObjectId.Null; frame = default; pick = Point3d.Origin;
             var peo = new PromptEntityOptions(msg);
             peo.SetRejectMessage("\nPick a managed timber (any managed member -- placed or generated).");
             peo.AddAllowedClass(typeof(Solid3d), exactMatch: false);
             PromptEntityResult per = ed.GetEntity(peo);
             if (per.Status != PromptStatus.OK) return false;
             id = per.ObjectId;
+            pick = per.PickedPoint;
             if (!ManagedTimber.TryReadFrame(db, id, out frame))
             { ed.WriteMessage("\nNot a managed timber."); return false; }
             return true;

@@ -322,6 +322,7 @@ namespace TimberDraw
                 id = ManagedTimber.DrawMiteredBrace(fa, fb, gD, gW, gFoot, gHead, type, "",
                                                     bodyA, bodyB, gPlace);
                 if (id.IsNull) { ed.WriteMessage("\nCouldn't build a brace between those faces."); return; }
+                RelabelBracesIfBrace(db, id);   // a new brace joins (or founds) its size+shape group now
                 ed.WriteMessage("\nTJoin (knee brace): " + type + " " + (int)gW + "x" + (int)gD +
                                 " foot " + gFoot.ToString("0.#") + " head " + gHead.ToString("0.#") +
                                 " " + PlaceName(gPlace) + " (" + id.Handle + ").");
@@ -413,13 +414,13 @@ namespace TimberDraw
             }
 
             ObjectId nid = ManagedTimber.RebuildFromFrame(braceId, nf);   // fresh frame = plain brace; identity carried
+            RelabelBracesIfBrace(db, nid);   // the re-seat moves it between size+shape groups
             ed.WriteMessage("\nTJoin (modify): brace re-seated -- foot " + footRun.ToString("0.#")
                 + " head " + headRun.ToString("0.#") + " " + PlaceName(bplace)
                 + ", length " + nf.L.ToString("0.#") + " (" + nid.Handle + ")."
                 + (strippedJoints > 0
                     ? " " + strippedJoints + " joint(s) stripped both sides -- select the brace and TJointSync to re-cut."
-                    : "")
-                + " Run TRelabelBraces to refresh the group symbols.");
+                    : ""));
         }
 
         private static string PlaceName(int p) => p == 0 ? "Back" : p == 2 ? "Front" : "Center";
@@ -506,6 +507,7 @@ namespace TimberDraw
             }
 
             ObjectId nid = ManagedTimber.RebuildFromFrame(mid, nf);
+            RelabelBracesIfBrace(db, nid);   // a trimmed/extended brace changes Overall -> its group
             ed.WriteMessage("\nTFit: " + type + " " + (isNear ? "near" : "far") +
                             " end fitted; new length " + nf.L.ToString("0.#") + " (" + nid.Handle + ").");
         }
@@ -535,6 +537,7 @@ namespace TimberDraw
 
             ObjectId nid = ManagedTimber.RegenerateSection(id, newW, newD, "");   // "" = keep existing type
             if (nid.IsNull) { ed.WriteMessage("\nTSection: could not re-section that timber."); return; }
+            RelabelBracesIfBrace(db, nid);   // a re-sectioned brace changes its size+shape group
 
             Module1.DataStructure xd = Module1.GetXdata(nid);
             string type = string.IsNullOrEmpty(xd?.Type) ? "Timber" : xd.Type;

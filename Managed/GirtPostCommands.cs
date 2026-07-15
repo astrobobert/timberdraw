@@ -510,15 +510,24 @@ namespace TimberDraw
                 }
             }
 
+            // Re-cut tenons change braces' finished Overall -> their size+shape groups. Quiet +
+            // idempotent (only changed symbols rewrite), so an all-girt sync is a cheap no-op.
+            if (recut + reattached > 0) RelabelBraces(db);
+
             ed.WriteMessage("\nTJointSync: " + recut + " re-cut, " + reattached + " re-attached"
                             + (apart > 0 ? ", " + apart + " without contact (left as-is)" : "")
                             + (unknown > 0 ? ", " + unknown + " with no stored recipe (skipped)" : "") + ".");
         }
 
-        // Remove a girt -> post joint: the tenon + mortise (and anything else sharing its id, e.g. future
-        // pegs). Pick the girt then the post, like TJoint; the bearing contact is re-found and the joint at
-        // that end is deleted from BOTH timbers, which then rebuild whole. Run once per end for a girt that
-        // tenons into the same post at both ends (the matched end is deleted; the other is left intact).
+        // Delete THE joint between two picked timbers -- ANY pair, ANY connection type (Robert's
+        // call 2026-07-15: TJointDel works the same for all joint pairs; the per-family *Del verbs
+        // remain as conveniences). The shared id's features strip from BOTH sides (all five kinds --
+        // tenon/mortise, pegs, polys, prisms), both timbers rebuild, and the recipe STAMPS are
+        // removed too -- a deliberate delete must never resurrect on a later TJointSync (the stamps
+        // are what re-attach). A pair sharing TWO joints (a girt tenoning the same post at both
+        // ends) deletes the one nearest the FIRST pick; run again for the other. LEGACY fallback
+        // (kept -- legacy-drawings policy): an unkeyed (id 0) girt -> post box tenon has no shared
+        // id to find, so it still deletes by end-contact + mortise footprint overlap.
         [CommandMethod("TJointDel")]
         public static void JointDelete()
         {
@@ -527,11 +536,41 @@ namespace TimberDraw
             Editor ed = doc.Editor;
             Database db = doc.Database;
 
-            if (!PickTimber(ed, db, "\nPick the TENONED timber (girt / summer): ", out ObjectId girtId, out ManagedTimber.TFrame girt)) return;
-            if (!PickTimber(ed, db, "\nPick the MORTISED timber (post / carrier): ", out ObjectId postId, out ManagedTimber.TFrame post)) return;
+            if (!PickTimber(ed, db, "\nPick the FIRST jointed timber: ", out ObjectId girtId, out ManagedTimber.TFrame girt, out Point3d pickA)) return;
+            if (!PickTimber(ed, db, "\nPick its PARTNER: ", out ObjectId postId, out ManagedTimber.TFrame post)) return;
             if (girtId == postId) { ed.WriteMessage("\nPick two different timbers."); return; }
 
-            // The girt END-cap that bears on a post SIDE face (same find as TJoint).
+            // KEYED path: any joint id present on both timbers' geometry, whatever cutter made it.
+            HashSet<int> shared = ManagedTimber.JointIds(girt);
+            shared.IntersectWith(ManagedTimber.JointIds(post));
+            if (shared.Count > 0)
+            {
+                // More than one shared joint: take the one whose features sit nearest the first
+                // pick along the timber (near end vs far end -- precision doesn't matter).
+                int jid = 0; double best = double.MaxValue;
+                double pickS = (pickA - girt.O).DotProduct(girt.Z.GetNormal());
+                foreach (int j in shared)
+                {
+                    double dist = Math.Abs(JointStation(girt, j) - pickS);
+                    if (dist < best) { best = dist; jid = j; }
+                }
+                ManagedTimber.StripJoint(ref girt, jid);
+                ManagedTimber.StripJoint(ref post, jid);
+                ObjectId na = ManagedTimber.RebuildFromFrame(girtId, girt);
+                ObjectId nb = ManagedTimber.RebuildFromFrame(postId, post);
+                ManagedTimber.RemoveJointSpec(na, jid);   // the recipe goes with the joint
+                ManagedTimber.RemoveJointSpec(nb, jid);
+                RelabelBracesIfBrace(db, na, nb);         // an uncut brace tenon changes its group
+                ed.WriteMessage("\nTJointDel: joint #" + jid + " removed, both sides ("
+                    + na.Handle + ", " + nb.Handle + ")."
+                    + (shared.Count > 1 ? " This pair shares " + (shared.Count - 1)
+                        + " more joint(s) -- run again to delete another." : ""));
+                return;
+            }
+
+            // LEGACY fallback: an unkeyed (id 0) box tenon. The original girt -> post path: match
+            // the end-cap on a side face, then drop the id-0 tenon at that end and the post
+            // mortise(s) under its footprint.
             ManagedTimber.TFace[] gf = ManagedTimber.Faces(girt);
             ManagedTimber.TFace[] pf = ManagedTimber.Faces(post);
             bool found = false;
@@ -543,34 +582,14 @@ namespace TimberDraw
                     if (ManagedTimber.FacesMate(gf[gi], ps, 0.25, out _)) { gEnd = gf[gi]; found = true; break; }
                 }
             if (!found)
-            { ed.WriteMessage("\nNo end-into-face contact -- pick the girt + post that share a joint."); return; }
+            { ed.WriteMessage("\nNo shared joint between those two timbers -- nothing to delete."); return; }
 
             bool farEnd = gEnd.N.DotProduct(girt.Z) > 0.0;
-            int ti = girt.Features == null ? -1 : girt.Features.FindIndex(f => !f.Subtract &&
+            int ti = girt.Features == null ? -1 : girt.Features.FindIndex(f => !f.Subtract && f.Joint == 0 &&
                          (((f.Min.Z + f.Max.Z) / 2.0 > girt.L / 2.0) == farEnd));
-            // No tenon box at this end? It may still be a shoulder-only (poly) joint -- delete by its id.
             if (ti < 0)
-            {
-                int sid = ExistingRafterFootId(girt, post);
-                if (sid == 0) { ed.WriteMessage("\nNo joint at that contact -- nothing to delete."); return; }
-                girt.JointPolys?.RemoveAll(j => j.Joint == sid);
-                post.JointPolys?.RemoveAll(j => j.Joint == sid);
-                ObjectId ng = ManagedTimber.RebuildFromFrame(girtId, girt);
-                ObjectId np = ManagedTimber.RebuildFromFrame(postId, post);
-                ed.WriteMessage("\nTJointDel: joint #" + sid + " removed (girt " + ng.Handle + ", post " + np.Handle + ").");
-                return;
-            }
+            { ed.WriteMessage("\nNo joint at that contact -- nothing to delete."); return; }
 
-            int id = girt.Features[ti].Joint;
-            if (id != 0)
-            {
-                girt.Features.RemoveAll(f => f.Joint == id);
-                post.Features.RemoveAll(f => f.Joint == id);
-                post.Pegs?.RemoveAll(p => p.Joint == id);   // pegs go with the joint
-                girt.JointPolys?.RemoveAll(j => j.Joint == id);   // shoulder polys ride the same id
-                post.JointPolys?.RemoveAll(j => j.Joint == id);
-            }
-            else
             {
                 // Legacy / unkeyed: map the tenon corners into post-local for its footprint, drop the
                 // overlapping post mortise(s).
@@ -596,8 +615,23 @@ namespace TimberDraw
 
             ObjectId ngirt = ManagedTimber.RebuildFromFrame(girtId, girt);
             ObjectId npost = ManagedTimber.RebuildFromFrame(postId, post);
-            ed.WriteMessage("\nTJointDel: joint " + (id != 0 ? "#" + id : "(legacy)") +
-                            " removed (girt " + ngirt.Handle + ", post " + npost.Handle + ").");
+            ed.WriteMessage("\nTJointDel: joint (legacy, unkeyed) removed (girt " + ngirt.Handle
+                            + ", post " + npost.Handle + ").");
+        }
+
+        // Mean length-axis station of a joint's box features/pegs on this frame -- enough to tell
+        // which END a joint sits at when a pair shares two. Poly-only joints fall back to mid-span
+        // (an arbitrary but converging choice: once one is deleted, the next run finds the other).
+        private static double JointStation(ManagedTimber.TFrame f, int id)
+        {
+            double sum = 0.0; int n = 0;
+            if (f.Features != null)
+                foreach ((Point3d Min, Point3d Max, bool Subtract, int Joint) x in f.Features)
+                    if (x.Joint == id) { sum += (x.Min.Z + x.Max.Z) / 2.0; n++; }
+            if (f.Pegs != null)
+                foreach ((Point3d C, Vector3d Axis, double R, double Half, int Joint) x in f.Pegs)
+                    if (x.Joint == id) { sum += x.C.Z; n++; }
+            return n > 0 ? sum / n : f.L / 2.0;
         }
     }
 }

@@ -71,10 +71,15 @@ has a matching `...Del`.
   mortise, housing, pegs) on both timbers. Running the cutter again on the same
   pair replaces that joint in place — change a tenon width and re-apply without
   cleanup.
-- **Delete removes by id.** Each `...Del` command removes exactly one joint's
-  features from both timbers and rebuilds them; other joints on the same post
-  are untouched. **Pegs ride the joint id** — deleting the joint takes its peg
-  bores with it.
+- **Delete removes by id — `TJointDel` works on any pair.** Pick any two
+  jointed timbers, whatever the connection type: the shared joint's features
+  strip from both sides, both rebuild, and the stored recipe goes with it — a
+  deleted joint never resurrects on a later `TJointSync` or a re-Generate.
+  If the pair shares two joints (a girt tenoning the same post at both ends),
+  the one nearest your first pick is deleted; run again for the other. The
+  per-family `...Del` commands remain as conveniences; other joints on the
+  same timbers are untouched. **Pegs ride the joint id** — deleting the joint
+  takes its peg bores with it.
 - **Batch is idempotent.** `TJointAll` skips contacts that already carry a
   joint, so re-running it after adding a girt only cuts the new work.
 - **Moved a jointed timber? `TJointSync`.** Select the timbers you moved and

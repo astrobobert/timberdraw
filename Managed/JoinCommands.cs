@@ -137,6 +137,7 @@ namespace TimberDraw
             ObjectId nb = ManagedTimber.RebuildFromFrame(JoinSession.BId, fb);
             ManagedTimber.RemoveJointSpec(na, sid);
             ManagedTimber.RemoveJointSpec(nb, sid);
+            RelabelBracesIfBrace(db, na, nb);   // an uncut brace tenon changes Overall -> its group
             string gone = "joint cleared -- Apply re-cuts fresh at the current contact";
             ed.WriteMessage("\nJoints: " + gone + ".");
             if (ManagedTimber.TryReadFrame(db, na, out ManagedTimber.TFrame a2) &&
@@ -182,6 +183,7 @@ namespace TimberDraw
                     ObjectId dbId = ManagedTimber.RebuildFromFrame(JoinSession.BId, fb);
                     ManagedTimber.RemoveJointSpec(da, sid);
                     ManagedTimber.RemoveJointSpec(dbId, sid);
+                    RelabelBracesIfBrace(db, da, dbId);   // an uncut brace tenon changes Overall -> its group
                     string gone = JoinSession.Active.DisplayName + ": joint removed (all elements off).";
                     ed.WriteMessage("\n" + gone);
                     if (!release &&
@@ -209,6 +211,7 @@ namespace TimberDraw
                 ManagedTimber.WriteJointSpec(r.AId, r.Jid, state);
                 ManagedTimber.WriteJointSpec(r.BId, r.Jid, state);
             }
+            RelabelBracesIfBrace(db, r.AId, r.BId);   // a (re)cut brace tenon changes Overall -> its group
             string diag = JoinSession.Active.DisplayName + ": " + r.Diag;
             if (release)
             {
