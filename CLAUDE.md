@@ -43,7 +43,10 @@ sections further below are the GENERATOR's internals only.
   nodes; `FrameGrid` derives the installer labels. This is the FREEZE BRIDGE (the one generator file
   allowed to reference `Managed\`).
 - `FrameRegistry` / `TFreeze` -- the one-way freeze gate. Once frozen the tree's Draw button refuses and
-  the timbers carry on as the source of truth.
+  the timbers carry on as the source of truth. The registry record also carries `SpecJson` (stamped at
+  every Draw + at Freeze, 2026-07-15): opening/activating a drawing REFILLS the tree with that drawing's
+  own frame (recall-on-open; pre-stamp drawings keep the empty start). NEVER derive a spec from the
+  solids -- the spec is a generator, not the model.
 - **Regenerate is skeleton-only (2026-07-07):** `EraseFrame` keeps any FrameTag-matched timber whose
   `Free` xdata == "1" (stamped at every editor creation: DrawBox/DrawMiteredBrace/TScarf pieces/first
   TAssign of an unassigned timber) OR whose FloorTag is set (the generator never writes FloorTag) --
@@ -119,7 +122,7 @@ Joinery commands (each family below; every cutter has a matching `...Del`):
 
 | Command | Connection |
 |---|---|
-| `TJoint` / `TJointAll` / `TJointDel` | Girt end -> post side: tenon + housing + pegs. `TJointAll` = the DELIBERATE batch: SELECTION-scoped only (no All -- Robert's call; pickfirst honored, selection = who GETS joints), then girt->post / post->sill / summer->girt / joist->carrier passes, each with its own sticky recipe. |
+| `TJoint` / `TJointAll` / `TJointDel` | Girt end -> post side: tenon + housing + pegs. `TJointAll` = the DELIBERATE batch: SELECTION-scoped only (no All -- Robert's call; pickfirst honored, selection = who GETS joints), then girt->post / post->sill / summer->girt / joist->carrier / common (ridge housing + eave birdsmouth) passes, each with its own sticky recipe. |
 | `TJointSync` | Re-cut a selected timber's joints from their STORED recipes after a move (same id) or a re-Generate (geometric re-attach to the fresh skeleton member); no-contact joints reported + left. |
 | `TJoinPick` / `TJoinApply` / `TJoinClear` | Joints pane flow (`TPanel` -> Joints): pick pair, edit the element stack, live re-cut. Clear strips the held pair's joint (features + spec) and KEEPS the pair -- Apply after re-cuts fresh at the current contact (the displaced-joint re-snap). |
 | `TStrut` / `TStrutDel` | Strut / v-strut -> rafter underside, post side, king-post side, girt underside (any angle). |
@@ -148,7 +151,10 @@ solids; the `Compute*` half mutates frames only -- shared by commands and the Jo
 ### Managed Joinery
 
 Fresh managed cutters on the TFrame/face model (the parked `Joints\` path is untouched). The connection
-catalog + canonical param names live in `GLOSSARY.md` section D. The essentials:
+catalog + canonical param names live in `GLOSSARY.md` section D. `ConnectionType.Name` is the
+PERSISTENCE KEY (drawing joint stamps + the JointDefaults store) -- NEVER rename one; the UI shows the
+separate `DisplayName` (Title Case, pulldown sorted alphabetically -- Robert's call 2026-07-15), which
+renames freely. The essentials:
 - **Four LOCAL feature primitives on `TFrame`** (transform-invariant; `Faces()` ignore them, so TScan still
   reports the clean bearing node): `Features` = boxes `(Min,Max,Subtract,Joint)` (subtract=mortise,
   union=tenon); `Pegs` = cylinders `(C,Axis,R,Half,Joint)` (full/blind bores); `JointPolys` = elevation

@@ -26,10 +26,13 @@ tab). The Frame tab is three panes:
    (**New / Save / Save As / Load**), and **Set Default / Freeze / Redraw
    Grid**.
 
-The tree opens **empty every time** (and on every drawing switch) — a frame
-starts with **New**, a loaded template, or a right-click **Add Bent** on the
-frame node. To keep a design across sessions, save it as a named template
-(below) — the drawn frame itself is never lost; only the palette restarts.
+The tree **recalls the open drawing's own frame**: every Draw (and the
+Freeze) stamps the recipe into the drawing, so opening or switching to a
+drawing whose frame came from the tree refills the palette with *that*
+frame. A drawing with no stamped frame (never drawn here, or drawn before
+July 2026) opens **empty** — a frame then starts with **New**, a loaded
+template, or a right-click **Add Bent** on the frame node. To carry a design
+between projects, save it as a named template (below).
 
 ## 5.2 Building the structure
 
