@@ -1180,13 +1180,22 @@ namespace TimberDraw
             Vector3d nb = fb.N; if ((fb.C - bodyB).DotProduct(nb) < 0.0) nb = nb.Negate();
 
             // Legs measure CORNER -> TOE (Robert's rule, batch-2 #15 -- the generator's braces have
-            // always drawn this way): foot/head are the brace's OUTER-EDGE (toe) anchors on the host
-            // faces, so the box CENTERLINE sits depth/2 in from that line, toward the corner. Without
-            // this shift a free-assembly brace came out a different stick than an emitted brace with
-            // the same legs (and grouped under its own symbol).
+            // always drawn this way): foot/head anchor the brace's OUTER (toe) edge on the host
+            // faces, so the box CENTERLINE sits depth/2 in from that line, toward the corner. The
+            // frame's END CENTERS must then be where that SHIFTED centerline crosses the ACTUAL host
+            // face planes -- BuildFramedSolid miters through O and O+Z*L, so anchoring them off the
+            // planes translates the miters and buries the ends in the post/girt. With the ends on
+            // the planes, the miters reproduce the host faces exactly and the toe tips land at
+            // foot/head: the same stick the generator emits for the same legs.
             Point3d mid = foot + (head - foot) * 0.5;
             double side = (pa - mid).DotProduct(yb) >= 0.0 ? 1.0 : -1.0;   // which yb sign faces the corner
-            Vector3d toCorner = yb * (side * depth / 2.0);
+            Point3d c0 = foot + yb * (side * depth / 2.0);                 // a point on the shifted centerline
+
+            double denomA = xb.DotProduct(na), denomB = xb.DotProduct(nb);
+            if (System.Math.Abs(denomA) < 1e-9 || System.Math.Abs(denomB) < 1e-9) return false;  // axis parallel to a face
+            double tA = (fa.C - c0).DotProduct(na) / denomA;   // centerline station on face A's plane
+            double tB = (fb.C - c0).DotProduct(nb) / denomB;   // centerline station on face B's plane
+            if (tB - tA < 1e-6) return false;                  // no body left between the miters
 
             // Map to the section-in-XY / length-along-Z convention: length = Z (the brace axis xb),
             // depth = Y (yb), width = X (recomputed as Y x Z so the frame stays right-handed; width is
@@ -1194,8 +1203,8 @@ namespace TimberDraw
             // FacesMate sees opposing normals -> nodes.
             frame = new TFrame
             {
-                O = foot + toCorner, X = yb.CrossProduct(xb).GetNormal(), Y = yb, Z = xb,
-                L = (head - foot).Length, D = depth, W = width,
+                O = c0 + xb * tA, X = yb.CrossProduct(xb).GetNormal(), Y = yb, Z = xb,
+                L = tB - tA, D = depth, W = width,
                 NearN = na.Negate(), FarN = nb.Negate()
             };
             return true;
