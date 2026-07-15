@@ -130,7 +130,13 @@ namespace TimberDraw
 
             if (!GetSection(ed, out double w, out double d, out string type)) return;
 
-            if (!ManagedTimber.PickFace(ed, db, "\nPick the FIRST face: ", out ObjectId idA, out ManagedTimber.TFace fa)) return;
+            // The first pick doubles as the MODIFY gate (Robert's call: extend existing verbs, don't
+            // mint new ones): type M / Modify to re-seat an existing knee brace's legs in place
+            // instead of placing a new member.
+            int pick = ManagedTimber.PickFaceKeyword(ed, db, "\nPick the FIRST face or [Modify]: ",
+                "Modify", out ObjectId idA, out ManagedTimber.TFace fa);
+            if (pick < 0) return;
+            if (pick == 0) { ModifyBrace(ed, db); return; }
             if (!ManagedTimber.PickFace(ed, db, "\nPick the SECOND face: ", out ObjectId idB, out ManagedTimber.TFace fb)) return;
 
             double facing = fa.N.DotProduct(fb.N);
@@ -207,6 +213,121 @@ namespace TimberDraw
                                 " foot " + footRun.ToString("0.#") + " head " + headRun.ToString("0.#") +
                                 " (" + id.Handle + ").");
             }
+        }
+
+        // TJoin's MODIFY branch: re-seat an existing knee brace's LEGS in place. The TJoin anchors
+        // aren't stored on the timber, but the brace's mitered ends still lie ON its two host face
+        // planes (that's the TryBraceFrame contract) -- so FacesMate re-finds the hosts, the current
+        // legs seed the prompts, TryBraceFrame re-solves from the new runs, and the rebuild keeps
+        // identity (production number, Free marker, layer). The re-seat makes any joint features
+        // STALE, so each joint the brace carries is stripped from BOTH sides -- the recipes/stamps
+        // are kept, TJointSync re-cuts. Section changes ride along too: TSection the brace first,
+        // then Modify re-seats the new stock to the corner-to-toe rule (which TSection alone can't).
+        private static void ModifyBrace(Editor ed, Database db)
+        {
+            if (!PickTimber(ed, db, "\nPick the knee BRACE to re-seat: ", out ObjectId braceId, out ManagedTimber.TFrame bf)) return;
+
+            // The hosts whose faces the two miters bear on (near end = foot / face A, far = head / B).
+            ManagedTimber.TFace[] bfa = ManagedTimber.Faces(bf);
+            if (!FindBraceHost(db, braceId, bfa[0], out ManagedTimber.TFrame frA, out ManagedTimber.TFace fa) ||
+                !FindBraceHost(db, braceId, bfa[1], out ManagedTimber.TFrame frB, out ManagedTimber.TFace fb))
+            {
+                ed.WriteMessage("\nCouldn't find the two host faces this brace dies into -- both miters"
+                    + " must bear on their hosts (if it was moved off them, erase + TJoin fresh).");
+                return;
+            }
+            Point3d bodyA = frA.O + frA.Z * (frA.L / 2.0);
+            Point3d bodyB = frB.O + frB.Z * (frB.L / 2.0);
+
+            // Current legs (corner -> toe) seed the prompts: the toe tips lie on the host planes, so
+            // each run is the toe edge's step from the corner anchor along the measuring direction
+            // (the toe is the depth side FARTHER out -- hence the max).
+            if (!ManagedTimber.TryBraceAnchors(fa, fb, bodyA, bodyB, out Point3d pa, out Vector3d dirFoot,
+                                               out Point3d pb, out Vector3d dirHead))
+            { ed.WriteMessage("\nThose host faces don't form a brace corner any more."); return; }
+            Point3d farC = bf.O + bf.Z * bf.L;
+            double curFoot = Math.Max((bf.O + bf.Y * (bf.D / 2.0) - pa).DotProduct(dirFoot),
+                                      (bf.O - bf.Y * (bf.D / 2.0) - pa).DotProduct(dirFoot));
+            double curHead = Math.Max((farC + bf.Y * (bf.D / 2.0) - pb).DotProduct(dirHead),
+                                      (farC - bf.Y * (bf.D / 2.0) - pb).DotProduct(dirHead));
+
+            if (!GetPositive(ed, "Foot (corner to toe)", Math.Round(curFoot, 1), out double footRun)) return;
+            if (!GetPositive(ed, "Head (corner to toe)", Math.Round(curHead, 1), out double headRun)) return;
+
+            if (!ManagedTimber.TryBraceFrame(fa, fb, bf.D, bf.W, footRun, headRun, bodyA, bodyB,
+                                             out ManagedTimber.TFrame nf))
+            { ed.WriteMessage("\nThose legs don't solve a brace in this corner."); return; }
+
+            // Ghost + confirm, same as the place path -- nothing mutates on a No/Escape.
+            bool go;
+            using (Solid3d ghost = ManagedTimber.BuildFramedSolid(nf))
+            {
+                ghost.ColorIndex = 5;   // blue, colour-blind safe
+                TransientManager tm = TransientManager.CurrentTransientManager;
+                var ints = new IntegerCollection();
+                tm.AddTransient(ghost, TransientDrawingMode.DirectShortTerm, 128, ints);
+                try
+                {
+                    var pko = new PromptKeywordOptions(
+                        "\nRe-seat the brace (foot " + footRun.ToString("0.#") + ", head " +
+                        headRun.ToString("0.#") + ")? ");
+                    pko.Keywords.Add("Yes");
+                    pko.Keywords.Add("No");
+                    pko.Keywords.Default = "Yes";
+                    pko.AllowNone = true;   // Enter = Yes
+                    PromptResult kr = ed.GetKeywords(pko);
+                    go = kr.Status == PromptStatus.None ||
+                         (kr.Status == PromptStatus.OK && kr.StringResult == "Yes");
+                }
+                finally { tm.EraseTransient(ghost, ints); }
+            }
+            if (!go) { ed.WriteMessage("\nRe-seat cancelled."); return; }
+
+            // The re-seat obsoletes the brace's joints GEOMETRICALLY: strip each joint id from the
+            // partner too (the mate's pocket at the old seat is stale wood). Recipes/stamps stay on
+            // both sides, so TJointSync re-cuts at the new contact.
+            int strippedJoints = 0;
+            foreach (int jid in ManagedTimber.JointIds(bf))
+            {
+                if (jid == 0) continue;
+                foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) t in ManagedTimber.EnumerateWithRole(db))
+                {
+                    if (t.Id == braceId || !ManagedTimber.JointIds(t.F).Contains(jid)) continue;
+                    ManagedTimber.TFrame pf = t.F;
+                    ManagedTimber.StripJoint(ref pf, jid);
+                    ManagedTimber.RebuildFromFrame(t.Id, pf);
+                    strippedJoints++;
+                    break;
+                }
+            }
+
+            ObjectId nid = ManagedTimber.RebuildFromFrame(braceId, nf);   // fresh frame = plain brace; identity carried
+            ed.WriteMessage("\nTJoin (modify): brace re-seated -- foot " + footRun.ToString("0.#")
+                + " head " + headRun.ToString("0.#") + ", length " + nf.L.ToString("0.#")
+                + " (" + nid.Handle + ")."
+                + (strippedJoints > 0
+                    ? " " + strippedJoints + " joint(s) stripped both sides -- select the brace and TJointSync to re-cut."
+                    : "")
+                + " Run TRelabelBraces to refresh the group symbols.");
+        }
+
+        // The host whose SIDE face a brace END bears on (FacesMate, the cutters' tolerance).
+        private static bool FindBraceHost(Database db, ObjectId braceId, ManagedTimber.TFace end,
+            out ManagedTimber.TFrame host, out ManagedTimber.TFace face)
+        {
+            host = default; face = default;
+            foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) t in ManagedTimber.EnumerateWithRole(db))
+            {
+                if (t.Id == braceId) continue;
+                foreach (ManagedTimber.TFace s in ManagedTimber.Faces(t.F))
+                {
+                    if (Math.Abs(s.N.DotProduct(t.F.Z)) >= 0.5) continue;   // side faces only
+                    if (!ManagedTimber.FacesMate(end, s, 0.25, out _)) continue;
+                    host = t.F; face = s;
+                    return true;
+                }
+            }
+            return false;
         }
 
         // Fit the END of an existing timber onto a target face: pick the timber's end face (the one to

@@ -42,7 +42,7 @@ knowing about it.
 |---|---|---|
 | `TPlace` | a point + extrusion direction | Places one timber of the sticky section. |
 | `TSpan` | two **timbers** | Finds their facing faces and fills the gap with a new member — post to post, girt to girt. |
-| `TJoin` | two **faces** | Facing faces: a square-ended filler. Angled faces: a mitered knee. |
+| `TJoin` | two **faces** | Facing faces: a square-ended filler. Angled faces: a mitered knee. Type **M** (Modify) at the first pick to **re-seat an existing brace's legs** in place instead: pick the brace, enter new Foot/Head (seeded with its current legs), confirm the ghost. Identity survives; its joints are stripped both sides (recipes kept) — `TJointSync` re-cuts. To change a brace's *section*, `TSection` first, then Modify re-seats the new stock to the corner-to-toe rule. |
 | `TFit` | a timber's **end**, then a target face | Trims or extends that end onto the face (square or mitered); the other end stays put. |
 | `TSection` | a timber | Re-sections it (new W x D) in place. |
 | `TScarf` | a timber + a point | Splits it into two pieces with a scarf, and remembers the splice interface. |

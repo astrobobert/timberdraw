@@ -27,7 +27,7 @@ palette** — Frame / Assembly / Joints / Browser / Output.
 | `TPanel` | Open the Assembly tab (sticky sections + brace spec + the verb bar). Ch. 8 |
 | `TPlace` | Place one timber of the sticky section. Ch. 8 |
 | `TSpan` | Fill the gap between two picked timbers. Ch. 8 |
-| `TJoin` | Connect two picked faces (square filler or mitered knee). Ch. 8 |
+| `TJoin` | Connect two picked faces (square filler or mitered knee); **M**odify re-seats an existing brace's legs in place. Ch. 8 |
 | `TFit` | Trim/extend a picked end onto a target face. Ch. 8 |
 | `TSection` | Re-section a timber (W x D) in place. Ch. 8 |
 | `TScarf` | Split a timber in two with a scarf splice. Ch. 8 |

@@ -104,7 +104,7 @@ Editor verbs (`Managed\ManagedTimber.cs` unless noted):
 |---|---|
 | `TPlace` | Place one managed timber; pick the extrusion direction (no UCS re-roll per member). |
 | `TSpan` | Connect two PICKED timbers -- finds the facing faces and fills the gap with a member. |
-| `TJoin` | Connect two PICKED faces -- facing -> square-ended filler; angled -> mitered knee brace. |
+| `TJoin` | Connect two PICKED faces -- facing -> square-ended filler; angled -> mitered knee brace. MODIFY keyword (Robert's options-over-verbs call, 2026-07-15) re-seats an existing brace's LEGS in place: hosts re-found via FacesMate on the miter planes, TryBraceFrame re-solves, identity carried, joints stripped BOTH sides (stamps kept -> TJointSync re-cuts). |
 | `TFit` | Trim/extend a timber's picked END onto a target face (square or mitered); other end stays. |
 | `TSection` | Re-section a managed timber (change W x D) in place. |
 | `TScarf` | Scarf-splice a timber into two pieces; stores the scarf interface node. |

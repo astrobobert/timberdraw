@@ -262,30 +262,49 @@ namespace TimberDraw
         // centroid via a Brep over that path, and return the matching ANALYTIC TFace (clean extents +
         // outward normal). Returns the timber id + face.
         public static bool PickFace(Editor ed, Database db, string msg, out ObjectId id, out TFace face)
+            => PickFaceKeyword(ed, db, msg, null, out id, out face) == 1;
+
+        // PickFace with an optional escape KEYWORD (TJoin's Modify -- Robert's options-over-verbs
+        // call): 1 = face picked, 0 = the keyword was typed, -1 = cancelled/failed. GetSelection has
+        // no Keyword status, so the keyword THROWS from KeywordInput (the canonical pattern) and is
+        // caught right here -- the ErrorStatus.OK carrier never surfaces. Include the keyword in
+        // `msg` yourself (selection prompts don't render the bracket list).
+        public static int PickFaceKeyword(Editor ed, Database db, string msg, string keyword,
+            out ObjectId id, out TFace face)
         {
             id = ObjectId.Null; face = default;
             var pso = new PromptSelectionOptions
             { MessageForAdding = msg, SingleOnly = true, ForceSubSelections = true, SinglePickInSpace = true };
+            if (!string.IsNullOrEmpty(keyword))
+            {
+                pso.Keywords.Add(keyword);
+                pso.KeywordInput += (s, e) => throw new Autodesk.AutoCAD.Runtime.Exception(
+                    Autodesk.AutoCAD.Runtime.ErrorStatus.OK, e.Input);
+            }
             // Filter the pick to 3DSOLIDs only -- managed timbers are solids, so this hides every other
             // entity (lines, dims, text, blocks, scarf debris) from the selection. A stray non-managed
             // solid still falls through to the TryReadFrame check below.
             var filter = new SelectionFilter(new[] { new TypedValue((int)DxfCode.Start, "3DSOLID") });
-            PromptSelectionResult psr = ed.GetSelection(pso, filter);
-            if (psr.Status != PromptStatus.OK || psr.Value == null || psr.Value.Count == 0) return false;
+            PromptSelectionResult psr;
+            try { psr = ed.GetSelection(pso, filter); }
+            catch (Autodesk.AutoCAD.Runtime.Exception ex)
+                when (ex.ErrorStatus == Autodesk.AutoCAD.Runtime.ErrorStatus.OK && ex.Message == keyword)
+            { return 0; }
+            if (psr.Status != PromptStatus.OK || psr.Value == null || psr.Value.Count == 0) return -1;
 
             SelectedObject so = psr.Value[0];
-            if (so == null) return false;
+            if (so == null) return -1;
             id = so.ObjectId;
-            if (!TryReadFrame(db, id, out TFrame frame)) { ed.WriteMessage("\nNot a managed timber."); return false; }
+            if (!TryReadFrame(db, id, out TFrame frame)) { ed.WriteMessage("\nNot a managed timber."); return -1; }
 
             SelectedSubObject[] subs = so.GetSubentities();
-            if (subs == null || subs.Length == 0) { ed.WriteMessage("\nNo face captured."); return false; }
+            if (subs == null || subs.Length == 0) { ed.WriteMessage("\nNo face captured."); return -1; }
             FullSubentityPath path = subs[0].FullSubentityPath;
-            if (path.SubentId.Type != SubentityType.Face) { ed.WriteMessage("\nPick a FACE (not an edge/vertex)."); return false; }
+            if (path.SubentId.Type != SubentityType.Face) { ed.WriteMessage("\nPick a FACE (not an edge/vertex)."); return -1; }
 
-            if (!FaceCentroid(db, id, path, out Point3d c)) { ed.WriteMessage("\nCouldn't read the face geometry."); return false; }
+            if (!FaceCentroid(db, id, path, out Point3d c)) { ed.WriteMessage("\nCouldn't read the face geometry."); return -1; }
             face = NearestFaceByCenter(frame, c);
-            return true;
+            return 1;
         }
 
         // Centre of a picked face. `Entity.GetSubentity` returns a copy of the face geometry; our faces
