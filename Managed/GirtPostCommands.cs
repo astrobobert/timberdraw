@@ -110,6 +110,8 @@ namespace TimberDraw
         //   post foot -> sill             (short unpegged stub; _sillJoint)
         //   summer end -> girt/sill       (tusk tenon; _summerJoint)
         //   joist end -> carrier          (housed dovetail; _joistDove -- the deliberate half of TJoist)
+        //   common -> ridge + eave girt   (let-in housing at the head, housed birdsmouth at the
+        //                                  eave; _comridge / _comeave -- batch-3 #4)
         // Contacts that already carry a joint are SKIPPED (idempotent -- safe to re-run after manual
         // tweaks); a host fed by several members rebuilds once.
         [CommandMethod("TJointAll", CommandFlags.Modal | CommandFlags.UsePickSet)]
@@ -287,6 +289,78 @@ namespace TimberDraw
             }
             int joistCuts = cut - girtCuts - sillCuts - summerCuts;
 
+            // COMMON pass (batch-3 #4 -- "why doesn't TJointAll work on Commons"): each in-scope
+            // common rafter gets BOTH its cuts -- the head's let-in housing into the ridge and the
+            // housed birdsmouth over the eave girt. Two sticky recipes (_comridge / _comeave), each
+            // reviewed once; Escape skips just that half. Already-cut pairs skip by shared id.
+            if (RolePresent(CommonRoles))
+            {
+                ed.WriteMessage("\nCommon pass -- head -> ridge housing:");
+                if (!ReviewCommonRidge(ed)) ed.WriteMessage("\nCommon -> ridge housings skipped.");
+                else
+                {
+                    ConnectionType cridge = ConnectionType.CommonRidge(_comridge);
+                    foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) c in all)
+                    {
+                        if (!CommonRoles.Contains(c.Role) || !InScope(c.Id)) continue;
+                        foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) r in all)
+                        {
+                            if (r.Id == c.Id || !RidgeRoles.Contains(r.Role)) continue;
+                            ManagedTimber.TFrame common = work[c.Id];
+                            ManagedTimber.TFrame ridge = work[r.Id];
+                            if (ExistingRafterFootId(common, ridge) != 0) { skipped++; continue; }
+                            if (!FindFootContact(common, ridge, out ManagedTimber.TFace rFace)) continue;
+                            if (!ManagedTimber.CommonRidgeJoint(common, ridge, rFace, _comridge,
+                                    out List<(Point3d[] Poly, Vector3d Extrude, bool OnRidge)> prisms, out _))
+                            { failed++; continue; }
+                            int jid = nextId++;
+                            if (common.JointPrisms == null) common.JointPrisms = new List<(Point3d[], Vector3d, int, bool)>();
+                            if (ridge.JointPrisms == null) ridge.JointPrisms = new List<(Point3d[], Vector3d, int, bool)>();
+                            foreach ((Point3d[] Poly, Vector3d Extrude, bool OnRidge) p in prisms)
+                                (p.OnRidge ? ridge.JointPrisms : common.JointPrisms).Add((p.Poly, p.Extrude, jid, p.OnRidge));
+                            work[c.Id] = common; work[r.Id] = ridge;
+                            dirty.Add(c.Id); dirty.Add(r.Id);
+                            cuts.Add((c.Id, r.Id, jid, cridge));
+                            cut++;
+                        }
+                    }
+                }
+
+                ed.WriteMessage("\nCommon pass -- eave-girt birdsmouth:");
+                if (!ReviewCommonEave(ed)) ed.WriteMessage("\nBirdsmouths skipped.");
+                else
+                {
+                    ConnectionType bmouth = ConnectionType.Birdsmouth(_comeave);
+                    foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) c in all)
+                    {
+                        if (!CommonRoles.Contains(c.Role) || !InScope(c.Id)) continue;
+                        foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) g in all)
+                        {
+                            if (g.Id == c.Id || !EaveGirtRoles.Contains(g.Role)) continue;
+                            ManagedTimber.TFrame common = work[c.Id];
+                            ManagedTimber.TFrame girt = work[g.Id];
+                            if (ExistingRafterFootId(common, girt) != 0) { skipped++; continue; }
+                            // CommonEaveJoint finds the crossing itself -- a false here just means
+                            // the common doesn't ride this girt (not a collapsed cut).
+                            if (!ManagedTimber.CommonEaveJoint(common, girt, _comeave,
+                                    out Point3d[] rNotch, out double rXlo, out double rXhi,
+                                    out Point3d[] gPocket, out double gZlo, out double gZhi, out _))
+                                continue;
+                            int jid = nextId++;
+                            if (common.JointPolys == null) common.JointPolys = new List<(Point3d[], int, bool, double, double)>();
+                            if (girt.JointPolysZ == null) girt.JointPolysZ = new List<(Point3d[], int, bool, double, double)>();
+                            common.JointPolys.Add((rNotch, jid, false, rXlo, rXhi));
+                            girt.JointPolysZ.Add((gPocket, jid, true, gZlo, gZhi));
+                            work[c.Id] = common; work[g.Id] = girt;
+                            dirty.Add(c.Id); dirty.Add(g.Id);
+                            cuts.Add((c.Id, g.Id, jid, bmouth));
+                            cut++;
+                        }
+                    }
+                }
+            }
+            int commonCuts = cut - girtCuts - sillCuts - summerCuts - joistCuts;
+
             var remap = new Dictionary<ObjectId, ObjectId>();
             foreach (ObjectId id in dirty) remap[id] = ManagedTimber.RebuildFromFrame(id, work[id]);
             foreach ((ObjectId girt, ObjectId post, int jid, ConnectionType ct) c in cuts)
@@ -295,6 +369,7 @@ namespace TimberDraw
                             (sillCuts > 0 ? " (" + sillCuts + " post-foot -> sill)" : "") +
                             (summerCuts > 0 ? " (" + summerCuts + " summer -> girt)" : "") +
                             (joistCuts > 0 ? " (" + joistCuts + " joist end(s))" : "") +
+                            (commonCuts > 0 ? " (" + commonCuts + " common cut(s))" : "") +
                             ", skipped " + skipped + " already-jointed" +
                             (failed > 0 ? ", " + failed + " collapsed" : "") + ".");
         }

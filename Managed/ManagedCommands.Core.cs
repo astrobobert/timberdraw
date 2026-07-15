@@ -120,6 +120,11 @@ namespace TimberDraw
         private static readonly HashSet<string> JoistRoles = new HashSet<string> { "Joist" };
         // A joist's end dies into any floor carrier.
         private static readonly HashSet<string> JoistHostRoles = new HashSet<string> { "Girt", "FloorGirt", "EaveGirt", "Summer", "Sill" };
+        // Common rafters (batch-3 #4): the head housed into the ridge, the seat birdsmouthed over
+        // the eave girt -- TJointAll's common pass cuts both.
+        private static readonly HashSet<string> CommonRoles = new HashSet<string> { "Common" };
+        private static readonly HashSet<string> RidgeRoles = new HashSet<string> { "Ridge" };
+        private static readonly HashSet<string> EaveGirtRoles = new HashSet<string> { "EaveGirt" };
 
         // Review / adjust the sticky joint recipe (_joint) as a KIT OF PARTS: the elements (Tenon, Housing,
         // Pegs) are peers, each a toggleable sub-menu. Enter / "Cut" proceeds (returns true); Escape cancels
