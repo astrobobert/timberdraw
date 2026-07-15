@@ -253,19 +253,12 @@ namespace TimberDraw
                 def = Path.Combine(baseDir, "Scribe");
             }
 
-            using (var dlg = new System.Windows.Forms.FolderBrowserDialog
-            {
-                Description = "Scribe output folder (the .tsj files land here)",
-                SelectedPath = def,
-                ShowNewFolderButton = true
-            })
-            {
-                if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return null;
-                string folder = dlg.SelectedPath;
-                Properties.Settings.Default.ScribeFolder = folder;
-                Properties.Settings.Default.Save();
-                return folder;
-            }
+            // The shared modern picker (FolderPicker) -- same chrome as the app's file dialogs.
+            string folder = FolderPicker.Pick("Scribe output folder (the .tsj files land here)", def);
+            if (folder == null) return null;
+            Properties.Settings.Default.ScribeFolder = folder;
+            Properties.Settings.Default.Save();
+            return folder;
         }
 
         private static string Label(ManagedTimber.ShopInfo t)
