@@ -1115,13 +1115,18 @@ namespace TimberDraw
         // The corner-relative anchors + unit step directions a brace foot/head are measured along (so a
         // jig can invert the cursor into runs, and TryBraceFrame can build from runs). foot = Pa +
         // dirFoot*footRun (on face A, stepping away from timber B's body); head = Pb + dirHead*headRun.
+        // braceW + placement decide WHERE along the corner the brace sits (see below); both anchors
+        // share that one station, so the brace is PLANAR by construction.
         // Returns false when the faces are parallel (no corner) or a step direction collapses.
         public static bool TryBraceAnchors(TFace fa, TFace fb, Point3d bodyA, Point3d bodyB,
+            double braceW, int placement,
             out Point3d pa, out Vector3d dirFoot, out Point3d pb, out Vector3d dirHead)
         {
             pa = default; pb = default; dirFoot = default; dirHead = default;
 
-            // Corner line where the two face planes meet (direction = fa.N x fb.N).
+            // Corner line where the two face planes meet (direction = fa.N x fb.N). The sign is
+            // CANONICALIZED (largest-magnitude component positive) so Back/Front below mean the
+            // same side however the faces were picked or their normals stored.
             Vector3d uRaw = fa.N.CrossProduct(fb.N);
             double uu = uRaw.DotProduct(uRaw);
             if (uu < 1e-12) return false;                               // faces parallel -- no corner
@@ -1130,20 +1135,46 @@ namespace TimberDraw
             Vector3d p0v = (dA * fb.N.CrossProduct(uRaw) + dB * uRaw.CrossProduct(fa.N)) / uu;
             Point3d P0 = Point3d.Origin + p0v;                          // a point on the corner line
             Vector3d u = uRaw.GetNormal();
+            double ux = System.Math.Abs(u.X), uy = System.Math.Abs(u.Y), uz = System.Math.Abs(u.Z);
+            double lead = ux >= uy && ux >= uz ? u.X : uy >= uz ? u.Y : u.Z;
+            if (lead < 0.0) u = u.Negate();
 
             // Reliable OUTWARD normals: flip each face normal so it points away from its own timber's
             // body centre (the stored normal may be either sign).
             Vector3d na = fa.N; if ((fa.C - bodyA).DotProduct(na) < 0.0) na = na.Negate();
             Vector3d nb = fb.N; if ((fb.C - bodyB).DotProduct(nb) < 0.0) nb = nb.Negate();
 
+            // ONE shared station along the corner for BOTH anchors, REGISTERED ON THE NARROWER of
+            // the two faces (Robert's rule, 2026-07-15 -- the generator's ZOffsetFor has always
+            // justified within Min(host widths)). The old code leveled each anchor with ITS OWN
+            // face centre, so hosts whose centrelines don't share a plane (a 6-wide girt flush to
+            // one side of a 10-wide post) skewed the brace centre-to-centre. placement: 0 Back
+            // (flush the -u face), 1 Center (middle of the slack), 2 Front (flush the +u face); a
+            // brace as wide as (or wider than) the narrow host centres on it, like the generator's
+            // slack clamp. u lies in BOTH face planes, so the extents along it are exact.
+            double cA = (fa.C - P0).DotProduct(u);
+            double eA = System.Math.Abs(fa.U.DotProduct(u)) * fa.UHalf + System.Math.Abs(fa.V.DotProduct(u)) * fa.VHalf;
+            double cB = (fb.C - P0).DotProduct(u);
+            double eB = System.Math.Abs(fb.U.DotProduct(u)) * fb.UHalf + System.Math.Abs(fb.V.DotProduct(u)) * fb.VHalf;
+            double cN = eA <= eB ? cA : cB, eN = System.Math.Min(eA, eB);
+            double s;
+            if (braceW >= 2.0 * eN - 1e-9) s = cN;                      // no slack: centre on the narrow host
+            else switch (placement)
+            {
+                case 0:  s = cN - eN + braceW / 2.0; break;             // Back: flush the -u face
+                case 2:  s = cN + eN - braceW / 2.0; break;             // Front: flush the +u face
+                default: s = cN; break;                                 // Center
+            }
+            Point3d anchor = P0 + u * s;
+
             // Foot on face A: step away from timber B's body (+nb projected into plane A, normal na).
-            pa = P0 + (fa.C - P0).DotProduct(u) * u;                    // corner point level with face A
+            pa = anchor;
             Vector3d df = nb - nb.DotProduct(na) * na;
             if (df.Length < 1e-6) return false;
             dirFoot = df.GetNormal();
 
             // Head on face B: step away from timber A's body (+na projected into plane B, normal nb).
-            pb = P0 + (fb.C - P0).DotProduct(u) * u;
+            pb = anchor;
             Vector3d dh = na - na.DotProduct(nb) * nb;
             if (dh.Length < 1e-6) return false;
             dirHead = dh.GetNormal();
@@ -1151,12 +1182,13 @@ namespace TimberDraw
         }
 
         // Build the placement frame for a knee brace from the foot/head runs. Shared by DrawMiteredBrace
-        // (which slices the solid) and BraceJig (which ghosts the box). Returns false on a degenerate corner.
+        // (which slices the solid) and BraceJig (which ghosts the box). placement = 0 Back / 1 Center /
+        // 2 Front on the narrower host (TryBraceAnchors). Returns false on a degenerate corner.
         public static bool TryBraceFrame(TFace fa, TFace fb, double depth, double width,
-            double footRun, double headRun, Point3d bodyA, Point3d bodyB, out TFrame frame)
+            double footRun, double headRun, Point3d bodyA, Point3d bodyB, int placement, out TFrame frame)
         {
             frame = default;
-            if (!TryBraceAnchors(fa, fb, bodyA, bodyB, out Point3d pa, out Vector3d dirFoot,
+            if (!TryBraceAnchors(fa, fb, bodyA, bodyB, width, placement, out Point3d pa, out Vector3d dirFoot,
                                  out Point3d pb, out Vector3d dirHead)) return false;
 
             Point3d foot = pa + dirFoot * footRun;

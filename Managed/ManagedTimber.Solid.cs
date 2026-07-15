@@ -548,9 +548,9 @@ namespace TimberDraw
         // mid-post made the foot jump to the wrong side of the girt).
         public static ObjectId DrawMiteredBrace(TFace fa, TFace fb, double depth, double width,
             double footRun, double headRun, string type, string designation,
-            Point3d bodyA, Point3d bodyB)
+            Point3d bodyA, Point3d bodyB, int placement)
         {
-            if (!TryBraceFrame(fa, fb, depth, width, footRun, headRun, bodyA, bodyB, out TFrame frame))
+            if (!TryBraceFrame(fa, fb, depth, width, footRun, headRun, bodyA, bodyB, placement, out TFrame frame))
                 return ObjectId.Null;
             ObjectId id = DrawFramedSolid(frame, type, designation, "matchface", "matchface");
             if (!id.IsNull)

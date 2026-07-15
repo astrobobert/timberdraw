@@ -172,46 +172,27 @@ namespace TimberDraw
                 Point3d bodyA = frA.O + frA.Z * (frA.L / 2.0);
                 Point3d bodyB = frB.O + frB.Z * (frB.L / 2.0);
 
-                // The palette (ManagedBrace) initializes the foot/head runs ONCE; the ghost previews the
-                // brace and the user approves with Enter or cancels with Esc. To resize, set the palette
-                // first and re-run (the size is read once at command start, not tracked live).
+                // The palette (ManagedBrace) initializes the foot/head runs + placement ONCE; the ghost
+                // previews the brace and the user approves with Enter or cancels with Esc. To resize,
+                // set the palette first and re-run (the size is read once at command start, not
+                // tracked live). Placement (Back/Center/Front, registered on the NARROWER host --
+                // Robert's rule) can be Flipped at the ghost prompt.
                 double footRun = ManagedBrace.HasCurrent ? ManagedBrace.FootRun : 18.0;
                 double headRun = ManagedBrace.HasCurrent ? ManagedBrace.HeadRun : 18.0;
-                if (!ManagedTimber.TryBraceFrame(fa, fb, d, w, footRun, headRun, bodyA, bodyB,
+                int bplace = ManagedBrace.HasCurrent ? ManagedBrace.Placement : 1;
+                if (!ManagedTimber.TryBraceFrame(fa, fb, d, w, footRun, headRun, bodyA, bodyB, bplace,
                                                  out ManagedTimber.TFrame bframe))
                 { ed.WriteMessage("\nThose faces don't form a brace corner."); return; }
 
-                bool place;
-                using (Solid3d ghost = ManagedTimber.BuildFramedSolid(bframe))
-                {
-                    ghost.ColorIndex = 5;   // blue, colour-blind safe
-                    TransientManager tm = TransientManager.CurrentTransientManager;
-                    var ints = new IntegerCollection();
-                    tm.AddTransient(ghost, TransientDrawingMode.DirectShortTerm, 128, ints);
-                    try
-                    {
-                        // No "[Yes/No] <Yes>" in the message -- PromptKeywordOptions appends that itself
-                        // (putting it in the text too made the prompt render doubled).
-                        var pko = new PromptKeywordOptions(
-                            "\nPlace the brace (foot " + footRun.ToString("0.#") + ", head " +
-                            headRun.ToString("0.#") + " -- set size on the palette)? ");
-                        pko.Keywords.Add("Yes");
-                        pko.Keywords.Add("No");
-                        pko.Keywords.Default = "Yes";
-                        pko.AllowNone = true;   // Enter = Yes
-                        PromptResult kr = ed.GetKeywords(pko);
-                        place = kr.Status == PromptStatus.None ||
-                                (kr.Status == PromptStatus.OK && kr.StringResult == "Yes");
-                    }
-                    finally { tm.EraseTransient(ghost, ints); }
-                }
-                if (!place) { ed.WriteMessage("\nBrace cancelled."); return; }
+                if (!ConfirmBraceGhost(ed, fa, fb, d, w, footRun, headRun, bodyA, bodyB,
+                        "Place the brace", ref bplace, ref bframe))
+                { ed.WriteMessage("\nBrace cancelled."); return; }
 
-                id = ManagedTimber.DrawMiteredBrace(fa, fb, d, w, footRun, headRun, type, "", bodyA, bodyB);
+                id = ManagedTimber.DrawMiteredBrace(fa, fb, d, w, footRun, headRun, type, "", bodyA, bodyB, bplace);
                 if (id.IsNull) { ed.WriteMessage("\nCouldn't build a brace between those faces."); return; }
                 ed.WriteMessage("\nTJoin (knee brace): " + type + " " + (int)w + "x" + (int)d +
                                 " foot " + footRun.ToString("0.#") + " head " + headRun.ToString("0.#") +
-                                " (" + id.Handle + ").");
+                                " " + PlaceName(bplace) + " (" + id.Handle + ").");
             }
         }
 
@@ -241,8 +222,12 @@ namespace TimberDraw
 
             // Current legs (corner -> toe) seed the prompts: the toe tips lie on the host planes, so
             // each run is the toe edge's step from the corner anchor along the measuring direction
-            // (the toe is the depth side FARTHER out -- hence the max).
-            if (!ManagedTimber.TryBraceAnchors(fa, fb, bodyA, bodyB, out Point3d pa, out Vector3d dirFoot,
+            // (the toe is the depth side FARTHER out -- hence the max). The anchor's station along
+            // the corner doesn't enter this (dirFoot/dirHead are perpendicular to it), so any
+            // placement works for the read-back.
+            int bplace = ManagedBrace.HasCurrent ? ManagedBrace.Placement : 1;
+            if (!ManagedTimber.TryBraceAnchors(fa, fb, bodyA, bodyB, bf.W, bplace,
+                                               out Point3d pa, out Vector3d dirFoot,
                                                out Point3d pb, out Vector3d dirHead))
             { ed.WriteMessage("\nThose host faces don't form a brace corner any more."); return; }
             Point3d farC = bf.O + bf.Z * bf.L;
@@ -254,34 +239,15 @@ namespace TimberDraw
             if (!GetPositive(ed, "Foot (corner to toe)", Math.Round(curFoot, 1), out double footRun)) return;
             if (!GetPositive(ed, "Head (corner to toe)", Math.Round(curHead, 1), out double headRun)) return;
 
-            if (!ManagedTimber.TryBraceFrame(fa, fb, bf.D, bf.W, footRun, headRun, bodyA, bodyB,
+            if (!ManagedTimber.TryBraceFrame(fa, fb, bf.D, bf.W, footRun, headRun, bodyA, bodyB, bplace,
                                              out ManagedTimber.TFrame nf))
             { ed.WriteMessage("\nThose legs don't solve a brace in this corner."); return; }
 
-            // Ghost + confirm, same as the place path -- nothing mutates on a No/Escape.
-            bool go;
-            using (Solid3d ghost = ManagedTimber.BuildFramedSolid(nf))
-            {
-                ghost.ColorIndex = 5;   // blue, colour-blind safe
-                TransientManager tm = TransientManager.CurrentTransientManager;
-                var ints = new IntegerCollection();
-                tm.AddTransient(ghost, TransientDrawingMode.DirectShortTerm, 128, ints);
-                try
-                {
-                    var pko = new PromptKeywordOptions(
-                        "\nRe-seat the brace (foot " + footRun.ToString("0.#") + ", head " +
-                        headRun.ToString("0.#") + ")? ");
-                    pko.Keywords.Add("Yes");
-                    pko.Keywords.Add("No");
-                    pko.Keywords.Default = "Yes";
-                    pko.AllowNone = true;   // Enter = Yes
-                    PromptResult kr = ed.GetKeywords(pko);
-                    go = kr.Status == PromptStatus.None ||
-                         (kr.Status == PromptStatus.OK && kr.StringResult == "Yes");
-                }
-                finally { tm.EraseTransient(ghost, ints); }
-            }
-            if (!go) { ed.WriteMessage("\nRe-seat cancelled."); return; }
+            // Ghost + confirm (with Flip for Back/Front), same as the place path -- nothing mutates
+            // on a No/Escape.
+            if (!ConfirmBraceGhost(ed, fa, fb, bf.D, bf.W, footRun, headRun, bodyA, bodyB,
+                    "Re-seat the brace", ref bplace, ref nf))
+            { ed.WriteMessage("\nRe-seat cancelled."); return; }
 
             // The re-seat obsoletes the brace's joints GEOMETRICALLY: strip each joint id from the
             // partner too (the mate's pocket at the old seat is stale wood). Recipes/stamps stay on
@@ -303,13 +269,61 @@ namespace TimberDraw
 
             ObjectId nid = ManagedTimber.RebuildFromFrame(braceId, nf);   // fresh frame = plain brace; identity carried
             ed.WriteMessage("\nTJoin (modify): brace re-seated -- foot " + footRun.ToString("0.#")
-                + " head " + headRun.ToString("0.#") + ", length " + nf.L.ToString("0.#")
-                + " (" + nid.Handle + ")."
+                + " head " + headRun.ToString("0.#") + " " + PlaceName(bplace)
+                + ", length " + nf.L.ToString("0.#") + " (" + nid.Handle + ")."
                 + (strippedJoints > 0
                     ? " " + strippedJoints + " joint(s) stripped both sides -- select the brace and TJointSync to re-cut."
                     : "")
                 + " Run TRelabelBraces to refresh the group symbols.");
         }
+
+        // Ghost + confirm loop shared by TJoin's knee branch and its Modify re-seat: the solved
+        // brace shows as a blue transient; Enter/Yes accepts, No/Escape cancels. Back/Front
+        // placements also offer FLIP -- at a free corner "which side is Back" is only a sign
+        // convention on the corner direction, so when the ghost flushes the wrong face one
+        // keystroke swaps it (re-solve + re-ghost in place). `placement` and `frame` come back
+        // final. No "[Yes/No] <Yes>" in the message -- PromptKeywordOptions appends that itself.
+        private static bool ConfirmBraceGhost(Editor ed, ManagedTimber.TFace fa, ManagedTimber.TFace fb,
+            double d, double w, double footRun, double headRun, Point3d bodyA, Point3d bodyB,
+            string verb, ref int placement, ref ManagedTimber.TFrame frame)
+        {
+            while (true)
+            {
+                bool accept = false, flip = false;
+                using (Solid3d ghost = ManagedTimber.BuildFramedSolid(frame))
+                {
+                    ghost.ColorIndex = 5;   // blue, colour-blind safe
+                    TransientManager tm = TransientManager.CurrentTransientManager;
+                    var ints = new IntegerCollection();
+                    tm.AddTransient(ghost, TransientDrawingMode.DirectShortTerm, 128, ints);
+                    try
+                    {
+                        var pko = new PromptKeywordOptions(
+                            "\n" + verb + " (foot " + footRun.ToString("0.#") + ", head " +
+                            headRun.ToString("0.#") + ", " + PlaceName(placement) +
+                            " -- set on the palette)? ");
+                        pko.Keywords.Add("Yes");
+                        if (placement != 1) pko.Keywords.Add("Flip");
+                        pko.Keywords.Add("No");
+                        pko.Keywords.Default = "Yes";
+                        pko.AllowNone = true;   // Enter = Yes
+                        PromptResult kr = ed.GetKeywords(pko);
+                        accept = kr.Status == PromptStatus.None ||
+                                 (kr.Status == PromptStatus.OK && kr.StringResult == "Yes");
+                        flip = kr.Status == PromptStatus.OK && kr.StringResult == "Flip";
+                    }
+                    finally { tm.EraseTransient(ghost, ints); }
+                }
+                if (accept) return true;
+                if (!flip) return false;
+                placement = placement == 0 ? 2 : 0;   // Back <-> Front
+                if (!ManagedTimber.TryBraceFrame(fa, fb, d, w, footRun, headRun, bodyA, bodyB, placement,
+                                                 out frame))
+                { ed.WriteMessage("\nCouldn't re-solve the flipped brace."); return false; }
+            }
+        }
+
+        private static string PlaceName(int p) => p == 0 ? "Back" : p == 2 ? "Front" : "Center";
 
         // The host whose SIDE face a brace END bears on (FacesMate, the cutters' tolerance).
         private static bool FindBraceHost(Database db, ObjectId braceId, ManagedTimber.TFace end,

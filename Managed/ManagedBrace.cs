@@ -2,18 +2,22 @@ namespace TimberDraw
 {
     // Sticky knee-brace spec set by the managed-timber palette (TPanel). When active, TJoin's angled
     // (knee-brace) branch takes the foot/head runs from here instead of prompting -- the user dials the
-    // legs/angle once and braces many. Mirrors ManagedSection. Only the two leg runs are stored; TJoin
-    // consumes runs, and the angle is purely a palette-side convenience for computing them.
+    // legs/angle once and braces many. Mirrors ManagedSection. The angle is purely a palette-side
+    // convenience for computing the runs. Placement (0 Back / 1 Center / 2 Front) registers the brace
+    // against the NARROWER of the two picked timbers along the corner -- the same rule the frame
+    // recipe's per-member Placement uses (Robert's call, 2026-07-15).
     public static class ManagedBrace
     {
         public static bool HasCurrent;
         public static double FootRun;
         public static double HeadRun;
+        public static int Placement = 1;   // 0 Back / 1 Center / 2 Front
 
-        public static void Set(double footRun, double headRun)
+        public static void Set(double footRun, double headRun, int placement)
         {
             FootRun = footRun;
             HeadRun = headRun;
+            Placement = placement < 0 ? 0 : placement > 2 ? 2 : placement;
             HasCurrent = footRun > 0.0 && headRun > 0.0;
         }
 

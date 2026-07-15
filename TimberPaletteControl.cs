@@ -231,6 +231,7 @@ namespace TimberDraw
             txtFoot.TextChanged += (s, e) => OnBraceEdit();
             txtHead.TextChanged += (s, e) => OnBraceEdit();
             txtAngle.TextChanged += (s, e) => OnBraceEdit();
+            cmbBracePlace.SelectedIndexChanged += (s, e) => OnBraceEdit();
         }
 
         // ---------------------------------------------------------------- brace spec
@@ -298,18 +299,21 @@ namespace TimberDraw
                     SetNum(txtFoot, head / Math.Tan(ClampAngle(ang) * Math.PI / 180.0));
             }
             if (TryNum(txtFoot, out double f) && TryNum(txtHead, out double h) && f > 0 && h > 0)
-                ManagedBrace.Set(f, h);
+                ManagedBrace.Set(f, h, BracePlace());
         }
 
-        // Persist "foot:head:mask" (mask = the two checked letters, F/H/A). foot:head are always stored;
-        // the angle is recoverable as atan2(head, foot).
+        // The Placement combo as the engine's 0 Back / 1 Center / 2 Front (the item order).
+        private int BracePlace() => cmbBracePlace.SelectedIndex >= 0 ? cmbBracePlace.SelectedIndex : 1;
+
+        // Persist "foot:head:mask:place" (mask = the two checked letters, F/H/A; place = 0 Back /
+        // 1 Center / 2 Front). foot:head are always stored; the angle is recoverable as atan2(head, foot).
         private void SaveBraceSpec()
         {
             TryNum(txtFoot, out double f);
             TryNum(txtHead, out double h);
             string mask = (chkFoot.Checked ? "F" : "") + (chkHead.Checked ? "H" : "") + (chkAngle.Checked ? "A" : "");
             S.BraceSpec = f.ToString("0.##", CultureInfo.InvariantCulture) + ":" +
-                          h.ToString("0.##", CultureInfo.InvariantCulture) + ":" + mask;
+                          h.ToString("0.##", CultureInfo.InvariantCulture) + ":" + mask + ":" + BracePlace();
             S.Save();
         }
 
@@ -320,9 +324,15 @@ namespace TimberDraw
             {
                 double foot = 18, head = 18;
                 string mask = "FH";
+                // Placement default = the frame-wide brace/strut Centering setting (the recipe's
+                // OffsetType source), so free braces land where the generator's would; a 4th
+                // BraceSpec segment (saved combo choice) overrides it. Old 3-segment strings load fine.
+                int place = S.BraceStrutPlacement;
                 string[] f = (S.BraceSpec ?? "").Split(':');
                 if (f.Length >= 1) double.TryParse(f[0], NumberStyles.Any, CultureInfo.InvariantCulture, out foot);
                 if (f.Length >= 2) double.TryParse(f[1], NumberStyles.Any, CultureInfo.InvariantCulture, out head);
+                if (f.Length >= 4 && int.TryParse(f[3], out int pl)) place = pl;
+                if (place < 0 || place > 2) place = 1;
                 if (f.Length >= 3)
                 {
                     string m = f[2].Trim().ToUpperInvariant();
@@ -342,13 +352,14 @@ namespace TimberDraw
                 chkFoot.Checked = mask.Contains("F");
                 chkHead.Checked = mask.Contains("H");
                 chkAngle.Checked = mask.Contains("A");
+                cmbBracePlace.SelectedIndex = place;
                 _braceOrder.Clear();
                 if (chkFoot.Checked) _braceOrder.Add(chkFoot);
                 if (chkHead.Checked) _braceOrder.Add(chkHead);
                 if (chkAngle.Checked) _braceOrder.Add(chkAngle);
 
                 SyncBraceEnabled();
-                ManagedBrace.Set(foot, head);
+                ManagedBrace.Set(foot, head, place);
             }
             finally { _braceLoading = false; }
         }

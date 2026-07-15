@@ -25,6 +25,7 @@ namespace TimberDraw
         // Brace spec (foot/head legs + angle; the two checked rows compute the third)
         private CheckBox chkFoot, chkHead, chkAngle;
         private TextBox txtFoot, txtHead, txtAngle;
+        private ComboBox cmbBracePlace;   // Back / Center / Front on the narrower host
         private Panel groupBrace;
 
         // Verbs (bottom action bar): orientation presets, place & connect, edit & nodes.
@@ -117,13 +118,22 @@ namespace TimberDraw
             txtFoot = new TextBox { Location = new Point(150, 25), Size = new Size(60, 22) };
             txtHead = new TextBox { Location = new Point(150, 53), Size = new Size(60, 22) };
             txtAngle = new TextBox { Location = new Point(150, 81), Size = new Size(60, 22) };
-            groupBrace = Section("Brace (knee)", GW, 112);
+            cmbBracePlace = new ComboBox
+            {
+                Location = new Point(150, 109),
+                Size = new Size(75, 22),
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            cmbBracePlace.Items.AddRange(new object[] { "Back", "Center", "Front" });
+            groupBrace = Section("Brace (knee)", GW, 142);
             groupBrace.Controls.Add(chkFoot);
             groupBrace.Controls.Add(chkHead);
             groupBrace.Controls.Add(chkAngle);
             groupBrace.Controls.Add(txtFoot);
             groupBrace.Controls.Add(txtHead);
             groupBrace.Controls.Add(txtAngle);
+            groupBrace.Controls.Add(Cap("Placement", 12, 112));
+            groupBrace.Controls.Add(cmbBracePlace);
 
             // ---- Bottom action bar: every verb in LABELED groups (Robert's ask), rows regrouped
             //      so each caption is honest: UCS presets / verbs that CREATE timbers / verbs that
@@ -191,6 +201,7 @@ namespace TimberDraw
             tip.SetToolTip(txtFoot, "Foot leg length, inches.");
             tip.SetToolTip(txtHead, "Head leg length, inches.");
             tip.SetToolTip(txtAngle, "Brace angle, degrees.");
+            tip.SetToolTip(cmbBracePlace, "Where the brace sits across the joint, registered against the NARROWER of the two picked timbers: Back/Front flush a face, Center centers in the slack -- the same rule as the frame recipe's Placement. TJoin's ghost prompt offers Flip if Back/Front lands on the wrong side.");
             tip.SetToolTip(btnPlan, "Set the UCS flat on the floor (plan) for placing.");
             tip.SetToolTip(btnBent, "Set the UCS to a bent elevation for placing.");
             tip.SetToolTip(btnWall, "Set the UCS to a wall elevation for placing.");
