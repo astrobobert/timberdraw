@@ -299,19 +299,89 @@ namespace TimberDraw
             // inside a TProfile arch (the tenon appeared where the arch had removed wood). Removed
             // is removed: the profile trims tenons and tongues like the rest of the body. The mate's
             // pocket is still sized to the nominal joint -- resize the joint if the arch eats too
-            // much of it.
+            // much of it. Polygons are extended TANGENTIALLY past any end a union feature protrudes
+            // through (Robert's rule: the tenon top stays tangent to the timber top, flat or curved
+            // -- the stored polygon stops at the end plane, which left the protruding tenon at
+            // nominal height).
             if (f.Subtracts != null && f.Subtracts.Count > 0
                 && ((f.Features != null && f.Features.Exists(x => !x.Subtract))
                     || (f.JointPolys != null && f.JointPolys.Exists(x => !x.Subtract))
                     || (f.JointPolysZ != null && f.JointPolysZ.Exists(x => !x.Subtract))
                     || (f.JointPrisms != null && f.JointPrisms.Exists(x => !x.Subtract))))
-                foreach (Point3d[] poly in f.Subtracts) CutPoly(poly, true, -f.W / 2.0 - 1.0, f.W / 2.0 + 1.0, -1);
+            {
+                double overNear = UnionProtrusion(f, false), overFar = UnionProtrusion(f, true);
+                foreach (Point3d[] poly in f.Subtracts)
+                    CutPoly(ExtendPolyPastEnds(poly, f.L, overNear, overFar), true,
+                            -f.W / 2.0 - 1.0, f.W / 2.0 + 1.0, -1);
+            }
 
             // NOTE: the slice/boolean OPERATION HISTORY (which references the disposed off-cut / feature
             // operand solids and would otherwise break SAVE) is cleared by the callers AFTER the solid is
             // database-resident -- DrawFramedSolid / DrawBox -- because the history props can't be set on
             // a transient solid like this one.
             return solid;
+        }
+
+        // SHAPE-WINS tangent extension (Robert's rule, 2026-07-15: "the top of the tenon should be
+        // tangent to the top of the strut... flat or curved"). A shape Subtract polygon stops at the
+        // timber's end plane, so a tenon protruding past that end kept its NOMINAL top even where a
+        // TProfile arch had dropped the surface. Here every polygon vertex sitting ON an end plane is
+        // pushed PAST it along its own feeding edge -- the last CHORD of a faceted arch is its
+        // tangent, and a flat top edge extends level -- far enough to cover the union features'
+        // actual protrusion. Vertices whose edge runs along the end face (the polygon's closing
+        // edge), point-touches, and interior vertices are untouched; a polygon that never reaches an
+        // end (or an end nothing protrudes through) comes back unchanged. If a steep tangent makes
+        // the extension self-cross (the arch nearly meets the top corner AT the end), the Region
+        // build fails and CutPoly's catch skips the cut -- today's behavior, surfaced via TDiag.
+        private static Point3d[] ExtendPolyPastEnds(Point3d[] poly, double L, double overNear, double overFar)
+        {
+            const double tol = 0.05;
+            if (poly == null || poly.Length < 3 || (overNear <= 0.0 && overFar <= 0.0)) return poly;
+            int n = poly.Length;
+            Point3d[] outp = null;
+            for (int i = 0; i < n; i++)
+            {
+                double s = poly[i].X;
+                bool nearEnd = s <= tol, farEnd = s >= L - tol;
+                if (!nearEnd && !farEnd) continue;
+                double over = nearEnd ? overNear : overFar;
+                if (over <= 0.0) continue;                        // nothing protrudes through this end
+                Point3d prev = poly[(i - 1 + n) % n], next = poly[(i + 1) % n];
+                bool prevIn = prev.X > tol && prev.X < L - tol;
+                bool nextIn = next.X > tol && next.X < L - tol;
+                if (prevIn == nextIn) continue;                   // end-face edge, or a point touch
+                Point3d u = prevIn ? prev : next;                 // the interior neighbor feeds the direction
+                Vector3d dir = poly[i] - u;
+                double dx = System.Math.Abs(dir.X);
+                if (dx < 1e-6) continue;                          // edge parallel to the end face
+                if (outp == null) outp = (Point3d[])poly.Clone();
+                outp[i] = poly[i] + dir * ((over + 2.0) / dx);    // land every vertex at the same station
+            }
+            return outp ?? poly;
+        }
+
+        // How far this frame's UNION features reach past the far (true) / near (false) end -- the
+        // stations the shape extension must cover. Scans every union-capable feature family.
+        private static double UnionProtrusion(TFrame f, bool far)
+        {
+            double p = 0.0;
+            double Reach(double z) => far ? z - f.L : -z;
+            if (f.Features != null)
+                foreach ((Point3d Min, Point3d Max, bool Subtract, int Joint) ft in f.Features)
+                    if (!ft.Subtract) p = System.Math.Max(p, Reach(far ? ft.Max.Z : ft.Min.Z));
+            if (f.JointPolys != null)
+                foreach ((Point3d[] Poly, int Joint, bool Subtract, double Xlo, double Xhi) jp in f.JointPolys)
+                    if (!jp.Subtract && jp.Poly != null)
+                        foreach (Point3d lp in jp.Poly) p = System.Math.Max(p, Reach(lp.X));
+            if (f.JointPolysZ != null)
+                foreach ((Point3d[] Poly, int Joint, bool Subtract, double Zlo, double Zhi) jz in f.JointPolysZ)
+                    if (!jz.Subtract) { p = System.Math.Max(p, Reach(jz.Zlo)); p = System.Math.Max(p, Reach(jz.Zhi)); }
+            if (f.JointPrisms != null)
+                foreach ((Point3d[] Poly, Vector3d Extrude, int Joint, bool Subtract) pr in f.JointPrisms)
+                    if (!pr.Subtract && pr.Poly != null)
+                        foreach (Point3d lp in pr.Poly)
+                        { p = System.Math.Max(p, Reach(lp.Z)); p = System.Math.Max(p, Reach(lp.Z + pr.Extrude.Z)); }
+            return p;
         }
 
         public static ObjectId DrawFramedSolid(TFrame f, string type, string designation,
