@@ -182,7 +182,7 @@ namespace TimberDraw
                     ObjectId dbId = ManagedTimber.RebuildFromFrame(JoinSession.BId, fb);
                     ManagedTimber.RemoveJointSpec(da, sid);
                     ManagedTimber.RemoveJointSpec(dbId, sid);
-                    string gone = JoinSession.Active.Name + ": joint removed (all elements off).";
+                    string gone = JoinSession.Active.DisplayName + ": joint removed (all elements off).";
                     ed.WriteMessage("\n" + gone);
                     if (!release &&
                         ManagedTimber.TryReadFrame(db, da, out ManagedTimber.TFrame da2) &&
@@ -209,7 +209,7 @@ namespace TimberDraw
                 ManagedTimber.WriteJointSpec(r.AId, r.Jid, state);
                 ManagedTimber.WriteJointSpec(r.BId, r.Jid, state);
             }
-            string diag = JoinSession.Active.Name + ": " + r.Diag;
+            string diag = JoinSession.Active.DisplayName + ": " + r.Diag;
             if (release)
             {
                 // The APPLY finalize: the joint is affixed (cut + spec persisted above) -- release the pair so the

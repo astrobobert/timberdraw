@@ -71,7 +71,7 @@ namespace TimberDraw
 
             _cmbType.Dock = DockStyle.Fill;
             _cmbType.DropDownStyle = ComboBoxStyle.DropDownList;
-            foreach (ConnectionType ct in _presets) _cmbType.Items.Add(ct.Name);
+            foreach (ConnectionType ct in _presets) _cmbType.Items.Add(ct.DisplayName);
             _cmbType.SelectedIndexChanged += (s, e) => SelectPreset(_cmbType.SelectedIndex);
 
             _btnPick.Dock = DockStyle.Fill; _btnPick.Text = "Pick pair";
@@ -144,7 +144,7 @@ namespace TimberDraw
             JoinSession.Active = _active;
             ApplyActive();
             UpdateDefaultButtons();
-            if (JointDefaults.HasSaved(_active.Name)) SetStatus(_active.Name + " (saved default)");
+            if (JointDefaults.HasSaved(_active.Name)) SetStatus(_active.DisplayName + " (saved default)");
             Regen();   // the dropdown is king: changing the type instantly re-cuts the held pair as the new type
         }
 
@@ -165,10 +165,10 @@ namespace TimberDraw
         private void OnSetDefault()
         {
             if (_active == null) return;
-            if (!ConnectionType.SaveAsDefault(_active)) { SetStatus("no default slot for " + _active.Name); return; }
+            if (!ConnectionType.SaveAsDefault(_active)) { SetStatus("no default slot for " + _active.DisplayName); return; }
             RefreshPresets();
             UpdateDefaultButtons();
-            SetStatus(_active.Name + ": saved as default");
+            SetStatus(_active.DisplayName + ": saved as default");
         }
 
         // Drop the saved default and show the factory values -- WITHOUT SelectPreset, whose Regen() would
@@ -177,6 +177,7 @@ namespace TimberDraw
         {
             if (_active == null) return;
             string name = _active.Name;
+            string shown = _active.DisplayName;
             JointDefaults.Reset(name);
             RefreshPresets();
             int idx = _presets.FindIndex(p => p.Name == name);
@@ -187,7 +188,7 @@ namespace TimberDraw
                 ApplyActive();
             }
             UpdateDefaultButtons();
-            SetStatus(name + ": factory defaults restored");
+            SetStatus(shown + ": factory defaults restored");
         }
 
         // Re-pull the presets so they reflect the stored defaults (the list is readonly -- refresh in place).

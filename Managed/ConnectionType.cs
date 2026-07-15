@@ -130,12 +130,16 @@ namespace TimberDraw
     // reuse the verified ManagedTimber cutters verbatim. Built-in presets come from the static factories.
     public class ConnectionType
     {
+        // Name is the PERSISTENCE KEY: joint stamps in every drawing serialize it (SerializeState)
+        // and the saved-defaults store keys off it (JointDefaults) -- NEVER rename an existing one.
+        // DisplayName is what the UI shows (the Joints-pane pulldown, statuses); rename freely.
         public readonly string Name;
+        public readonly string DisplayName;
         public readonly List<JointElement> Elements;
         private readonly JointApply _apply;
 
-        public ConnectionType(string name, List<JointElement> elements, JointApply apply)
-        { Name = name; Elements = elements; _apply = apply; }
+        public ConnectionType(string name, List<JointElement> elements, JointApply apply, string displayName = null)
+        { Name = name; DisplayName = displayName ?? name; Elements = elements; _apply = apply; }
 
         public JointElement E(ElementKind k) => Elements.Find(e => e.Kind == k);
 
@@ -146,7 +150,7 @@ namespace TimberDraw
         {
             var es = new List<JointElement>();
             foreach (JointElement e in Elements) es.Add(e.Clone());
-            return new ConnectionType(Name, es, _apply);
+            return new ConnectionType(Name, es, _apply, DisplayName);
         }
 
         // ---- persisted state: an OPAQUE string for the timber's JointSpecs xrecord, so the pane can repopulate a
@@ -228,9 +232,15 @@ namespace TimberDraw
             }
         }
 
-        // The built-in presets, in display order.
-        public static List<ConnectionType> BuiltIns() => new List<ConnectionType>
-            { BoxTenon(), TuskTenon(), StrutTenon(), BraceTenon(), RafterFoot(), RidgeHousing(), RafterHead(), CommonRidge(), Birdsmouth(), HousedDovetail(), QPRafterApex() };
+        // The built-in presets, SORTED by display name (Robert's call, batch-3 #2 -- the pulldown
+        // lists them alphabetically).
+        public static List<ConnectionType> BuiltIns()
+        {
+            var list = new List<ConnectionType>
+                { BoxTenon(), TuskTenon(), StrutTenon(), BraceTenon(), RafterFoot(), RidgeHousing(), RafterHead(), CommonRidge(), Birdsmouth(), HousedDovetail(), QPRafterApex() };
+            list.Sort((x, y) => string.Compare(x.DisplayName, y.DisplayName, StringComparison.OrdinalIgnoreCase));
+            return list;
+        }
 
         // ---- Built-in presets (factory + Spec* mapping + Apply delegate) ----
 
@@ -244,7 +254,7 @@ namespace TimberDraw
                 ElementKit.Tenon(d.Tenon, d.Thickness, d.Length, d.ShoulderTop, d.ShoulderBottom, d.Offset),
                 ElementKit.HousingFull(d.Hsg.On, d.Hsg),
                 ElementKit.Pegs(d.Peg.Count > 0, d.Peg)
-            }, ApplyStrutTenon);
+            }, ApplyStrutTenon, "Strut Tenon");
 
         private static ManagedTimber.StrutTenonSpec SpecStrut(ConnectionType ct) => SpecStrutLike(ct, JointDefaults.Strut);
         private static ManagedTimber.StrutTenonSpec SpecBrace(ConnectionType ct) => SpecStrutLike(ct, JointDefaults.Brace);
@@ -317,7 +327,7 @@ namespace TimberDraw
                 ElementKit.Tenon(d.Tenon, d.Thickness, d.Length, d.ShoulderTop, d.ShoulderBottom, d.Offset),
                 ElementKit.HousingFull(d.Hsg.On, d.Hsg),
                 ElementKit.Pegs(d.Peg.Count > 0, d.Peg)
-            }, ApplyBraceTenon);
+            }, ApplyBraceTenon, "Brace Tenon");
 
         private static ApplyResult ApplyBraceTenon(Database db, ObjectId aId, ManagedTimber.TFrame a,
             ObjectId bId, ManagedTimber.TFrame b, ConnectionType ct)
@@ -338,7 +348,7 @@ namespace TimberDraw
                 ElementKit.Tenon(d.Tenon, d.Thickness, d.Length, d.ShoulderTop, d.ShoulderBottom, d.Offset),
                 ElementKit.HousingSeat(d.On, d.Seat),
                 ElementKit.Pegs(d.Peg.Count > 0, d.Peg)
-            }, ApplyRafterFootCut);
+            }, ApplyRafterFootCut, "Rafter Foot");
 
         private static ManagedTimber.RafterFootSpec SpecRafterFoot(ConnectionType ct)
         {
@@ -371,7 +381,7 @@ namespace TimberDraw
         public static ConnectionType RidgeHousing() => RidgeHousing(JointDefaults.Ridge);
         public static ConnectionType RidgeHousing(ManagedTimber.RidgeHousingSpec d)
             => new ConnectionType("Ridge housing",
-                new List<JointElement> { ElementKit.HousingRidge(d.On, d.Seat, d.ShoulderBottom) }, ApplyRidgeHousingCut);
+                new List<JointElement> { ElementKit.HousingRidge(d.On, d.Seat, d.ShoulderBottom) }, ApplyRidgeHousingCut, "Ridge Housing");
 
         private static ManagedTimber.RidgeHousingSpec SpecRidgeHousing(ConnectionType ct)
         {
@@ -396,7 +406,7 @@ namespace TimberDraw
         public static ConnectionType RafterHead() => RafterHead(JointDefaults.RafterHead);
         public static ConnectionType RafterHead(ManagedTimber.RafterHeadSpec d)
             => new ConnectionType("Rafter head",
-                new List<JointElement> { ElementKit.Shoulder(d.On, d.Seat) }, ApplyRafterHeadCut);
+                new List<JointElement> { ElementKit.Shoulder(d.On, d.Seat) }, ApplyRafterHeadCut, "Rafter Head");
 
         private static ManagedTimber.RafterHeadSpec SpecRafterHead(ConnectionType ct)
         {
@@ -420,7 +430,7 @@ namespace TimberDraw
         public static ConnectionType CommonRidge() => CommonRidge(JointDefaults.CommonRidge);
         public static ConnectionType CommonRidge(ManagedTimber.CommonRidgeSpec d)
             => new ConnectionType("Common -> ridge",
-                new List<JointElement> { ElementKit.HousingSeat(d.On, d.Seat) }, ApplyCommonRidgeCut);
+                new List<JointElement> { ElementKit.HousingSeat(d.On, d.Seat) }, ApplyCommonRidgeCut, "Common Ridge");
 
         private static ManagedTimber.CommonRidgeSpec SpecCommonRidge(ConnectionType ct)
         {
@@ -473,7 +483,7 @@ namespace TimberDraw
         public static ConnectionType HousedDovetail() => HousedDovetail(JointDefaults.Purlin);
         public static ConnectionType HousedDovetail(ManagedTimber.PurlinRafterSpec d)
             => new ConnectionType("Housed dovetail",
-                new List<JointElement> { ElementKit.Dovetail(d.On, d) }, ApplyPurlinCut);
+                new List<JointElement> { ElementKit.Dovetail(d.On, d) }, ApplyPurlinCut, "Dovetail Housing");
 
         private static ManagedTimber.PurlinRafterSpec SpecPurlin(ConnectionType ct)
         {
@@ -502,23 +512,23 @@ namespace TimberDraw
         // existing GirtPostJoint. a = the girt, b = the post. Pegs carry an int Count, an enum Bore (0 = Full,
         // 1 = Blind) and a bool BlindFlip (0/1) -- mapped in SpecBoxTenon.
         public static ConnectionType BoxTenon() => BoxTenon(JointDefaults.Joint);
-        public static ConnectionType BoxTenon(ManagedTimber.JointSpec d) => BoxKit("Box tenon", d);
+        public static ConnectionType BoxTenon(ManagedTimber.JointSpec d) => BoxKit("Box tenon", "Box Tenon", d);
 
         // TUSK TENON (floor systems phase 4): the classic summer -> girt joint -- a soffit-bearing
         // HOUSING (bottom band; its top shoulder insets everything above the bearing) + a deep tenon
         // riding above it + a peg. Same element stack, spec and engine as the Box tenon; only the
         // name (its own saved default slot) and the factory proportions differ.
         public static ConnectionType TuskTenon() => TuskTenon(JointDefaults.Tusk);
-        public static ConnectionType TuskTenon(ManagedTimber.JointSpec d) => BoxKit(JointDefaults.KeyTusk, d);
+        public static ConnectionType TuskTenon(ManagedTimber.JointSpec d) => BoxKit(JointDefaults.KeyTusk, "Tusk Tenon", d);
 
         // The shared girt->post kit factory (Box tenon / Tusk tenon: same stack over JointSpec).
-        private static ConnectionType BoxKit(string name, ManagedTimber.JointSpec d)
+        private static ConnectionType BoxKit(string name, string displayName, ManagedTimber.JointSpec d)
             => new ConnectionType(name, new List<JointElement>
             {
                 ElementKit.Tenon(d.Tenon.On, d.Tenon.Thickness, d.Tenon.Length, d.Tenon.ShoulderTop, d.Tenon.ShoulderBottom, d.Tenon.Offset),
                 ElementKit.HousingFull(d.Housing.On, d.Housing),
                 ElementKit.Pegs(d.Peg.Count > 0, d.Peg)
-            }, ApplyBoxTenonCut);
+            }, ApplyBoxTenonCut, displayName);
 
         private static ManagedTimber.JointSpec SpecBoxTenon(ConnectionType ct)
             => SpecBoxLike(ct, JointDefaults.Joint);
@@ -565,7 +575,7 @@ namespace TimberDraw
                 ElementKit.Tenon(d.Tenon, d.Thickness, d.Length, d.ShoulderTop, d.ShoulderBottom, d.Offset),
                 ElementKit.HousingFull(d.Hsg.On, d.Hsg),
                 ElementKit.Pegs(d.Peg.Count > 0, d.Peg)
-            }, ApplyQPRafterApex);
+            }, ApplyQPRafterApex, "QP Rafter Apex");
 
         private static ManagedTimber.StrutTenonSpec SpecQPRafter(ConnectionType ct) => SpecStrutLike(ct, JointDefaults.QPRafter);
 

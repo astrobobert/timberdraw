@@ -383,7 +383,7 @@ namespace TimberDraw
                         else
                         {
                             apart++;
-                            ed.WriteMessage("\n  joint #" + jid + " (" + ct.Name + "): no contact with its partner -- left as-is.");
+                            ed.WriteMessage("\n  joint #" + jid + " (" + ct.DisplayName + "): no contact with its partner -- left as-is.");
                         }
                         continue;
                     }
@@ -401,7 +401,7 @@ namespace TimberDraw
                     if (hostId.IsNull)
                     {
                         apart++;
-                        ed.WriteMessage("\n  joint #" + jid + " (" + ct.Name + "): partner gone and nothing to re-attach to -- left as-is.");
+                        ed.WriteMessage("\n  joint #" + jid + " (" + ct.DisplayName + "): partner gone and nothing to re-attach to -- left as-is.");
                         continue;
                     }
 
@@ -422,7 +422,7 @@ namespace TimberDraw
                     else
                     {
                         apart++;
-                        ed.WriteMessage("\n  joint #" + jid + " (" + ct.Name + "): re-attach failed -- " + ra.Diag +
+                        ed.WriteMessage("\n  joint #" + jid + " (" + ct.DisplayName + "): re-attach failed -- " + ra.Diag +
                                         " (orphaned features stripped; UNDO restores).");
                     }
                 }
