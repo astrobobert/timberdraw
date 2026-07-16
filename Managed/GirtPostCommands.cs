@@ -112,6 +112,7 @@ namespace TimberDraw
         //   joist end -> carrier          (housed dovetail; _joistDove -- the deliberate half of TJoist)
         //   common -> ridge + eave girt   (let-in housing at the head, housed birdsmouth at the
         //                                  eave; _comridge / _comeave -- batch-3 #4)
+        //   purlin end -> rafter          (housed dovetail; _purlin -- TPurlin's recipe)
         // Contacts that already carry a joint are SKIPPED (idempotent -- safe to re-run after manual
         // tweaks); a host fed by several members rebuilds once.
         [CommandMethod("TJointAll", CommandFlags.Modal | CommandFlags.UsePickSet)]
@@ -367,6 +368,46 @@ namespace TimberDraw
             }
             int commonCuts = cut - girtCuts - sillCuts - summerCuts - joistCuts;
 
+            // PURLIN pass (batch-2 #8's last remainder -- Robert's ask, 2026-07-16): each in-scope
+            // purlin END housed-dovetailed into the principal rafter it dies into (_purlin --
+            // TPurlin's sticky recipe, same review). Same shape as the joist pass: TOUCHING contact
+            // required (direction-only would cut phantom dovetails into every parallel rafter),
+            // already-cut pairs skip by their shared id.
+            if (RolePresent(PurlinRoles))
+            {
+                ed.WriteMessage("\nPurlin pass -- purlin end -> rafter housed dovetail:");
+                if (!ReviewPurlin(ed)) ed.WriteMessage("\nPurlin dovetails skipped.");
+                else
+                {
+                    ConnectionType pdove = ConnectionType.HousedDovetail(_purlin);
+                    foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) p in all)
+                    {
+                        if (!PurlinRoles.Contains(p.Role) || !InScope(p.Id)) continue;
+                        foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) r in all)
+                        {
+                            if (r.Id == p.Id || !RafterRoles.Contains(r.Role)) continue;
+                            ManagedTimber.TFrame purlin = work[p.Id];
+                            ManagedTimber.TFrame rafter = work[r.Id];
+                            if (ExistingRafterFootId(purlin, rafter) != 0) { skipped++; continue; }
+                            if (!FindTouchingFootContact(purlin, rafter, out ManagedTimber.TFace rFace)) continue;
+                            if (!ManagedTimber.PurlinRafterJoint(purlin, rafter, rFace, _purlin,
+                                    out List<(Point3d[] Poly, Vector3d Extrude, bool OnRafter)> prisms, out _))
+                            { failed++; continue; }
+                            int jid = nextId++;
+                            if (purlin.JointPrisms == null) purlin.JointPrisms = new List<(Point3d[], Vector3d, int, bool)>();
+                            if (rafter.JointPrisms == null) rafter.JointPrisms = new List<(Point3d[], Vector3d, int, bool)>();
+                            foreach ((Point3d[] Poly, Vector3d Extrude, bool OnRafter) pr in prisms)
+                                (pr.OnRafter ? rafter.JointPrisms : purlin.JointPrisms).Add((pr.Poly, pr.Extrude, jid, pr.OnRafter));
+                            work[p.Id] = purlin; work[r.Id] = rafter;
+                            dirty.Add(p.Id); dirty.Add(r.Id);
+                            cuts.Add((p.Id, r.Id, jid, pdove));
+                            cut++;
+                        }
+                    }
+                }
+            }
+            int purlinCuts = cut - girtCuts - sillCuts - summerCuts - joistCuts - commonCuts;
+
             var remap = new Dictionary<ObjectId, ObjectId>();
             foreach (ObjectId id in dirty) remap[id] = ManagedTimber.RebuildFromFrame(id, work[id]);
             foreach ((ObjectId girt, ObjectId post, int jid, ConnectionType ct) c in cuts)
@@ -376,6 +417,7 @@ namespace TimberDraw
                             (summerCuts > 0 ? " (" + summerCuts + " summer -> girt)" : "") +
                             (joistCuts > 0 ? " (" + joistCuts + " joist end(s))" : "") +
                             (commonCuts > 0 ? " (" + commonCuts + " common cut(s))" : "") +
+                            (purlinCuts > 0 ? " (" + purlinCuts + " purlin end(s))" : "") +
                             ", skipped " + skipped + " already-jointed" +
                             (failed > 0 ? ", " + failed + " collapsed" : "") + ".");
         }

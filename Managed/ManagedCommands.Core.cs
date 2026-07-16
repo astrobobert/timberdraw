@@ -125,6 +125,10 @@ namespace TimberDraw
         private static readonly HashSet<string> CommonRoles = new HashSet<string> { "Common" };
         private static readonly HashSet<string> RidgeRoles = new HashSet<string> { "Ridge" };
         private static readonly HashSet<string> EaveGirtRoles = new HashSet<string> { "EaveGirt" };
+        // Purlins (batch-2 #8's last remainder, Robert's ask 2026-07-16): each end housed-dovetailed
+        // into the principal rafter it dies into -- TJointAll's purlin pass.
+        private static readonly HashSet<string> PurlinRoles = new HashSet<string> { "Purlin" };
+        private static readonly HashSet<string> RafterRoles = new HashSet<string> { "Rafter" };
 
         // Review / adjust the sticky joint recipe (_joint) as a KIT OF PARTS: the elements (Tenon, Housing,
         // Pegs) are peers, each a toggleable sub-menu. Enter / "Cut" proceeds (returns true); Escape cancels
