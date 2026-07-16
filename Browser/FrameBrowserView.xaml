@@ -232,27 +232,30 @@
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Type" VerticalAlignment="Center" Margin="0,0,6,4"/>
-                <TextBox   Grid.Row="0" Grid.Column="1" Margin="0,0,0,4"
-                           Text="{Binding EditType, UpdateSourceTrigger=PropertyChanged}"
-                           ToolTip="The selected timber's member type (Post, Girt, Joist...). Edit + Apply re-types it -- the label family follows."/>
+                <ComboBox  Grid.Row="0" Grid.Column="1" Margin="0,0,0,4"
+                           ItemsSource="{Binding TypeChoices}" SelectedItem="{Binding EditType}"
+                           ToolTip="The selected timber's member type -- pick from the Sections catalog + the types in the drawing; Apply re-types it (the label family follows). New type names are added on the Assembly tab's Sections."/>
 
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="Frame" VerticalAlignment="Center" Margin="0,0,6,4"/>
-                <ComboBox  Grid.Row="1" Grid.Column="1" Margin="0,0,0,4" Style="{StaticResource TdEditableCombo}"
-                           ItemsSource="{Binding AsmFrames}"
-                           Text="{Binding AsmFrame, UpdateSourceTrigger=PropertyChanged}"
-                           ToolTip="The frames in the drawing. Pick one, or type a new tag to start the next frame."/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Frame" VerticalAlignment="Center" Margin="0,0,6,4"
+                           Visibility="{Binding FrameRowVisibility}"/>
+                <ComboBox  Grid.Row="1" Grid.Column="1" Margin="0,0,0,4"
+                           Visibility="{Binding FrameRowVisibility}"
+                           ItemsSource="{Binding AsmFrames}" SelectedItem="{Binding AsmFrame}"
+                           ToolTip="This drawing holds more than one frame (a legacy layout -- the convention is one frame per drawing). Pick which frame the selection assigns into."/>
                 <TextBlock Grid.Row="2" Grid.Column="0" Text="Assign to" VerticalAlignment="Center" Margin="0,0,6,4"/>
                 <ComboBox  Grid.Row="2" Grid.Column="1" Margin="0,0,0,4"
                            ItemsSource="{Binding AsmKinds}" SelectedItem="{Binding AsmKind}"
                            ToolTip="What owns the selection: a Bent (cross frame), a Wall, or a Floor level. The two rows below name themselves to match."/>
                 <TextBlock Grid.Row="3" Grid.Column="0" Text="{Binding AsmOwnerLabel}" VerticalAlignment="Center" Margin="0,0,6,4"/>
-                <TextBox   Grid.Row="3" Grid.Column="1" Margin="0,0,0,4"
+                <ComboBox  Grid.Row="3" Grid.Column="1" Margin="0,0,0,4" Style="{StaticResource TdEditableCombo}"
+                           ItemsSource="{Binding OwnerChoices}"
                            Text="{Binding AsmOwner, UpdateSourceTrigger=PropertyChanged}"
-                           ToolTip="Bent: the bent number (2, or 2C for a grid intersection). Wall: the wall letter. Floor: the level number (1 = first)."/>
+                           ToolTip="Bent: the bent number (2, or 2C for a grid intersection). Wall: the wall letter. Floor: the level number (1 = first). Pick an existing one, or type a new one -- a first member's address is minted by the assignment."/>
                 <TextBlock Grid.Row="4" Grid.Column="0" Text="{Binding AsmExtraLabel}" VerticalAlignment="Center" Margin="0,0,6,4"/>
-                <TextBox   Grid.Row="4" Grid.Column="1" Margin="0,0,0,4"
+                <ComboBox  Grid.Row="4" Grid.Column="1" Margin="0,0,0,4" Style="{StaticResource TdEditableCombo}"
+                           ItemsSource="{Binding ExtraChoices}"
                            Text="{Binding AsmBay, UpdateSourceTrigger=PropertyChanged}"
-                           ToolTip="Bent: the wall letter of the grid intersection (the C in 2C). Wall or Floor: the bay numeral (I, II...); blank for none."/>
+                           ToolTip="Bent: the wall letter of the grid intersection (the C in 2C). Wall or Floor: the bay numeral (I, II...). Pick or type; blank for none."/>
             </Grid>
         </Border>
 

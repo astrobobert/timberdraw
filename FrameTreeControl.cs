@@ -909,6 +909,23 @@ namespace TimberDraw
                 return;
             }
 
+            // ONE FRAME PER DRAWING (Robert's call, 2026-07-16): Draw erases only its OWN tag, so a
+            // renamed spec Name would silently ADD a second frame beside the existing one -- warn
+            // and let him back out (a frame-rename op is a future ask if ever wanted).
+            if (gate != null)
+            {
+                string myTag = FrameTagSafe();
+                foreach (string t in FrameRegistry.Tags(gate.Database))
+                    if (!string.Equals(t, myTag, System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (!Dialogs.Confirm("This drawing already holds frame " + t
+                                + " -- one frame per drawing is the convention, and Draw would add frame "
+                                + myTag + " BESIDE it (Draw only replaces its own frame). Continue anyway?"))
+                            return;
+                        break;
+                    }
+            }
+
             FrameGraph g = KingPostBentGraph.Build(_spec);
             // Emit MANAGED timbers (editable) instead of legacy solids. Place through the current UCS
             // (graph coords interpreted in the UCS -> WCS) so the frame honors the user's UCS origin +

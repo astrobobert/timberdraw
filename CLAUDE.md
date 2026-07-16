@@ -43,7 +43,11 @@ sections further below are the GENERATOR's internals only.
   nodes; `FrameGrid` derives the installer labels. This is the FREEZE BRIDGE (the one generator file
   allowed to reference `Managed\`).
 - `FrameRegistry` / `TFreeze` -- the one-way freeze gate. Once frozen the tree's Draw button refuses and
-  the timbers carry on as the source of truth. The registry record also carries `SpecJson` (stamped at
+  the timbers carry on as the source of truth. ONE FRAME PER DRAWING (Robert's call, 2026-07-16):
+  Draw warns when `FrameRegistry.Tags(db)` holds a different tag (a renamed spec would ADD a frame
+  beside the old one, not rename it); the Browser hides its Frame field unless a legacy drawing
+  carries several tags (then a pick-only dropdown). The multi-frame plumbing (per-tag erase/layers/
+  registry) stays -- only the UI stops offering multiple frames. The registry record also carries `SpecJson` (stamped at
   every Draw + at Freeze, 2026-07-15): opening/activating a drawing REFILLS the tree with that drawing's
   own frame (recall-on-open; pre-stamp drawings keep the empty start). NEVER derive a spec from the
   solids -- the spec is a generator, not the model.

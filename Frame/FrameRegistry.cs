@@ -131,6 +131,28 @@ namespace TimberDraw
             }
         }
 
+        // Every frame tag recorded in the drawing (the TM_FRAME_* keys, NOD order). ONE FRAME PER
+        // DRAWING is the convention (Robert's call, 2026-07-16) -- this exists so the Draw path can
+        // WARN when a renamed spec would add a second frame beside an existing one, and so a legacy
+        // multi-frame drawing can still be navigated.
+        public static System.Collections.Generic.List<string> Tags(Database db)
+        {
+            var tags = new System.Collections.Generic.List<string>();
+            if (db == null) return tags;
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return tags;
+
+            using (doc.LockDocument())
+            using (Transaction tr = db.TransactionManager.StartTransaction())
+            {
+                var nod = (DBDictionary)tr.GetObject(db.NamedObjectsDictionaryId, OpenMode.ForRead);
+                foreach (DBDictionaryEntry e in nod)
+                    if (e.Key.StartsWith(KeyPrefix)) tags.Add(e.Key.Substring(KeyPrefix.Length));
+                tr.Commit();
+            }
+            return tags;
+        }
+
         // The freeze gate for a frame (false when there is no record).
         public static bool IsFrozen(Database db, string frameTag)
         {

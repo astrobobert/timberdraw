@@ -48,7 +48,8 @@ namespace TimberDraw.Browser
             string.IsNullOrEmpty(Bent) && !string.IsNullOrEmpty(Bay) ? "Bay " + Bay : "";
 
         // The wall letter to show/sort by: explicit assignment if present, else derived from side.
-        private string EffWall => FrameWalls.EffectiveWall(Wall, Type, Designation);
+        // Public: the pulldown choice lists harvest wall letters from it.
+        public string EffWall => FrameWalls.EffectiveWall(Wall, Type, Designation);
 
         // Grid reference matching the framing convention. Prefer the structural-grid label stamped at
         // emit ("1A" / "1BC"); fall back to the derived bent+side / wall+bay for free/legacy timbers.
@@ -187,37 +188,105 @@ namespace TimberDraw.Browser
         // THE assign surface -- the Assembly tab carries no assign controls. ----
         public System.Collections.Generic.List<string> AsmKinds { get; } = new() { "Bent", "Wall", "Floor" };
 
-        // Frames PRESENT in the drawing (distinct FrameTags on the loaded rows) -- the Frame
-        // pulldown's items, refreshed with the rows. The combo stays EDITABLE: type a new tag
-        // to start the next frame (assigning to it creates it); an empty drawing seeds "A".
+        // ONE FRAME PER DRAWING (Robert's call, 2026-07-16): the Frame row is HIDDEN for normal
+        // drawings -- the assign target is simply the drawing's frame, tracked here. A LEGACY
+        // multi-frame drawing still shows the row as a PICK-ONLY dropdown of its existing tags;
+        // new frames are never minted from the browser (the Frame tab owns the frame's lifecycle).
         public ObservableCollection<string> AsmFrames { get; } = new();
 
         private string _asmFrame = "A";
-        private bool _asmFrameTouched;   // the user chose/typed a frame -- never auto-snap over it
         public string AsmFrame
         {
             get => _asmFrame;
-            set { if (Set(ref _asmFrame, value) && !_loadingSel) { _assignDirty = true; _asmFrameTouched = true; } }
+            set { if (Set(ref _asmFrame, value) && !_loadingSel) _assignDirty = true; }
         }
 
-        // Rebuild the Frame pulldown from the loaded rows, and DEFAULT the target to a frame that
-        // exists -- the hardcoded "A" seed pointed nowhere in a drawing whose frame is B. Snap only
-        // while the user hasn't chosen/typed one (and review-loading a row doesn't count: it goes
-        // through _loadingSel).
-        private void RefreshFrames()
+        public System.Windows.Visibility FrameRowVisibility =>
+            AsmFrames.Count > 1 ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+
+        // ---- pulldown choices (Robert's call, 2026-07-16): every field offers what EXISTS.
+        // Type is PICK-ONLY (new type names come from the Assembly tab's Sections catalog);
+        // the owner + second-coordinate rows stay TYPABLE on top of their lists, because a
+        // first member's address doesn't exist anywhere until the assignment mints it. ----
+        public ObservableCollection<string> TypeChoices { get; } = new();
+        public ObservableCollection<string> OwnerChoices { get; } = new();
+        public ObservableCollection<string> ExtraChoices { get; } = new();
+
+        // Per-kind pools harvested from the rows; OwnerChoices/ExtraChoices re-slice on an
+        // Assign-to change without re-scanning.
+        private readonly System.Collections.Generic.List<string> _bentChoices = new();
+        private readonly System.Collections.Generic.List<string> _wallChoices = new();
+        private readonly System.Collections.Generic.List<string> _floorChoices = new();
+        private readonly System.Collections.Generic.List<string> _bayChoices = new();
+
+        // Rebuild every choice list from the loaded rows + the Sections catalog. Runs with each
+        // Refresh, inside _loadingSel -- repopulating an ItemsSource bounces WPF selections, and
+        // that must never read as a user edit.
+        private void RefreshChoices()
         {
-            var frames = new System.Collections.Generic.SortedSet<string>(System.StringComparer.OrdinalIgnoreCase);
-            foreach (FrameBrowserItem it in _all)
-                if (!string.IsNullOrEmpty(it.Frame)) frames.Add(it.Frame);
-            if (frames.Count == 0) frames.Add("A");   // nothing tagged yet: the seed frame
+            _loadingSel = true;
+            try
+            {
+                var cmp = System.StringComparer.OrdinalIgnoreCase;
 
-            string keep = _asmFrame;   // rebuilding the ItemsSource can bounce an editable combo's Text
-            AsmFrames.Clear();
-            foreach (string tag in frames) AsmFrames.Add(tag);
-            if (!string.Equals(_asmFrame, keep)) { _loadingSel = true; AsmFrame = keep; _loadingSel = false; }
+                // Frames: one per drawing; more than one = a legacy drawing, and the row appears.
+                var frames = new System.Collections.Generic.SortedSet<string>(cmp);
+                foreach (FrameBrowserItem it in _all)
+                    if (!string.IsNullOrEmpty(it.Frame)) frames.Add(it.Frame);
+                AsmFrames.Clear();
+                foreach (string tag in frames) AsmFrames.Add(tag);
+                if (!frames.Contains((_asmFrame ?? "").Trim()))
+                    AsmFrame = frames.Count > 0 ? frames.Min : "A";
+                Raise(nameof(FrameRowVisibility));
 
-            if (!_asmFrameTouched && !frames.Contains((keep ?? "").Trim()))
-            { _loadingSel = true; AsmFrame = frames.Min; _loadingSel = false; }
+                // Types: the Sections catalog (the only mint) + what the drawing actually contains
+                // (skeleton roles like KingPost/Common aren't catalog entries but must stay
+                // re-typeable).
+                var types = new System.Collections.Generic.SortedSet<string>(cmp);
+                foreach (string tok in (TimberDraw.Properties.Settings.Default.TimberSections ?? "").Split(','))
+                {
+                    string t = tok.Split(':')[0].Trim();
+                    if (t.Length > 0) types.Add(t);
+                }
+                foreach (FrameBrowserItem it in _all)
+                    if (!string.IsNullOrEmpty(it.Type)) types.Add(it.Type);
+                string keepType = _editType;
+                TypeChoices.Clear();
+                foreach (string t in types) TypeChoices.Add(t);
+                EditType = types.Contains((keepType ?? "").Trim()) ? keepType : "";
+
+                // Owner/second-coordinate pools: bents + floors numeric, walls alpha, bays Roman.
+                var bents = new System.Collections.Generic.SortedSet<int>();
+                var floors = new System.Collections.Generic.SortedSet<int>();
+                var walls = new System.Collections.Generic.SortedSet<string>(cmp);
+                var bays = new System.Collections.Generic.SortedSet<string>(cmp);
+                foreach (FrameBrowserItem it in _all)
+                {
+                    if (int.TryParse(it.Bent, out int b)) bents.Add(b);
+                    if (int.TryParse(it.Floor, out int fl)) floors.Add(fl);
+                    if (!string.IsNullOrEmpty(it.EffWall)) walls.Add(it.EffWall);
+                    if (!string.IsNullOrEmpty(it.Bay)) bays.Add(it.Bay);
+                }
+                _bentChoices.Clear(); foreach (int b in bents) _bentChoices.Add(b.ToString());
+                _floorChoices.Clear(); foreach (int fl in floors) _floorChoices.Add(fl.ToString());
+                _wallChoices.Clear(); _wallChoices.AddRange(walls);
+                _bayChoices.Clear(); _bayChoices.AddRange(bays);
+                _bayChoices.Sort((a, b2) => FrameWalls.RomanToInt(a).CompareTo(FrameWalls.RomanToInt(b2)));
+                RebuildKindChoices();
+            }
+            finally { _loadingSel = false; }
+        }
+
+        // Slice the per-kind pools into the two visible lists (also on an Assign-to change).
+        private void RebuildKindChoices()
+        {
+            OwnerChoices.Clear();
+            foreach (string s in _asmKind == "Wall" ? _wallChoices
+                               : _asmKind == "Floor" ? _floorChoices : _bentChoices)
+                OwnerChoices.Add(s);
+            ExtraChoices.Clear();
+            foreach (string s in _asmKind == "Bent" ? _wallChoices : _bayChoices)
+                ExtraChoices.Add(s);
         }
 
         private string _asmKind = "Bent";
@@ -230,6 +299,7 @@ namespace TimberDraw.Browser
                 if (!_loadingSel) _assignDirty = true;
                 Raise(nameof(AsmOwnerLabel));
                 Raise(nameof(AsmExtraLabel));
+                RebuildKindChoices();
             }
         }
         // The address rows NAME THEMSELVES from the Assign-to choice ('Kind'/'Owner'/'Col' read as
@@ -364,7 +434,7 @@ namespace TimberDraw.Browser
             _all.AddRange(ManagedView.LoadTimbers());
             int nodes = ManagedView.NodeCount();
             Status = _all.Count + " timber(s), " + nodes + " node(s)";
-            RefreshFrames();
+            RefreshChoices();
             ApplyFilter();
         }
 

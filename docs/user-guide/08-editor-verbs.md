@@ -105,14 +105,18 @@ move command. Two cautions:
   type and address, and one **Apply** commits: **Type** re-types the timber,
   and the address fields are WYSIWYG — whatever they show is where Apply puts
   the selection (already-there rows are left alone, so a type-only Apply
-  doesn't reassign). **Assign to** picks the owner kind (Bent / Wall / Floor),
-  and the two rows under it *rename themselves to match*: a Bent owner takes
-  its number plus the intersection's **Wall** letter (the C in 2C), a Wall its
-  letter plus a **Bay** numeral, and a Floor its level number plus a **Bay**
-  too — floor members carry a bay designation like wall members do. **Frame**
-  is a drop-down of the frames actually in the drawing (it defaults to the
-  first one present); it stays typable — enter a new tag to start the next
-  frame.
+  doesn't reassign). **Type is pick-only** — the list is your Sections
+  catalog plus every type already in the drawing; new type names are minted
+  on the Assembly tab's Sections, nowhere else. **Assign to** picks the owner
+  kind (Bent / Wall / Floor), and the two rows under it *rename themselves to
+  match*: a Bent owner takes its number plus the intersection's **Wall**
+  letter (the C in 2C), a Wall its letter plus a **Bay** numeral, and a Floor
+  its level number plus a **Bay** too — floor members carry a bay designation
+  like wall members do. Both rows offer what exists and **stay typable** — a
+  first member's address doesn't exist until the assignment mints it. There
+  is no Frame field: **a drawing holds one frame**, and the selection assigns
+  into it (a legacy drawing that carries several frames shows a pick-only
+  Frame dropdown of them).
   The list re-reads itself when you open the tab, switch drawings, or joinery
   replaces a timber.
 

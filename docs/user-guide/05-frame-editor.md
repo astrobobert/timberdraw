@@ -91,6 +91,12 @@ same type seed from it.
 
 ## 5.4 Generate, re-Generate, and templates
 
+**One frame per drawing** is the convention: a drawing holds one frame, whose
+name is the tree root's *Name*. Draw warns if the drawing already carries a
+frame under a different name (renaming the spec and Drawing again would add a
+second frame beside the first, not rename it). Start the next frame in a new
+drawing — or with **New** here.
+
 **Generate Frame** emits the whole frame as managed timbers, standing Z-up, at
 the current UCS origin — with the structural grid beneath and every stick
 labeled. Generating again **replaces this frame's skeleton only**: hand-placed
