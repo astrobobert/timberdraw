@@ -125,7 +125,7 @@ namespace TimberDraw
             var survivors = new List<ObjectId>();    // managed timbers kept (free / floor-owned / other frames)
             // Harvest records: every managed timber carrying at least one joint id, erased AND
             // surviving alike (a survivor matches itself at distance ~0 during replay).
-            var harvest = new List<(bool Erased, string Role, Point3d Mid, double Len,
+            var harvest = new List<(bool Erased, string Role, string Label, Point3d Mid, double Len,
                                     HashSet<int> Jids, Dictionary<int, string> Specs, HashSet<int> UnionIds)>();
             using (doc.LockDocument())
             {
@@ -144,6 +144,7 @@ namespace TimberDraw
                             HashSet<int> jids = JointIds(f);
                             if (jids.Count > 0)
                                 harvest.Add((!keep, ReadXTextField(tr, ent, "Type"),
+                                             ReadXTextField(tr, ent, "GridLabel"),
                                              f.O + f.Z * (f.L / 2.0), f.L,
                                              jids, ReadJointSpecs(tr, ent), UnionJointIds(f)));
                             if (keep) { survivors.Add(id); continue; }
@@ -166,7 +167,7 @@ namespace TimberDraw
                         if (!h.Jids.Contains(jid)) continue;
                         if (entry.State == null && h.Specs.TryGetValue(jid, out string st)) entry.State = st;
                         entry.Sides.Add(new JointLedgerSide
-                        { Role = h.Role, Mid = h.Mid, Len = h.Len, Erased = h.Erased, Male = h.UnionIds.Contains(jid) });
+                        { Role = h.Role, Label = h.Label, Mid = h.Mid, Len = h.Len, Erased = h.Erased, Male = h.UnionIds.Contains(jid) });
                     }
                     ledger.Add(entry);
                 }

@@ -944,8 +944,11 @@ namespace TimberDraw
             grid.MergeSpecStations(freeBentZ, freeWallX);
             grid.Draw(placement, frameTag);   // flat under the frame (model basis)
             // Replay BEFORE the brace relabel: a replayed brace tenon changes measured Overall, and
-            // the size+shape group symbols should reflect the final jointed geometry.
-            string replay = doc != null ? ManagedCommands.ReplayJoints(doc.Database, ledger) : null;
+            // the size+shape group symbols should reflect the final jointed geometry. The label
+            // rescue (relocated members after a pure param change) arms only when the member count
+            // is unchanged (cleared == drawn) -- on an insert/remove, labels renumber and lie.
+            string replay = doc != null
+                ? ManagedCommands.ReplayJoints(doc.Database, ledger, cleared == drawn) : null;
             if (doc != null) ManagedCommands.RelabelBraces(doc.Database);   // brace symbols (*, **) by size+shape
             Persist();
             // Stamp the emitted recipe into the frame's registry record (batch-3 #3), so re-opening

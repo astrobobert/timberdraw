@@ -99,7 +99,10 @@ re-Generate, assigned to the frame or not — the generator erases only what it
 emitted itself. **Your joinery survives too**: before the old skeleton is
 erased, every joint's recipe is harvested, and after the new skeleton is
 emitted each joint is re-cut onto it automatically — matched by role and
-position, so it works even after an inserted bent renumbers the labels, and
+position, with the member's **label** as the rescue when a parameter change
+relocates the skeleton (a new eave height moves every girt; labels don't
+change unless the member count does). It works after an inserted bent
+renumbers the labels *and* after a param change moves the members, and
 custom per-joint edits (extra pegs, an odd tenon) replay exactly. Joints to
 surviving free timbers re-attach in the same pass; joints the replay could not
 confidently restore (a member that moved too far, or two equally near

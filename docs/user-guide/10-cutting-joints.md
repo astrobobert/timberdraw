@@ -92,8 +92,11 @@ has a matching `...Del`.
 - **Regenerate replays your joinery.** When the tree's Draw replaces the
   skeleton, every joint's recipe is harvested first and re-cut onto the new
   skeleton automatically — skeleton-to-skeleton joints and free-timber halves
-  alike, custom edits included. Matching is by role and position (labels may
-  renumber; positions don't lie), and the replay is conservative: a joint it
+  alike, custom edits included. Matching is by role and position, with the
+  stable label as the rescue when a parameter change relocates members (an
+  eave-height move); labels renumber only when the member count changes,
+  which is exactly when positions *don't* move — the two keys cover each
+  other. The replay is conservative: a joint it
   cannot confidently re-pair — the member moved too far, or two candidates are
   equally near — is **reported and skipped, never guessed**. The command line
   tallies `replayed / no-contact / unmatched / ambiguous / no-recipe`; heal

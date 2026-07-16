@@ -57,8 +57,13 @@ sections further below are the GENERATOR's internals only.
   (2026-07-15, Robert's ask):** the erase HARVESTS a joint ledger (`EraseFrame` overload -> one
   `JointLedgerEntry` per joint id losing a side: the recipe state + each side's role/midpoint/length,
   NO ObjectIds) and after Emit both Draw paths call `ManagedCommands.ReplayJoints`
-  (`Managed\JointReplay.cs`): geometric re-pairing (role + nearest midpoint, 24" cap / tie-band
-  ambiguity = skip + report -- labels renumber, midpoints don't), male-first
+  (`Managed\JointReplay.cs`): geometric re-pairing FIRST (role + nearest midpoint, 24" cap /
+  tie-band ambiguity = skip + report), then the LABEL RESCUE for RELOCATED members (2026-07-16,
+  Robert's eave-height defect: a param change moves girt midpoints past any sane cap) -- re-pair by
+  GridLabel, armed ONLY when erased count == emitted count (member count unchanged <=> labels
+  stable; an insert/remove renumbers labels but doesn't move geometry, so geometric covers it --
+  the two keys cover each other's blind spot; non-unique labels like brace symbols narrow to the
+  label set, nearest midpoint inside, no cap). Then male-first
   `ConnectionType.Apply` both orders behind an expanded-AABB touch gate, re-stamp, guarded
   stale-stamp cleanup. RESTORATION ONLY -- replay never creates a joint that wasn't cut, so the
   deliberate-joinery rule holds. Joinery is DELAYED AND DELIBERATE

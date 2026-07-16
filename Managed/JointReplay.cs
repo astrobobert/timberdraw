@@ -18,6 +18,7 @@ namespace TimberDraw
     public struct JointLedgerSide
     {
         public string Role;      // xdata "Type" at harvest
+        public string Label;     // xdata "GridLabel" at harvest ("P-2A", "*"; may be blank)
         public Point3d Mid;      // f.O + f.Z * (f.L / 2)
         public double Len;       // f.L
         public bool Erased;      // skeleton side (died) vs survivor (kept, features stripped)
@@ -50,15 +51,23 @@ namespace TimberDraw
         // ConnectionType.Apply (male-first, both orders -- Compute* fails WITHOUT mutating on a
         // wrong order/no contact, the TJointSync contract). Restoration only: a pair already
         // sharing a joint id is skipped, and nothing is ever cut that wasn't in the ledger.
+        //
+        // `labelFallback` (Robert's defect 2026-07-15: an eave-height change RELOCATED the skeleton
+        // past the midpoint cap and its joinery dropped): when the geometric match fails, re-pair by
+        // GRID LABEL -- labels are stable across a pure PARAM change (same member count -> same
+        // positional labels), which is exactly the case where members relocate. The caller arms it
+        // only when erased count == emitted count; on an INSERT/REMOVE labels renumber (and the
+        // geometry does NOT move), so the geometric match keeps working there and label matching
+        // stays OFF. Geometric always runs FIRST -- label is the rescue, never the primary.
         // Returns a one-line tally (null for an empty ledger); per-failure details are echoed here.
-        public static string ReplayJoints(Database db, List<JointLedgerEntry> ledger)
+        public static string ReplayJoints(Database db, List<JointLedgerEntry> ledger, bool labelFallback)
         {
             if (ledger == null || ledger.Count == 0) return null;
             Document doc = Application.DocumentManager.MdiActiveDocument;
             if (doc == null) return null;
             Editor ed = doc.Editor;
             int replayed = 0, reattached = 0, already = 0, noContact = 0,
-                unmatched = 0, ambiguous = 0, noRecipe = 0, details = 0;
+                unmatched = 0, ambiguous = 0, noRecipe = 0, labelMatched = 0, details = 0;
 
             void Detail(string msg)
             {
@@ -72,28 +81,39 @@ namespace TimberDraw
             {
                 List<ConnectionType> presets = ConnectionType.BuiltIns();
 
-                // Candidate index over the post-Emit drawing, by role. Frames don't MOVE during
-                // replay (RebuildFromFrame keeps placement), so midpoints stay valid; ObjectIds
-                // don't -- they are chased through the remap at use time.
-                var index = new Dictionary<string, List<(ObjectId Id, Point3d Mid, double Len)>>();
-                foreach ((ObjectId Id, ManagedTimber.TFrame F, string Role) t in ManagedTimber.EnumerateWithRole(db))
+                // Candidate indexes over the post-Emit drawing, by role AND by grid label. Frames
+                // don't MOVE during replay (RebuildFromFrame keeps placement), so midpoints stay
+                // valid; ObjectIds don't -- they are chased through the remap at use time.
+                var byRole = new Dictionary<string, List<(ObjectId Id, Point3d Mid, double Len, string Role)>>();
+                var byLabel = new Dictionary<string, List<(ObjectId Id, Point3d Mid, double Len, string Role)>>();
+                foreach (ManagedTimber.ShopInfo t in ManagedTimber.EnumerateForShop(db))
                 {
+                    (ObjectId, Point3d, double, string) rec =
+                        (t.Id, t.F.O + t.F.Z * (t.F.L / 2.0), t.F.L, t.Role ?? "");
                     string role = t.Role ?? "";
-                    if (!index.TryGetValue(role, out List<(ObjectId Id, Point3d Mid, double Len)> list))
-                        index[role] = list = new List<(ObjectId Id, Point3d Mid, double Len)>();
-                    list.Add((t.Id, t.F.O + t.F.Z * (t.F.L / 2.0), t.F.L));
+                    if (!byRole.TryGetValue(role, out List<(ObjectId Id, Point3d Mid, double Len, string Role)> rl))
+                        byRole[role] = rl = new List<(ObjectId Id, Point3d Mid, double Len, string Role)>();
+                    rl.Add(rec);
+                    string label = t.GridLabel ?? "";
+                    if (label.Length > 0)
+                    {
+                        if (!byLabel.TryGetValue(label, out List<(ObjectId Id, Point3d Mid, double Len, string Role)> ll))
+                            byLabel[label] = ll = new List<(ObjectId Id, Point3d Mid, double Len, string Role)>();
+                        ll.Add(rec);
+                    }
                 }
 
                 var remap = new Dictionary<ObjectId, ObjectId>();
                 ObjectId Cur(ObjectId id) { while (!id.IsNull && remap.TryGetValue(id, out ObjectId nx)) id = nx; return id; }
                 void Map(ObjectId from, ObjectId to) { if (!from.IsNull && !to.IsNull && from != to) remap[from] = to; }
 
-                // 0 = matched, 1 = unmatched, 2 = ambiguous.
-                int MatchSide(JointLedgerSide s, out ObjectId id)
+                // Nearest candidate to the side's harvested midpoint. 0 = matched, 1 = none in
+                // range, 2 = ambiguous (two in the tie band the length tiebreak can't separate).
+                int Nearest(List<(ObjectId Id, Point3d Mid, double Len, string Role)> cands,
+                            JointLedgerSide s, double cap, out ObjectId id)
                 {
                     id = ObjectId.Null;
-                    if (!index.TryGetValue(s.Role ?? "", out List<(ObjectId Id, Point3d Mid, double Len)> cands)
-                        || cands.Count == 0) return 1;
+                    if (cands == null || cands.Count == 0) return 1;
                     int bi = -1; double bd = double.MaxValue, sd = double.MaxValue; int si = -1;
                     for (int i = 0; i < cands.Count; i++)
                     {
@@ -101,7 +121,7 @@ namespace TimberDraw
                         if (dist < bd) { sd = bd; si = bi; bd = dist; bi = i; }
                         else if (dist < sd) { sd = dist; si = i; }
                     }
-                    if (bd > ReplayMatchTol) return 1;
+                    if (bd > cap) return 1;
                     if (bd > ReplayExactTol && si >= 0 && sd < bd + ReplayTieBand)
                     {
                         // Two candidates in the tie band: separate by length, else refuse.
@@ -112,6 +132,30 @@ namespace TimberDraw
                     }
                     id = cands[bi].Id;
                     return 0;
+                }
+
+                // Geometric first (survives inserts/removes, where labels renumber); the LABEL
+                // rescue catches relocated members after a pure param change. Non-unique labels
+                // (brace group symbols) narrow to the label set, then nearest-midpoint picks
+                // within it -- same-symbol braces sit a bay apart, so nearest is decisive; NO
+                // distance cap inside a label set (relocation can be arbitrarily large; the
+                // AABB touch gate still protects the pair).
+                int MatchSide(JointLedgerSide s, out ObjectId id, out bool viaLabel)
+                {
+                    viaLabel = false;
+                    byRole.TryGetValue(s.Role ?? "", out List<(ObjectId Id, Point3d Mid, double Len, string Role)> rc);
+                    int g = Nearest(rc, s, ReplayMatchTol, out id);
+                    if (g == 0) return 0;
+                    if (labelFallback && !string.IsNullOrEmpty(s.Label)
+                        && byLabel.TryGetValue(s.Label, out List<(ObjectId Id, Point3d Mid, double Len, string Role)> lc))
+                    {
+                        List<(ObjectId Id, Point3d Mid, double Len, string Role)> same =
+                            lc.FindAll(c => c.Role == (s.Role ?? ""));
+                        int l = Nearest(same, s, double.MaxValue, out ObjectId lid);
+                        if (l == 0) { id = lid; viaLabel = true; return 0; }
+                        if (l == 2) return 2;
+                    }
+                    return g;
                 }
 
                 ledger.Sort((x, y) => x.OldJid.CompareTo(y.OldJid));   // deterministic order
@@ -136,8 +180,8 @@ namespace TimberDraw
                         // timber first; when exactly one side carried the union feature, lead with it.
                         if (sb.Male && !sa.Male) { JointLedgerSide t = sa; sa = sb; sb = t; }
 
-                        int ma = MatchSide(sa, out ObjectId aId);
-                        int mb = MatchSide(sb, out ObjectId bId);
+                        int ma = MatchSide(sa, out ObjectId aId, out bool aViaLabel);
+                        int mb = MatchSide(sb, out ObjectId bId, out bool bViaLabel);
                         if (ma == 2 || mb == 2)
                         { ambiguous++; Detail("regen joint #" + e.OldJid + " (" + ct.DisplayName + "): two equally near candidates -- re-cut manually."); continue; }
                         if (ma != 0 || mb != 0 || aId == bId)
@@ -183,6 +227,7 @@ namespace TimberDraw
                         }
                         replayed++;
                         if (sa.Erased != sb.Erased) reattached++;   // exactly one side was a survivor
+                        if (aViaLabel || bViaLabel) labelMatched++; // relocated member re-paired by label
                     }
                     catch (System.Exception ex)
                     {
@@ -199,6 +244,7 @@ namespace TimberDraw
 
             var parts = new List<string>();
             parts.Add(replayed + " replayed" + (reattached > 0 ? " (" + reattached + " survivor re-attach)" : ""));
+            if (labelMatched > 0) parts.Add(labelMatched + " relocated (re-paired by label)");
             if (already > 0) parts.Add(already + " already-jointed pair(s) skipped");
             if (noContact > 0) parts.Add(noContact + " no-contact");
             if (unmatched > 0) parts.Add(unmatched + " unmatched");
