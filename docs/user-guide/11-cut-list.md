@@ -51,6 +51,11 @@ W + D to see families group together.
 - **The buy list groups by sameness.** Identical sticks (same type, section,
   length, joinery) sort together — that's the cut-mark idea from Chapter 3: cut
   once, count many.
+- **A housing-only joint counts on one side.** A Housing is a female element,
+  so the ridge's drop-in tongue (the male half of a Ridge Housing) shows in
+  the **Joints** count but no element column — by design: there's nothing to
+  cut *into* the male end, the tongue is the end itself. The joint is fully
+  visible on the king post's (or rafter's) Housing count.
 - **Untyped isn't an error** — it means a joint was cut without a named
   connection type (older drawings, or hand-cut features). The geometry is still
   counted; only the per-kind columns can't classify it.
