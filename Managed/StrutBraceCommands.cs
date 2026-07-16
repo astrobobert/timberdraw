@@ -127,6 +127,8 @@ namespace TimberDraw
 
             ObjectId ns = ManagedTimber.RebuildFromFrame(sId, strut);
             ObjectId nh = ManagedTimber.RebuildFromFrame(hId, host);
+            ManagedTimber.RemoveJointSpec(ns, id);   // the recipe goes with the joint (else TJointSync resurrects)
+            ManagedTimber.RemoveJointSpec(nh, id);
             ed.WriteMessage("\nTStrutDel: tenon #" + id + " removed (strut " + ns.Handle + ", host " + nh.Handle + ").");
         }
 
@@ -228,6 +230,8 @@ namespace TimberDraw
 
             ObjectId ns = ManagedTimber.RebuildFromFrame(sId, brace);
             ObjectId nh = ManagedTimber.RebuildFromFrame(hId, host);
+            ManagedTimber.RemoveJointSpec(ns, id);   // the recipe goes with the joint
+            ManagedTimber.RemoveJointSpec(nh, id);
             RelabelBracesIfBrace(db, ns);   // losing the tenon changes Overall -> its group
             ed.WriteMessage("\nTBraceDel: tenon #" + id + " removed (brace " + ns.Handle + ", host " + nh.Handle + ").");
         }
@@ -378,6 +382,8 @@ namespace TimberDraw
 
             ObjectId nm = ManagedTimber.RebuildFromFrame(mId, male);
             ObjectId nh = ManagedTimber.RebuildFromFrame(hId, host);
+            ManagedTimber.RemoveJointSpec(nm, id);   // the recipe goes with the joint
+            ManagedTimber.RemoveJointSpec(nh, id);
             ed.WriteMessage("\nTQPRafterDel: joint #" + id + " removed (male " + nm.Handle + ", host " + nh.Handle + ").");
         }
 

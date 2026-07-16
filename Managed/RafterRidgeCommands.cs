@@ -111,6 +111,8 @@ namespace TimberDraw
 
             ObjectId nr = ManagedTimber.RebuildFromFrame(rId, rafter);
             ObjectId np = ManagedTimber.RebuildFromFrame(pId, post);
+            ManagedTimber.RemoveJointSpec(nr, id);   // the recipe goes with the joint (else TJointSync resurrects)
+            ManagedTimber.RemoveJointSpec(np, id);
             ed.WriteMessage("\nTRafterFootDel: joint #" + id + " removed (rafter " + nr.Handle + ", post " + np.Handle + ").");
         }
 
@@ -163,6 +165,8 @@ namespace TimberDraw
 
             ObjectId nr = ManagedTimber.RebuildFromFrame(rId, rafter);
             ObjectId np = ManagedTimber.RebuildFromFrame(pId, kingpost);
+            ManagedTimber.RemoveJointSpec(nr, id);   // the recipe goes with the joint
+            ManagedTimber.RemoveJointSpec(np, id);
             ed.WriteMessage("\nTRafterHeadDel: joint #" + id + " removed (rafter " + nr.Handle + ", king post " + np.Handle + ").");
         }
 
@@ -260,6 +264,8 @@ namespace TimberDraw
 
             ObjectId nr = ManagedTimber.RebuildFromFrame(rId, ridge);
             ObjectId np = ManagedTimber.RebuildFromFrame(pId, kingpost);
+            ManagedTimber.RemoveJointSpec(nr, id);   // the recipe goes with the joint
+            ManagedTimber.RemoveJointSpec(np, id);
             ed.WriteMessage("\nTRidgeDel: joint #" + id + " removed (ridge " + nr.Handle + ", king post " + np.Handle + ").");
         }
 
@@ -387,6 +393,8 @@ namespace TimberDraw
 
             ObjectId nr = ManagedTimber.RebuildFromFrame(rId, ridge);
             ObjectId nf = ManagedTimber.RebuildFromFrame(fId, rafter);
+            ManagedTimber.RemoveJointSpec(nr, id);   // the recipe goes with the joint
+            ManagedTimber.RemoveJointSpec(nf, id);
             ed.WriteMessage("\nTRidgeRafterDel: joint #" + id + " removed (ridge " + nr.Handle + ", rafter " + nf.Handle + ").");
         }
 

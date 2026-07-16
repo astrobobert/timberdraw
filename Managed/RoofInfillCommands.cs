@@ -61,6 +61,8 @@ namespace TimberDraw
 
             ObjectId npu = ManagedTimber.RebuildFromFrame(puId, purlin);
             ObjectId nr  = ManagedTimber.RebuildFromFrame(rId, rafter);
+            ManagedTimber.RemoveJointSpec(npu, id);   // the recipe goes with the joint (else TJointSync resurrects)
+            ManagedTimber.RemoveJointSpec(nr, id);
             ed.WriteMessage("\nTPurlinDel: joint #" + id + " removed (purlin " + npu.Handle + ", rafter " + nr.Handle + ").");
         }
 
@@ -144,6 +146,8 @@ namespace TimberDraw
 
             ObjectId nc = ManagedTimber.RebuildFromFrame(cId, common);
             ObjectId nr = ManagedTimber.RebuildFromFrame(rId, ridge);
+            ManagedTimber.RemoveJointSpec(nc, id);   // the recipe goes with the joint
+            ManagedTimber.RemoveJointSpec(nr, id);
             ed.WriteMessage("\nTCommonRidgeDel: joint #" + id + " removed (common " + nc.Handle + ", ridge " + nr.Handle + ").");
         }
 
@@ -215,6 +219,8 @@ namespace TimberDraw
 
             ObjectId nc = ManagedTimber.RebuildFromFrame(cId, common);
             ObjectId ng = ManagedTimber.RebuildFromFrame(gId, girt);
+            ManagedTimber.RemoveJointSpec(nc, id);   // the recipe goes with the joint
+            ManagedTimber.RemoveJointSpec(ng, id);
             ed.WriteMessage("\nTCommonEaveDel: birdsmouth #" + id + " removed (common " + nc.Handle + ", girt " + ng.Handle + ").");
         }
 
