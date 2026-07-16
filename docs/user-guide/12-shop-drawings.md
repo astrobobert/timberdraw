@@ -9,9 +9,12 @@ neighbors.
 
 ## 12.1 What you get
 
+![Figure 12-1](images/Figure%2012-1.png)
+
 > **Figure 12-1 — The map set for the quick-start frame.**
-> *[capture: the TM Shop layout tab, whole sheet visible: two bent maps, the
-> wall maps, Floor 0; annotate one of each kind in blue.]*
+
+<!-- capture: the TM Shop layout tab, whole sheet visible: two bent maps, the
+wall maps, Floor 0; annotate one of each kind in blue. -->
 
 Type `TShop`. One command builds the whole set:
 
@@ -28,10 +31,13 @@ one viewport per map. The command line lists every map and its member count.
 
 ## 12.2 Reading a map
 
+![Figure 12-2](images/Figure%2012-2.png)
+
 > **Figure 12-2 — One bent map, annotated.**
-> *[capture: close crop of one bent map; blue callouts on: a member label, a
-> context member with an X mark, a context member with a + mark, the
-> view-direction marker.]*
+
+<!-- capture: close crop of one bent map; blue callouts on: a member label, a
+context member with an X mark, a context member with a + mark, the
+view-direction marker. -->
 
 - **Boxes, not cut sticks.** Each timber is its nominal (pre-joinery) outline —
   the map shows assembly, the scribe drawings show the cuts.

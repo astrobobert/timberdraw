@@ -8,10 +8,13 @@ what you'd otherwise lay out with tape, square, and pencil.
 
 ## 13.1 What gets burned on a face
 
+![Figure 13-1](images/Figure%2013-1.png)
+
 > **Figure 13-1 — One girt face, annotated.**
-> *[capture: preview of a girt's RS1 .tsj (or the TimberScribe web preview) for
-> a girt with a mortise and pegs; blue callouts on each mark type listed
-> below.]*
+
+<!-- capture: preview of a girt's RS1 .tsj (or the TimberScribe web preview) for
+a girt with a mortise and pegs; blue callouts on each mark type listed
+below. -->
 
 Each face drawing carries:
 
@@ -55,9 +58,12 @@ and section with the count in the stem — `Brace_4x5_x12_face1.tsj` means *cut
 twelve of these*. The command line echoes each timber exported, its faces, mark
 counts, and any collapsed repeats.
 
+![Figure 13-2](images/Figure%2013-2.png)
+
 > **Figure 13-2 — The command-line echo and the resulting folder.**
-> *[capture: AutoCAD text window after TScribeAll on the quick-start frame,
-> plus the Scribe folder in Explorer showing the file naming.]*
+
+<!-- capture: AutoCAD text window after TScribeAll on the quick-start frame,
+plus the Scribe folder in Explorer showing the file naming. -->
 
 ## 13.4 When a mark looks wrong: `TScribeProbe`
 

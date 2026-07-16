@@ -24,9 +24,12 @@ get the DLL, tell AutoCAD to load it, confirm with `TVer`.
 **Load automatically:** run `APPLOAD`, add `TimberDraw.dll` to the **Startup
 Suite**, and it loads with every drawing session.
 
+![Figure 2-1](images/Figure%202-1.png)
+
 > **Figure 2-1 — APPLOAD with TimberDraw in the Startup Suite.**
-> *[capture: the APPLOAD dialog, Startup Suite contents showing
-> TimberDraw.dll.]*
+
+<!-- capture: the APPLOAD dialog, Startup Suite contents showing
+TimberDraw.dll. -->
 
 ## 2.3 Updating
 

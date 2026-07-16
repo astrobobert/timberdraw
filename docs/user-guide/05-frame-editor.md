@@ -9,9 +9,12 @@ Generate again — until the freeze.
 
 ## 5.1 The Frame tab
 
+![Figure 5-1](images/Figure%205-1.png)
+
 > **Figure 5-1 — The frame editor, annotated.**
-> *[capture: Frame tab with the quick-start frame; blue callouts numbering
-> the three panes: 1 tree, 2 properties, 3 action bar.]*
+
+<!-- capture: Frame tab with the quick-start frame; blue callouts numbering
+the three panes: 1 tree, 2 properties, 3 action bar. -->
 
 `TDraw` opens the TimberDraw palette on its **Frame** tab (the same palette
 carries Assembly, Joints, Browser, and Output — each chapter lands on its own
@@ -46,10 +49,12 @@ between projects, save it as a named template (below).
   it from the frame.
 - Select a bay and set its **Roof Type** and separation.
 
+![Figure 5-2](images/Figure%205-2.png)
+
 > **Figure 5-2 — The five bent types.**
-> *[capture or diagram: five small elevations side by side, each labeled, with
-> the members named in glossary terms (post, tie girt, king post, queen posts,
-> straining beam, hammer beam, hammer post, collar).]*
+<!-- capture or diagram: five small elevations side by side, each labeled, with
+the members named in glossary terms (post, tie girt, king post, queen posts,
+straining beam, hammer beam, hammer post, collar). -->
 
 **Walls.** The frame is modeled as lettered longitudinal wall lines (A, B, C,
 ... — the ridge runs on the center line), and each wall line owns its member

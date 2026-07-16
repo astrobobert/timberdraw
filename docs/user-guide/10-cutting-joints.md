@@ -9,10 +9,13 @@ an identity, and cutting it again *replaces* it rather than doubling up.
 
 ## 10.1 The Joints pane
 
+![Figure 10-1](images/Figure%2010-1.png)
+
 > **Figure 10-1 — The Joints pane with a girt-post pair loaded.**
-> *[capture: TPanel Joints tab; the element stack visible with a couple of
-> params edited; blue callouts: Pick pair button, element enable checkboxes,
-> a grayed unavailable row.]*
+
+<!-- capture: TPanel Joints tab; the element stack visible with a couple of
+params edited; blue callouts: Pick pair button, element enable checkboxes,
+a grayed unavailable row. -->
 
 Open `TPanel` and switch to the **Joints** tab.
 
@@ -60,10 +63,13 @@ has a matching `...Del`.
 | **Queen-post rafter apex** | `TQPRafter` | Where the two principal rafters meet at the peak: the male rafter's peak end seats and tenons into the host rafter (housing + tenon + optional pegs). |
 | **Beam -> beam** | `TScarf` | Lengthwise end-to-end splice (Chapter 8 — it also splits the timber). |
 
+![Figure 10-2](images/Figure%2010-2.png)
+
 > **Figure 10-2 — The catalog on one frame.**
-> *[capture: quick-start frame SE isometric with yellow highlights + blue
-> labels pointing at one example of each connection actually present (girt-post,
-> brace, strut, rafter foot, rafter head, ridge).]*
+
+<!-- capture: quick-start frame SE isometric with yellow highlights + blue
+labels pointing at one example of each connection actually present (girt-post,
+brace, strut, rafter foot, rafter head, ridge). -->
 
 ## 10.3 Re-cutting, deleting, and what pegs do
 

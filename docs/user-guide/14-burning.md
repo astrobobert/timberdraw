@@ -9,8 +9,11 @@ Chapter 13 produced.
 
 ## 14.1 Loading jobs
 
+![Figure 14-1](images/Figure%2014-1.png)
+
 > **Figure 14-1 — The job list on a phone.**
-> *[capture: the TimberScribe web UI job list with a few uploaded jobs.]*
+
+<!-- capture: the TimberScribe web UI job list with a few uploaded jobs. -->
 
 The print head runs a small web server. From a phone or laptop on the same
 network, open `http://<pi-address>:5000`, and **upload the `.tsj` files** from
@@ -27,6 +30,8 @@ Everything in Chapter 13.2 pays off here:
    burn origin is the face's **upper-left corner**.
 3. Burn, then roll to the next face in RS order. If the datum was right on
    face one, all four faces agree.
+
+![Figure 14-2](images/Figure%2014-2.png)
 
 > **Figure 14-2 — Print head aligned on the arris.**
 > *[photo: the print head sitting on a timber, arris alignment visible.]*

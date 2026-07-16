@@ -8,10 +8,13 @@ model is right, the list is right.
 
 ## 11.1 The grid
 
+![Figure 11-1](images/Figure%2011-1.png)
+
 > **Figure 11-1 — The Output tab for the quick-start frame.**
-> *[capture: the Output tab docked beside the model, quick-start frame
-> loaded, a few rows visible; annotate the column groups (identity / stock /
-> joinery) in blue.]*
+
+<!-- capture: the Output tab docked beside the model, quick-start frame
+loaded, a few rows visible; annotate the column groups (identity / stock /
+joinery) in blue. -->
 
 Type `TBom` — or just open the palette's **Output** tab: the BOM loads itself
 the first time the tab is shown. One row per timber; click any column header
@@ -38,9 +41,12 @@ Select a row (or several — Ctrl/Shift work) and the matching solids **highligh
 in the model**. Sort by Label first if you're chasing one timber; sort by Type +
 W + D to see families group together.
 
+![Figure 11-2](images/Figure%2011-2.png)
+
 > **Figure 11-2 — Two rows selected, two braces lit in the model.**
-> *[capture: Output tab with two brace rows selected and both braces
-> highlighted; use the selection highlight as-is, callouts in blue.]*
+
+<!-- capture: Output tab with two brace rows selected and both braces
+highlighted; use the selection highlight as-is, callouts in blue. -->
 
 ## 11.3 Reading it right
 

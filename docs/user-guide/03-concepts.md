@@ -7,10 +7,13 @@ command in the app. Terms in **bold** are defined in the [Glossary](../../GLOSSA
 
 ## 3.1 The timber is the truth
 
+![Figure 3-1](images/Figure%203-1.png)
+
 > **Figure 3-1 — A managed timber carries everything about itself.**
-> *[capture: one girt from the quick-start frame, isolated, with callout boxes
-> (blue) pointing at the solid: "geometry", "joinery", "labels", "connections" —
-> arrows from a single box labeled "all stored ON the timber".]*
+
+<!-- capture: one girt from the quick-start frame, isolated, with callout boxes
+(blue) pointing at the solid: "geometry", "joinery", "labels", "connections" —
+arrows from a single box labeled "all stored ON the timber". -->
 
 Every stick TimberDraw draws is a **managed timber**: a 3D solid that carries its
 own geometry, joinery, and identity with it, inside the drawing. There is no
@@ -28,10 +31,12 @@ Two rules follow:
 
 ## 3.2 Recipe, skeleton, freeze
 
+![Figure 3-2](images/Figure%203-2.png)
+
 > **Figure 3-2 — The one-way pipeline.**
-> *[capture or diagram: three panels left to right — the TDraw tree editor
-> ("recipe"), the emitted frame ("skeleton"), a padlock over the Generate Frame
-> button ("frozen"). Arrow between each; the last arrow labeled "TFreeze — one way".]*
+<!-- capture or diagram: three panels left to right — the TDraw tree editor
+("recipe"), the emitted frame ("skeleton"), a padlock over the Generate Frame
+button ("frozen"). Arrow between each; the last arrow labeled "TFreeze — one way". -->
 
 You do not model a frame stick by stick. You edit a **recipe** — the frame spec in
 the `TDraw` tree editor (bents, walls, bays, member sizes) — and the generator
@@ -53,10 +58,13 @@ infill.**
 
 ## 3.3 The grid is an address, not a driver
 
+![Figure 3-3](images/Figure%203-3.png)
+
 > **Figure 3-3 — Grid bubbles under the quick-start frame.**
-> *[capture: plan view of the quick-start frame with the structural grid visible;
-> annotate one numbered bubble ("bent line") and one lettered bubble ("wall
-> line") in blue.]*
+
+<!-- capture: plan view of the quick-start frame with the structural grid visible;
+annotate one numbered bubble ("bent line") and one lettered bubble ("wall
+line") in blue. -->
 
 The **structural grid** — numbered **bent** lines one way, lettered **wall** lines
 the other (letters skip I and O) — exists to locate and label timbers, nothing
@@ -69,10 +77,13 @@ A timber's address is *derived* from where it sits: the post at bent 2, wall A i
 
 ## 3.4 Three IDs per timber
 
+![Figure 3-4](images/Figure%203-4.png)
+
 > **Figure 3-4 — One timber, three names.**
-> *[capture: single brace with three callouts (blue): its location label, its
-> cut-mark, its production number. Yellow highlight on a second identical brace
-> labeled "same cut-mark".]*
+
+<!-- capture: single brace with three callouts (blue): its location label, its
+cut-mark, its production number. Yellow highlight on a second identical brace
+labeled "same cut-mark". -->
 
 Every timber carries three identifiers, each doing a different job:
 
@@ -88,10 +99,12 @@ with a count.
 
 ## 3.5 Reference faces: RS1–RS4 and the ends
 
+![Figure 3-5](images/Figure%203-5.png)
+
 > **Figure 3-5 — Face numbering on a squared timber.**
-> *[capture or diagram: axonometric of a plain timber; label the four sides
-> RS1–RS4 and the two ends 5 and 6; highlight the reference face and the
-> reference arris in yellow.]*
+<!-- capture or diagram: axonometric of a plain timber; label the four sides
+RS1–RS4 and the two ends 5 and 6; highlight the reference face and the
+reference arris in yellow. -->
 
 Layout on real wood needs a datum. Each timber has 6 faces: 4 sides, numbered
 **RS1–RS4**, and 2 ends, **5** and **6**. RS1 is the **reference face**; the edge
@@ -101,10 +114,13 @@ mark the reference face first, and everything else measures from there.
 
 ## 3.6 The model stands up in world space
 
+![Figure 3-6](images/Figure%203-6.png)
+
 > **Figure 3-6 — Z is always up.**
-> *[capture: quick-start frame in SE isometric with the WCS icon visible;
-> annotate "frame stands Z-up in world coordinates" and "UCS only chooses where
-> it lands".]*
+
+<!-- capture: quick-start frame in SE isometric with the WCS icon visible;
+annotate "frame stands Z-up in world coordinates" and "UCS only chooses where
+it lands". -->
 
 The frame always stands upright in AutoCAD's world coordinate system — Z is up,
 the grid lies on the floor. Your current **UCS** only decides where and at what

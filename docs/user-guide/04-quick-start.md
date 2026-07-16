@@ -28,10 +28,13 @@ pane:
 - **Eave Height**: 12'
 - **Pitch**: 8:12
 
+![Figure 4-1](images/Figure%204-1.png)
+
 > **Figure 4-1 — The frame editor with the quick-start values entered.**
-> *[capture: Frame tab, frame node selected, the three edited values
-> visible; annotate the three panes (tree / properties / action bar)
-> in blue.]*
+
+<!-- capture: Frame tab, frame node selected, the three edited values
+visible; annotate the three panes (tree / properties / action bar)
+in blue. -->
 
 The tree opens empty every time (and on every drawing switch) — saving named
 templates and everything else the editor can do is Chapter 5.
@@ -46,9 +49,12 @@ Orbit around it. Posts at the corners, tie girts, king posts, rafters, braces �
 about two dozen timbers, each one already carrying its address (`P-1A`,
 `KP-2`, ...).
 
+![Figure 4-2](images/Figure%204-2.png)
+
 > **Figure 4-2 — The drawn skeleton.**
-> *[capture: SE isometric of the full frame with grid bubbles visible; yellow
-> highlight on one post, blue callout showing its label.]*
+
+<!-- capture: SE isometric of the full frame with grid bubbles visible; yellow
+highlight on one post, blue callout showing its label. -->
 
 While the spec is live you can change a value and Generate again — the
 skeleton is *replaced* each time. That stops being true after the next step.
@@ -72,10 +78,13 @@ peg bores in the post.
 The command line reports how many joints were cut and how many contacts were
 skipped (already jointed — safe to re-run).
 
+![Figure 4-3](images/Figure%204-3.png)
+
 > **Figure 4-3 — A cut joint.**
-> *[capture: close-up of one girt-post connection with the post rendered
-> semi-transparent or the girt pulled back, showing tenon, mortise, and peg
-> bores; blue callouts naming each.]*
+
+<!-- capture: close-up of one girt-post connection with the post rendered
+semi-transparent or the girt pulled back, showing tenon, mortise, and peg
+bores; blue callouts naming each. -->
 
 The full connection catalog — braces, struts, rafter feet, ridge, purlins — is
 Chapter 10.
@@ -87,9 +96,12 @@ the first time you look). One row per timber: label, size, length, joinery
 tally. Click a row and the matching solid highlights in the model.
 **Export CSV** writes the tally out.
 
+![Figure 4-4](images/Figure%204-4.png)
+
 > **Figure 4-4 — The Output tab with one row selected and its timber highlighted.**
-> *[capture: Output tab beside the model; selected row + highlighted solid
-> both visible.]*
+
+<!-- capture: Output tab beside the model; selected row + highlighted solid
+both visible. -->
 
 ## Step 6 — Shop drawings: `TShop`
 
@@ -98,8 +110,11 @@ Type `TShop`. TimberDraw generates an assembly map for each bent and each wall
 layout named **TM Shop** at 3/8" = 1'-0". Every stick appears as a labeled box
 in the context of its neighbors.
 
+![Figure 4-5](images/Figure%204-5.png)
+
 > **Figure 4-5 — The TM Shop layout for the quick-start frame.**
-> *[capture: the TM Shop layout tab showing the bent and wall maps.]*
+
+<!-- capture: the TM Shop layout tab showing the bent and wall maps. -->
 
 `TShopClear` removes it all; `TShop` re-runs regenerate cleanly.
 
@@ -111,9 +126,12 @@ head follows: joinery outlines, cut-to-length lines, depth labels, peg marks,
 and the timber's label. Identical repetitive sticks (the braces here) collapse
 to one drawing set carrying a count.
 
+![Figure 4-6](images/Figure%204-6.png)
+
 > **Figure 4-6 — A scribed timber face.**
-> *[capture: preview of one girt face's .tsj content (or the TimberScribe web
-> preview): profile linework, cut-to-length lines at both ends, the label.]*
+
+<!-- capture: preview of one girt face's .tsj content (or the TimberScribe web
+preview): profile linework, cut-to-length lines at both ends, the label. -->
 
 Upload the files to the Pi and burn — Chapter 14.
 

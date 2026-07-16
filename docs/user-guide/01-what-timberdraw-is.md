@@ -11,6 +11,8 @@ craftsmanship.
 
 ## 1.1 The suite in one picture
 
+![Figure 1-1](images/Figure%201-1.png)
+
 > **Figure 1-1 — The pipeline.**
 > *[diagram: three stages left to right — TimberDraw in AutoCAD (frame model
 > on screen) -> a `.tsj` file icon -> the TimberScribe print head on a timber

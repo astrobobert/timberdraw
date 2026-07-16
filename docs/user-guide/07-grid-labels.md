@@ -8,10 +8,13 @@ label every timber wears.
 
 ## 7.1 The grid (`TGrid`)
 
+![Figure 7-1](images/Figure%207-1.png)
+
 > **Figure 7-1 — The grid under the quick-start frame.**
-> *[capture: plan or shallow iso; grid bubbles visible; blue callouts on a
-> numbered bent bubble and a lettered wall bubble; note the yellow ground
-> columns vs blue.]*
+
+<!-- capture: plan or shallow iso; grid bubbles visible; blue callouts on a
+numbered bent bubble and a lettered wall bubble; note the yellow ground
+columns vs blue. -->
 
 `TGrid` redraws the structural grid for the current frame, flat on the floor
 under it. The grid is **derived from the drawing** — it scans the frame's
@@ -28,10 +31,13 @@ Conventions:
 
 ## 7.2 Reading a label
 
+![Figure 7-2](images/Figure%207-2.png)
+
 > **Figure 7-2 — A labeled frame.**
-> *[capture: SE isometric of the quick-start frame with several labels
-> legible; blue callouts decoding one bent-plane label and one wall-plane
-> label.]*
+
+<!-- capture: SE isometric of the quick-start frame with several labels
+legible; blue callouts decoding one bent-plane label and one wall-plane
+label. -->
 
 Every label follows one grammar: **family code first, then the anchor, then
 qualifiers** — so sorted lists group by member family.

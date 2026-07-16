@@ -8,10 +8,13 @@ generator-made or hand-placed.
 
 ## 8.1 The Assembly tab (`TPanel`)
 
+![Figure 8-1](images/Figure%208-1.png)
+
 > **Figure 8-1 — The Assembly tab.**
-> *[capture: Assembly tab; blue callouts on: the section tree with a leaf
-> selected (sticky section), the Brace spec checkboxes, and the labeled verb
-> groups in the bottom action bar.]*
+
+<!-- capture: Assembly tab; blue callouts on: the section tree with a leaf
+selected (sticky section), the Brace spec checkboxes, and the labeled verb
+groups in the bottom action bar. -->
 
 `TPanel` opens the palette on its **Assembly** tab:
 
@@ -62,13 +65,19 @@ the preview vanishes.
 | `TProfile` | a timber + a **closed curve** | Cuts the drawn profile straight through the timber's width — the **arched-timber** verb. Draw the arch on the timber's elevation (polyline, circle, or spline), and the cut is carried in the timber's own recipe: it survives moves and joint re-cuts, reads in shop maps, and scribes as real edges. **The profile also trims joinery** — a tenon never re-appears inside the arch (removed is removed); the mate's pocket stays sized to the joint, so resize the joint if the arch eats into it. A shape cut like `TScarf` — UNDO restores it. |
 | `TCopy` | timbers + base/destination points | Copies as **new sticks** (8.3): shape and joinery kept, joint ids re-minted, grid address and production number cleared. Repeats like COPY. |
 
+![Figure 8-2](images/Figure%208-2.png)
+
 > **Figure 8-2 — TSpan before/after.**
-> *[capture: two posts with a gap, then the same view with the spanning girt
-> placed; yellow highlight on the new member.]*
+
+<!-- capture: two posts with a gap, then the same view with the spanning girt
+placed; yellow highlight on the new member. -->
+
+![Figure 8-3](images/Figure%208-3.png)
 
 > **Figure 8-3 — TFit before/after.**
-> *[capture: a girt end short of a post face, then fitted flush to it; blue
-> callout on the picked end and target face.]*
+
+<!-- capture: a girt end short of a post face, then fitted flush to it; blue
+callout on the picked end and target face. -->
 
 ## 8.3 Moving, copying, deleting
 
@@ -120,9 +129,12 @@ move command. Two cautions:
   The list re-reads itself when you open the tab, switch drawings, or joinery
   replaces a timber.
 
+![Figure 8-4](images/Figure%208-4.png)
+
 > **Figure 8-4 — The frame browser with three joists selected and highlighted.**
-> *[capture: TBrowse beside the model; three rows selected, the matching
-> joists highlighted.]*
+
+<!-- capture: TBrowse beside the model; three rows selected, the matching
+joists highlighted. -->
 
 ---
 

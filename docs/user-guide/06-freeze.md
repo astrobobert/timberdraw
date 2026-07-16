@@ -8,10 +8,13 @@ this chapter has to say.
 
 ## 6.1 What freezing does
 
+![Figure 6-1](images/Figure%206-1.png)
+
 > **Figure 6-1 — Before and after the gate.**
-> *[capture: two shots of the Frame tab's action bar — Generate Frame enabled
-> with "Freeze", then refused with the button reading "Frozen"; blue callout on
-> the changed button.]*
+
+<!-- capture: two shots of the Frame tab's action bar — Generate Frame enabled
+with "Freeze", then refused with the button reading "Frozen"; blue callout on
+the changed button. -->
 
 Run `TFreeze` (default frame tag `A`), or click **Freeze** on the frame editor.
 Geometry does not change — the timbers were already managed solids. What flips
