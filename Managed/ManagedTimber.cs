@@ -138,8 +138,10 @@ namespace TimberDraw
                         if (!TryReadFrame(tr, ent, out TFrame f)) continue;
                         if (frameTag != null)
                         {
+                            string free = ReadXTextField(tr, ent, "Free");
                             bool keep = ReadXTextField(tr, ent, "FrameTag") != frameTag   // another frame's: keep
-                                     || ReadXTextField(tr, ent, "Free") == "1"            // hand-placed: keep
+                                     || free == "1"                                       // hand-placed: keep
+                                     || free == "2"                                       // PINNED shape-edited skeleton: keep (the emitter cedes its slot)
                                      || ReadXTextField(tr, ent, "FloorTag") != "";        // floor-owned: keep
                             HashSet<int> jids = JointIds(f);
                             if (jids.Count > 0)

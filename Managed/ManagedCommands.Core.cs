@@ -130,6 +130,22 @@ namespace TimberDraw
         private static readonly HashSet<string> PurlinRoles = new HashSet<string> { "Purlin" };
         private static readonly HashSet<string> RafterRoles = new HashSet<string> { "Rafter" };
 
+        // A SHAPE edit pins a skeleton member (Robert's call, 2026-07-16: "free edited skeleton
+        // timbers" instead of freezing the frame): Free = "2" -- it survives a re-Generate like
+        // hand-placed work ("1"), AND the emitter cedes its slot, so no twin is emitted over the
+        // edit. The member stops following the recipe (a param change moves the skeleton around
+        // it -- re-seat with TFit/TJoin Modify if it drifts). Only the shape verbs pin (TProfile /
+        // TFit / TSection / TScarf); joint cuts do NOT (the regen replay restores those), and
+        // hand-placed ("1") / floor timbers are already regen-proof.
+        internal static void PinSkeleton(ObjectId id, Editor ed)
+        {
+            Module1.DataStructure xd = Module1.GetXdata(id);
+            if (xd == null || !string.IsNullOrEmpty(xd.Free) || string.IsNullOrEmpty(xd.FrameTag)) return;
+            xd.Free = "2";
+            Module1.SetXdata(id, xd);
+            ed?.WriteMessage("\n  (skeleton member PINNED: the edit survives re-Generate; the member no longer follows the recipe.)");
+        }
+
         // Review / adjust the sticky joint recipe (_joint) as a KIT OF PARTS: the elements (Tenon, Housing,
         // Pegs) are peers, each a toggleable sub-menu. Enter / "Cut" proceeds (returns true); Escape cancels
         // (false). Shared by TJoint (per cut) and TJointAll (once). A new element type adds a keyword + a

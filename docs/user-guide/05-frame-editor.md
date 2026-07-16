@@ -119,9 +119,13 @@ surviving free timbers re-attach in the same pass; joints the replay could not
 confidently restore (a member that moved too far, or two equally near
 candidates) are **reported, never guessed** — heal those with `TJointSync`
 (Chapter 10.3) or re-cut with `TJointAll`. Replay only restores joints you had
-already cut; it never creates new ones. Other hand edits **to the skeleton
-members themselves** (a re-fit girt, a profile) do not survive; that is what
-the freeze is for (Chapter 6).
+already cut; it never creates new ones. Shape edits **to skeleton members
+themselves** survive too: `TProfile` / `TFit` / `TSection` / `TScarf` **pin**
+the member at edit time — it is kept through the regen and the generator cedes
+its slot rather than emitting a twin over it. A pinned member no longer follows
+the recipe (it holds its position through a param change; re-seat it by hand if
+the frame moves around it). The freeze (Chapter 6) remains as an optional lock
+for a settled design.
 
 **Save / Save As / Load** manage named `.framespec` templates — your barn
 starter, your saltbox. Loading one replaces the palette's spec; Draw makes it

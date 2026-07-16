@@ -132,14 +132,28 @@ namespace TimberDraw
             // XData (outside the txn, like the other commands) + the explicit splice node.
             string sz1 = (int)Math.Round(f.W) + "x" + (int)Math.Round(f.D) + "x" + Module1.BuyLongFeet(f1.L);
             string sz2 = (int)Math.Round(f.W) + "x" + (int)Math.Round(f.D) + "x" + Module1.BuyLongFeet(f2.L);
-            // Pieces inherit the parent's free-assembly origin: scarfed FREE timbers stay regen-proof;
-            // scarfed SKELETON halves stay skeleton (a regenerate replaces the unsplit member).
+            // Pieces carry the parent's IDENTITY (frame/grid tags + label -- the fresh xdata used to
+            // drop them, leaving tagless orphans that doubled on regen) and its free-assembly kind:
+            // FREE ("1") pieces stay free; SKELETON ("") pieces are PINNED ("2", Robert's call
+            // 2026-07-16) -- they survive re-Generate and the emitter cedes the parent's slot.
             var xd1 = new Module1.DataStructure(type, "", desg, sz1, "0", 0, 0, 0, f.W, f.D, f1.L, "scarf", "scarf", false);
             var xd2 = new Module1.DataStructure(type, "", desg, sz2, "0", 0, 0, 0, f.W, f.D, f2.L, "scarf", "scarf", false);
-            xd1.Free = od?.Free ?? "";
-            xd2.Free = od?.Free ?? "";
+            string pieceFree = string.IsNullOrEmpty(od?.Free)
+                ? (string.IsNullOrEmpty(od?.FrameTag) ? "" : "2") : od.Free;
+            foreach (Module1.DataStructure xd in new[] { xd1, xd2 })
+            {
+                xd.Free = pieceFree;
+                xd.FrameTag = od?.FrameTag ?? "";
+                xd.BentNumber = od?.BentNumber ?? "";
+                xd.WallTag = od?.WallTag ?? "";
+                xd.BayTag = od?.BayTag ?? "";
+                xd.FloorTag = od?.FloorTag ?? "";
+                xd.GridLabel = od?.GridLabel ?? "";
+            }
             Module1.SetXdata(nP1, xd1);
             Module1.SetXdata(nP2, xd2);
+            if (pieceFree == "2")
+                ed.WriteMessage("\n  (skeleton member PINNED: the scarfed pieces survive re-Generate; the member no longer follows the recipe.)");
             ManagedTimber.WriteScarfNode(db, nP1, cs);
             ManagedTimber.WriteScarfNode(db, nP2, cs);
 

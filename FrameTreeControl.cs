@@ -592,7 +592,7 @@ namespace TimberDraw
                 if (xd == null) continue;
                 string ft = string.IsNullOrWhiteSpace(xd.FrameTag) ? "" : xd.FrameTag.Trim();
                 if (ft != frame) continue;
-                if (freeOnly && xd.Free != "1" && string.IsNullOrEmpty(xd.FloorTag)) continue;
+                if (freeOnly && xd.Free != "1" && xd.Free != "2" && string.IsNullOrEmpty(xd.FloorTag)) continue;
                 bool match = bentTag.Length > 0
                     ? (xd.BentNumber ?? "") == bentTag
                     : string.Equals(xd.WallTag ?? "", wallTag, StringComparison.OrdinalIgnoreCase);
@@ -947,7 +947,7 @@ namespace TimberDraw
                 cleared = ManagedTimber.EraseFrame(doc.Database, frameTag, out ledger);
                 ManagedTimber.EraseGrid(doc.Database, frameTag);
             }
-            int drawn = ManagedFrameEmitter.Emit(g, placement, frameTag, out FrameGrid emitGrid);
+            int drawn = ManagedFrameEmitter.Emit(g, placement, frameTag, out FrameGrid emitGrid, out int ceded);
             // Structural grid: DRAWING-DERIVED so it includes any TPlace'd sub timbers assigned to this
             // frame and shifts the numbering. Only floor-meeting timbers draw a line. (emitGrid is still
             // used inside Emit to stamp each timber's installer label.)
@@ -986,6 +986,7 @@ namespace TimberDraw
                 "\nTDraw: frame " + frameTag + " -- cleared " + cleared + " managed timber(s); emitted "
                 + drawn + " managed timbers across " + g.Nodes.Count + " nodes (grid "
                 + grid.ColX.Count + " cols x " + grid.BentZ.Count + " bents)."
+                + (ceded > 0 ? " " + ceded + " slot(s) held by pinned (shape-edited) members." : "")
                 + (replay != null ? " " + replay : ""));
         }
 

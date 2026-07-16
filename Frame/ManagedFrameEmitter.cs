@@ -44,6 +44,16 @@ namespace TimberDraw
         // GRID derived from the un-skewed frames -- the caller draws it; each timber's grid label and a
         // longitudinal member's wall letter are stamped from it here.
         public static int Emit(FrameGraph g, Matrix3d placement, string frameTag, out FrameGrid grid)
+            => Emit(g, placement, frameTag, out grid, out _);
+
+        // The regen overload also reports how many slots were CEDED to pinned members (Free = "2":
+        // skeleton members shape-edited pre-freeze -- Robert's call 2026-07-16, "free edited
+        // skeleton timbers" instead of freezing). A pinned member OWNS its slot: emitting its twin
+        // would stack a fresh member on top of the edit. Two match keys, blind spots covered like
+        // the joinery replay's: a UNIQUE grid-label match (labels are stable when a param change
+        // MOVES the slot) or world BOX OVERLAP (stable when an insert RENUMBERS labels; also what
+        // catches a scarfed member's two pieces). Brace group symbols (*) are never label-matched.
+        public static int Emit(FrameGraph g, Matrix3d placement, string frameTag, out FrameGrid grid, out int ceded)
         {
             // Pass 1: graph-coord frame (+ end cuts) for every drawable edge.
             var items = new List<(FrameEdge e, ManagedTimber.TFrame f, string nearCut, string farCut)>();
@@ -56,8 +66,19 @@ namespace TimberDraw
             foreach (var it in items) gridFrames.Add((it.e, it.f));
             grid = FrameGrid.Build(gridFrames);
 
+            // The pinned members whose slots this emit must cede (label uniqueness pre-counted).
+            var doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
+            List<(ManagedTimber.TFrame F, string Role, string Label)> pinned = doc != null
+                ? ManagedTimber.EnumeratePinned(doc.Database, frameTag)
+                : new List<(ManagedTimber.TFrame, string, string)>();
+            var pinnedLabelCount = new Dictionary<string, int>(System.StringComparer.OrdinalIgnoreCase);
+            foreach ((ManagedTimber.TFrame F, string Role, string Label) p in pinned)
+                if (!string.IsNullOrEmpty(p.Label) && p.Label[0] != '*')
+                    pinnedLabelCount[p.Label] = pinnedLabelCount.TryGetValue(p.Label, out int c) ? c + 1 : 1;
+
             // Pass 2: place + draw, stamping the grouping tags + grid-derived label / wall letter.
             int drawn = 0;
+            ceded = 0;
             foreach (var (e, f, nearCut, farCut) in items)
             {
                 string bentTag = string.IsNullOrEmpty(e.BentTag) && string.IsNullOrEmpty(e.BayTag)
@@ -86,6 +107,21 @@ namespace TimberDraw
                                  : string.IsNullOrEmpty(bentTag) ? grid.SideWall(f.O.X) : "";
                 string groupLayer = ManagedTimber.GroupLayer(frameTag, bentTag, groupWall);
                 ManagedTimber.TFrame world = ManagedTimber.TransformFrame(f, placement);
+
+                // Cede the slot to a pinned member: unique label match, or genuine box overlap
+                // (pad -0.5: interpenetration, never a touching neighbor). Role must agree.
+                bool cede = false;
+                foreach ((ManagedTimber.TFrame F, string Role, string Label) p in pinned)
+                {
+                    if (!string.Equals(p.Role, e.Role, System.StringComparison.OrdinalIgnoreCase)) continue;
+                    if (!string.IsNullOrEmpty(gridLabel) && gridLabel[0] != '*'
+                        && string.Equals(p.Label, gridLabel, System.StringComparison.OrdinalIgnoreCase)
+                        && pinnedLabelCount.TryGetValue(gridLabel, out int lc) && lc == 1)
+                    { cede = true; break; }
+                    if (ManagedTimber.FramesOverlap(world, p.F, -0.5)) { cede = true; break; }
+                }
+                if (cede) { ceded++; continue; }
+
                 Autodesk.AutoCAD.DatabaseServices.ObjectId id = ManagedTimber.DrawFramedSolid(
                     world, e.Role, e.Designation, nearCut, farCut,
                     frameTag, bentTag, e.BayTag, wallTag, gridLabel, groupLayer);

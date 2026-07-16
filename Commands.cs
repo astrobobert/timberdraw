@@ -106,7 +106,8 @@ namespace TimberDraw
 			// EraseFrame keeps every hand-placed (free-assembly / floor-owned) timber.
 			int cleared = ManagedTimber.EraseFrame(db, "A", out System.Collections.Generic.List<JointLedgerEntry> ledger);
 			ManagedTimber.EraseGrid(db, "A");
-			int drawn = ManagedFrameEmitter.Emit(g, placement, "A", out FrameGrid grid);
+			int drawn = ManagedFrameEmitter.Emit(g, placement, "A", out FrameGrid grid, out int ceded);
+			if (ceded > 0) ed.WriteMessage("\n" + ceded + " slot(s) held by pinned (shape-edited) members.");
 			grid.Draw(placement, "A");   // flat under the frame (model basis -> floor on WCS XY)
 			// Restore the harvested joinery onto the fresh skeleton, then relabel (a replayed brace
 			// tenon changes measured Overall, which the size+shape group symbols read). The label

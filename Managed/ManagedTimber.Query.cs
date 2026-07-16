@@ -77,6 +77,29 @@ namespace TimberDraw
             return list;
         }
 
+        // PINNED skeleton members (Free == "2"): shape-edited pre-freeze (Robert's call 2026-07-16 --
+        // "free edited skeleton timbers" instead of freezing). They survive a re-Generate like
+        // hand-placed work ("1") AND claim their slot -- the emitter cedes it, so no twin is
+        // emitted on top of the edit. Role + label + world frame feed the emitter's two-key match.
+        public static List<(TFrame F, string Role, string Label)> EnumeratePinned(Database db, string frameTag)
+        {
+            var list = new List<(TFrame, string, string)>();
+            using (Transaction tr = db.TransactionManager.StartTransaction())
+            {
+                var btr = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForRead);
+                foreach (ObjectId id in btr)
+                {
+                    if (!(tr.GetObject(id, OpenMode.ForRead) is Entity ent)) continue;
+                    if (!TryReadFrame(tr, ent, out TFrame f)) continue;
+                    if (ReadXTextField(tr, ent, "Free") != "2") continue;
+                    if (frameTag != null && ReadXTextField(tr, ent, "FrameTag") != frameTag) continue;
+                    list.Add((f, ReadXTextField(tr, ent, "Type"), ReadXTextField(tr, ent, "GridLabel")));
+                }
+                tr.Commit();
+            }
+            return list;
+        }
+
         // All managed timbers in the current space (those carrying a frame xrecord).
         public static List<(ObjectId Id, TFrame F)> Enumerate(Database db)
         {

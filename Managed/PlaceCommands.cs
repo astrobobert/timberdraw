@@ -507,6 +507,7 @@ namespace TimberDraw
             }
 
             ObjectId nid = ManagedTimber.RebuildFromFrame(mid, nf);
+            PinSkeleton(nid, ed);            // a shape edit pins a skeleton member (survives regen)
             RelabelBracesIfBrace(db, nid);   // a trimmed/extended brace changes Overall -> its group
             ed.WriteMessage("\nTFit: " + type + " " + (isNear ? "near" : "far") +
                             " end fitted; new length " + nf.L.ToString("0.#") + " (" + nid.Handle + ").");
@@ -537,6 +538,7 @@ namespace TimberDraw
 
             ObjectId nid = ManagedTimber.RegenerateSection(id, newW, newD, "");   // "" = keep existing type
             if (nid.IsNull) { ed.WriteMessage("\nTSection: could not re-section that timber."); return; }
+            PinSkeleton(nid, ed);            // a shape edit pins a skeleton member (survives regen)
             RelabelBracesIfBrace(db, nid);   // a re-sectioned brace changes its size+shape group
 
             Module1.DataStructure xd = Module1.GetXdata(nid);

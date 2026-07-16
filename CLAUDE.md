@@ -74,6 +74,16 @@ sections further below are the GENERATOR's internals only.
   (Robert's rule): nothing auto-cuts at place time; `TJointAll` (selection-scoped) cuts, `TJointSync`
   re-cuts after moves / re-attaches after a regen (from those kept stamps -- now the manual fallback
   for whatever the automatic replay reports as unmatched/no-contact).
+  **PINNED skeleton members (2026-07-16, Robert's call -- "free edited skeleton timbers" instead of
+  freezing):** the shape verbs (TProfile/TFit/TSection/TScarf -- and ONLY those; joint cuts replay
+  instead, and plain MOVE stays generator-owned) set `Free = "2"` on a skeleton member via
+  `PinSkeleton` (Core). A pinned member survives EraseFrame like hand-placed work AND the emitter
+  CEDES ITS SLOT (`ManagedFrameEmitter.Emit` two-key match against `ManagedTimber.EnumeratePinned`:
+  unique grid label -- stable under param moves -- or world box overlap via `FramesOverlap`, pad
+  -0.5 -- stable under renumbering, catches scarf pieces; brace symbols never label-match). The
+  trade: pinned members stop following the recipe (param changes move the skeleton around them).
+  TScarf pieces now carry the parent's full identity + pin ("" -> "2"; they used to drop ALL tags
+  and double on regen). TFreeze remains as the OPTIONAL end-of-design lock.
 
 `Managed\` -- the managed timber model, the editor, and the output layer. The core is the
 `ManagedTimber` static class, SPLIT (2026-07-13, behavior-neutral) across six partial files:

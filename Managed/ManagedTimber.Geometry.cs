@@ -1242,6 +1242,35 @@ namespace TimberDraw
             return true;
         }
 
+        // World AABB overlap of two nominal boxes, each padded by `pad` on all sides (negative
+        // SHRINKS -- require genuine interpenetration, not a touching neighbor). The emitter's
+        // slot test for PINNED members: does this would-be emit occupy a pinned member's space?
+        public static bool FramesOverlap(TFrame a, TFrame b, double pad)
+        {
+            WorldAabb(a, out Point3d amin, out Point3d amax);
+            WorldAabb(b, out Point3d bmin, out Point3d bmax);
+            return amin.X - pad <= bmax.X && bmin.X - pad <= amax.X
+                && amin.Y - pad <= bmax.Y && bmin.Y - pad <= amax.Y
+                && amin.Z - pad <= bmax.Z && bmin.Z - pad <= amax.Z;
+        }
+
+        private static void WorldAabb(TFrame f, out Point3d min, out Point3d max)
+        {
+            double lox = double.MaxValue, loy = double.MaxValue, loz = double.MaxValue;
+            double hix = double.MinValue, hiy = double.MinValue, hiz = double.MinValue;
+            for (int i = 0; i < 8; i++)
+            {
+                Point3d c = f.O + f.Z * ((i & 1) == 0 ? 0.0 : f.L)
+                                + f.X * (((i & 2) == 0 ? -1.0 : 1.0) * f.W / 2.0)
+                                + f.Y * (((i & 4) == 0 ? -1.0 : 1.0) * f.D / 2.0);
+                if (c.X < lox) lox = c.X; if (c.X > hix) hix = c.X;
+                if (c.Y < loy) loy = c.Y; if (c.Y > hiy) hiy = c.Y;
+                if (c.Z < loz) loz = c.Z; if (c.Z > hiz) hiz = c.Z;
+            }
+            min = new Point3d(lox, loy, loz);
+            max = new Point3d(hix, hiy, hiz);
+        }
+
         // ---- faces ------------------------------------------------------------------------
 
         public static TFace[] Faces(TFrame f)

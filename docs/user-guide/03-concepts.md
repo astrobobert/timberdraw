@@ -31,12 +31,8 @@ Two rules follow:
 
 ## 3.2 Recipe, skeleton, freeze
 
-![Figure 3-2](images/Figure%203-2.png)
-
-> **Figure 3-2 — The one-way pipeline.**
-<!-- capture or diagram: three panels left to right — the TDraw tree editor
-("recipe"), the emitted frame ("skeleton"), a padlock over the Generate Frame
-button ("frozen"). Arrow between each; the last arrow labeled "TFreeze — one way". -->
+<!-- Figure 3-2 (the one-way pipeline composite) DROPPED, Robert's call 2026-07-16:
+  the prose below carries the idea better than any image did. -->
 
 You do not model a frame stick by stick. You edit a **recipe** — the frame spec in
 the `TDraw` tree editor (bents, walls, bays, member sizes) — and the generator
@@ -44,17 +40,20 @@ emits the whole **skeleton** of managed timbers each time you press **Generate
 Frame**.
 
 While the recipe is live, re-generating *replaces* the skeleton. That is the point:
-change the span, Generate, get a new frame. But it also means hand edits to a
-pre-freeze skeleton are thrown away on the next Generate.
+change the span, Generate, get a new frame. Your work survives it: hand-placed
+timbers are never touched, **joinery replays onto the fresh skeleton**
+(Chapter 5.4), and a skeleton member you shape by hand — a `TProfile` arch, a
+`TFit` trim, a re-section, a scarf — is **pinned** the moment you edit it: it
+survives the regen, and the generator cedes its slot instead of emitting a twin
+over it. A pinned member no longer follows the recipe (raise the eave and the
+skeleton moves around it), which is exactly what pinning means: your edit wins.
 
-When the skeleton is right, you **freeze** (`TFreeze`, or the Freeze button on the
-palette). The freeze is one-way: the generator locks, Generate refuses, and
-from then on the timbers themselves are the only truth. After the break there is
-no difference between a timber the generator made and one you placed by hand —
-every verb works the same on both.
-
-**Freeze as soon as the skeleton is right, and before any hand-cut joinery or
-infill.**
+When the whole design is settled you can **freeze** (`TFreeze`, or the Freeze
+button). The freeze is an optional, one-way **lock**: the generator refuses from
+then on, and the timbers are the only truth. After the break there is no
+difference between a timber the generator made and one you placed by hand —
+every verb works the same on both. Most work never needs it; it is there for
+the moment you want *no possibility* of a regen.
 
 ## 3.3 The grid is an address, not a driver
 

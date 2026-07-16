@@ -1,8 +1,9 @@
 # 6. The Break: `TFreeze`
 
 The freeze is the moment the recipe stops mattering and the timbers take over.
-It is one command, it is one-way, and knowing *when* to run it is most of what
-this chapter has to say.
+It is one command, it is one-way — and since joinery replay and member pinning
+(Chapters 5.4 and 3.2) made regeneration safe for hand work, it is **optional**:
+a lock for a settled design, not a step every frame needs.
 
 ---
 
@@ -42,18 +43,18 @@ tag) and rebuild — deliberately, not by accident.
 
 ## 6.3 When to freeze
 
-**Hand-placed timbers are safe either way**: a re-Generate erases only the
-generator's own skeleton — joists, summers, and anything else from the editor
-verbs survive it, assigned or not (their joints into replaced skeleton members
-re-cut with `TJointSync`, Chapter 10.3). So freeze **as soon as the skeleton
-itself is right, and always before:**
+Rarely — regeneration is safe for hand work now. Hand-placed timbers are never
+erased; **joinery replays** onto the fresh skeleton automatically (Chapter 5.4);
+and a shape-edited skeleton member (`TProfile` / `TFit` / `TSection` / `TScarf`)
+is **pinned** at edit time — it survives the regen and the generator cedes its
+slot. What a regen still costs you: pinned members stop following the recipe
+(a param change moves the skeleton around them — re-seat with `TFit` or
+`TJoin > Modify` if they drift), and anything the replay reports as unmatched
+needs a `TJointSync`.
 
-- hand-cut joinery into skeleton members (`TJoint`, `TBrace`, ... — Chapter 10),
-- any per-skeleton-timber change you want to keep (`TSection`, `TFit`, `TScarf`).
-
-While the palette can still re-Generate, treat the *skeleton* as disposable.
-The moment you would be upset to lose a skeleton edit, you should already have
-frozen.
+So freeze when the *design* is done and you want the recipe locked — a
+deliberate end-of-design gesture, not a prerequisite for hand work. The
+warning signs it exists for are gone; what remains is certainty.
 
 ---
 

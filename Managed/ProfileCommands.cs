@@ -82,6 +82,7 @@ namespace TimberDraw
             if (f.Subtracts == null) f.Subtracts = new List<Point3d[]>();
             f.Subtracts.Add(poly.ToArray());
             ObjectId nid = ManagedTimber.RebuildFromFrame(tid, f);
+            if (!nid.IsNull) PinSkeleton(nid, ed);   // a shape edit pins a skeleton member (survives regen)
             ed.WriteMessage(nid.IsNull
                 ? "\nTProfile: rebuild failed -- nothing changed."
                 : "\nTProfile: profile cut through the width (" + poly.Count + " points, carried in the timber's recipe)."
