@@ -80,7 +80,11 @@ namespace TimberDraw
                         { wallTag = owner.ToUpperInvariant(); bayTag = ManagedAssembly.Bay.ToUpperInvariant(); }
                         break;
                     case "Floor":
-                        if (int.TryParse(owner, out int fn) && fn > 0) floorTag = fn.ToString();
+                        // Floor members carry a BAY designation too (Robert's call, 2026-07-16):
+                        // the browser groups a floor's joists per bay and the shop maps partition
+                        // on it. The label grammar is unchanged (J-<floor>-n).
+                        if (int.TryParse(owner, out int fn) && fn > 0)
+                        { floorTag = fn.ToString(); bayTag = ManagedAssembly.Bay.ToUpperInvariant(); }
                         break;
                 }
                 if (bentTag.Length + wallTag.Length + floorTag.Length > 0) frame = ManagedAssembly.FrameTag;
@@ -134,6 +138,13 @@ namespace TimberDraw
                     { DefaultValue = 1, LowerLimit = 1, AllowNegative = false, AllowZero = false });
                     if (lr.Status != PromptStatus.OK) return;
                     floorTag = lr.Value.ToString();
+
+                    // A floor member's bay designation (Robert's call, 2026-07-16) -- optional,
+                    // like a wall's; the label grammar stays J-<floor>-n.
+                    PromptResult fyr = ed.GetString(
+                        new PromptStringOptions("\nBay (Roman numeral, blank for none): ") { AllowSpaces = false });
+                    if (fyr.Status != PromptStatus.OK) return;
+                    bayTag = (fyr.StringResult ?? "").Trim().ToUpperInvariant();
                 }
             }
 
@@ -188,7 +199,7 @@ namespace TimberDraw
             string target = bentTag.Length > 0
                 ? "Bent " + bentTag + (colTag.Length > 0 ? " (grid " + bentTag + colTag + ")" : "")
                 : wallTag.Length > 0 ? "Wall " + wallTag + (bayTag.Length > 0 ? " / Bay " + bayTag : "")
-                : "Floor " + floorTag;
+                : "Floor " + floorTag + (bayTag.Length > 0 ? " / Bay " + bayTag : "");
             // Braces are label-by-symbol, skipped by the owner-seq mint above -- re-derive their
             // *, ** grouping from the whole model so a just-assigned brace shows its symbol, not a blank.
             RelabelBraces(db);

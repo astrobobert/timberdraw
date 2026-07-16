@@ -206,23 +206,24 @@
             <Button Content="Refresh" Margin="2" Padding="0,4" Command="{Binding RefreshCommand}"
                     ToolTip="Reload the list from the drawing."/>
             <Button Content="Apply"   Margin="2" Padding="0,4" Command="{Binding ApplyCommand}"
-                    ToolTip="Commit what you edited: Type/W/D re-section the timber; the address fields assign the whole selection to what they show."/>
+                    ToolTip="Commit what you edited: Type re-types the timber; the address fields assign the whole selection to what they show. Sizing lives on the Assembly and Frame tabs."/>
         </UniformGrid>
 
-        <!-- Property editor + assign target: fully STACKED labeled rows, one edit box per
-             row, never side by side. Selecting a single row LOADS its current section +
-             assembly here (the review side); Apply re-sections, Assign addresses the timber
-             (Frame > Bent / Wall+Bay / Floor via TAssign). -->
+        <!-- Label editor + assign target: fully STACKED labeled rows, one edit box per row,
+             never side by side. Selecting a single row LOADS its current type + address here
+             (the review side); Apply re-types / assigns (Frame > Bent / Wall / Floor, each
+             with its second coordinate, via TAssign). SIZING deliberately absent: the
+             browser manipulates the LABEL only; W x D belong to the Assembly + Frame tabs
+             (Robert's call, 2026-07-16). The Bent/Wall/Floor row labels follow the
+             "Assign to" choice so each field says what you actually type into it. -->
         <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource TdBorder}" BorderThickness="0,1,0,0"
                 Padding="0,6,0,0" Margin="0,6,0,0">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="52"/>
+                    <ColumnDefinition Width="62"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -233,33 +234,25 @@
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Type" VerticalAlignment="Center" Margin="0,0,6,4"/>
                 <TextBox   Grid.Row="0" Grid.Column="1" Margin="0,0,0,4"
                            Text="{Binding EditType, UpdateSourceTrigger=PropertyChanged}"
-                           ToolTip="The selected timber's member type (Post, Girt, Joist...). Edit + Apply re-types it."/>
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="W" VerticalAlignment="Center" Margin="0,0,6,4"/>
-                <TextBox   Grid.Row="1" Grid.Column="1" Margin="0,0,0,4"
-                           Text="{Binding EditW, UpdateSourceTrigger=PropertyChanged}"
-                           ToolTip="Section width, inches. Edit + Apply re-sections the timber in place."/>
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="D" VerticalAlignment="Center" Margin="0,0,6,4"/>
-                <TextBox   Grid.Row="2" Grid.Column="1" Margin="0,0,0,4"
-                           Text="{Binding EditD, UpdateSourceTrigger=PropertyChanged}"
-                           ToolTip="Section depth, inches. Edit + Apply re-sections the timber in place."/>
+                           ToolTip="The selected timber's member type (Post, Girt, Joist...). Edit + Apply re-types it -- the label family follows."/>
 
-                <TextBlock Grid.Row="3" Grid.Column="0" Text="Frame" VerticalAlignment="Center" Margin="0,0,6,4"/>
-                <ComboBox  Grid.Row="3" Grid.Column="1" Margin="0,0,0,4" Style="{StaticResource TdEditableCombo}"
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Frame" VerticalAlignment="Center" Margin="0,0,6,4"/>
+                <ComboBox  Grid.Row="1" Grid.Column="1" Margin="0,0,0,4" Style="{StaticResource TdEditableCombo}"
                            ItemsSource="{Binding AsmFrames}"
                            Text="{Binding AsmFrame, UpdateSourceTrigger=PropertyChanged}"
                            ToolTip="The frames in the drawing. Pick one, or type a new tag to start the next frame."/>
-                <TextBlock Grid.Row="4" Grid.Column="0" Text="Kind" VerticalAlignment="Center" Margin="0,0,6,4"/>
-                <ComboBox  Grid.Row="4" Grid.Column="1" Margin="0,0,0,4"
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Assign to" VerticalAlignment="Center" Margin="0,0,6,4"/>
+                <ComboBox  Grid.Row="2" Grid.Column="1" Margin="0,0,0,4"
                            ItemsSource="{Binding AsmKinds}" SelectedItem="{Binding AsmKind}"
-                           ToolTip="What owns the selection: a Bent (cross frame), a Wall (with its Bay), or a Floor level."/>
-                <TextBlock Grid.Row="5" Grid.Column="0" Text="Owner" VerticalAlignment="Center" Margin="0,0,6,4"/>
-                <TextBox   Grid.Row="5" Grid.Column="1" Margin="0,0,0,4"
+                           ToolTip="What owns the selection: a Bent (cross frame), a Wall, or a Floor level. The two rows below name themselves to match."/>
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="{Binding AsmOwnerLabel}" VerticalAlignment="Center" Margin="0,0,6,4"/>
+                <TextBox   Grid.Row="3" Grid.Column="1" Margin="0,0,0,4"
                            Text="{Binding AsmOwner, UpdateSourceTrigger=PropertyChanged}"
-                           ToolTip="The owner itself: a bent number (2, or 2C for a grid intersection), a wall letter, or a floor number (1 = first)."/>
-                <TextBlock Grid.Row="6" Grid.Column="0" Text="{Binding AsmExtraLabel}" VerticalAlignment="Center" Margin="0,0,6,4"/>
-                <TextBox   Grid.Row="6" Grid.Column="1" Margin="0,0,0,4" IsEnabled="{Binding AsmExtraEnabled}"
+                           ToolTip="Bent: the bent number (2, or 2C for a grid intersection). Wall: the wall letter. Floor: the level number (1 = first)."/>
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="{Binding AsmExtraLabel}" VerticalAlignment="Center" Margin="0,0,6,4"/>
+                <TextBox   Grid.Row="4" Grid.Column="1" Margin="0,0,0,4"
                            Text="{Binding AsmBay, UpdateSourceTrigger=PropertyChanged}"
-                           ToolTip="The second grid coordinate: a Bent owner takes its column letter (the C in 2C); a Wall owner takes the bay numeral (I, II...)."/>
+                           ToolTip="Bent: the wall letter of the grid intersection (the C in 2C). Wall or Floor: the bay numeral (I, II...); blank for none."/>
             </Grid>
         </Border>
 

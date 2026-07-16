@@ -99,14 +99,20 @@ move command. Two cautions:
 - **`TBrowse`** opens the **Browser** tab: every timber in a filterable list,
   grouped Frame -> Bent/Wall -> Bay and sorted by type within each group.
   Selecting rows **highlights** the solids (the view doesn't jump);
-  double-click **zooms** to one. The stacked fields below the list are both
-  the review and the assign surface: a selected row loads its section and
-  address, and one **Apply** commits — section fields re-section the timber if
-  you edited them, and the address fields (Frame / Kind / Owner / Bay) are
-  WYSIWYG: whatever they show is where Apply puts the selection (already-there
-  rows are left alone, so a section-only Apply doesn't reassign). **Frame** is
-  a drop-down of the frames actually in the drawing (it defaults to the first
-  one present); it stays typable — enter a new tag to start the next frame.
+  double-click **zooms** to one. The stacked fields below the list are the
+  **label** surface — review and assign; the browser never edits a timber's
+  size (W x D live on the Assembly and Frame tabs). A selected row loads its
+  type and address, and one **Apply** commits: **Type** re-types the timber,
+  and the address fields are WYSIWYG — whatever they show is where Apply puts
+  the selection (already-there rows are left alone, so a type-only Apply
+  doesn't reassign). **Assign to** picks the owner kind (Bent / Wall / Floor),
+  and the two rows under it *rename themselves to match*: a Bent owner takes
+  its number plus the intersection's **Wall** letter (the C in 2C), a Wall its
+  letter plus a **Bay** numeral, and a Floor its level number plus a **Bay**
+  too — floor members carry a bay designation like wall members do. **Frame**
+  is a drop-down of the frames actually in the drawing (it defaults to the
+  first one present); it stays typable — enter a new tag to start the next
+  frame.
   The list re-reads itself when you open the tab, switch drawings, or joinery
   replaces a timber.
 

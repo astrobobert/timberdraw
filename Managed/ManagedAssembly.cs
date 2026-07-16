@@ -13,7 +13,8 @@ namespace TimberDraw
         public static string FrameTag;   // "A"
         public static string Kind;       // "Bent" | "Wall" | "Floor"
         public static string Owner;      // bent number / wall letter / floor number
-        public static string Bay;        // Roman numeral (Wall only; may be blank)
+        public static string Bay;        // second grid coordinate: a Wall's or Floor's bay numeral,
+                                         // or a Bent's intersection wall letter (may be blank)
 
         public static void Set(string frameTag, string kind, string owner, string bay)
         {

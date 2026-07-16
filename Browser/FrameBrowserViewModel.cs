@@ -126,7 +126,7 @@ namespace TimberDraw.Browser
         // What the user actually EDITED since the last load/apply -- Apply commits only these
         // (review-loading a row populates the same fields, so loads must never read as edits).
         private bool _loadingSel;
-        private bool _sectionDirty;
+        private bool _typeDirty;
         private bool _assignDirty;
 
         private FrameBrowserItem _selected;
@@ -139,10 +139,10 @@ namespace TimberDraw.Browser
                 if (_selected != null)
                 {
                     _loadingSel = true;
-                    // Populate the property editor (zoom happens in SetSelectedMany, single-pick only).
+                    // Populate the label editor (zoom happens in SetSelectedMany, single-pick only).
+                    // SIZE deliberately absent: the browser manipulates the LABEL only -- W x D live
+                    // on the Assembly + Frame tabs (Robert's call, 2026-07-16).
                     EditType = _selected.Type;
-                    EditW = _selected.W.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                    EditD = _selected.D.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
                     // REVIEW: show the picked timber's CURRENT assembly in the (editable) fields.
                     // An unassigned timber leaves the fields as they are, ready to assign.
@@ -152,9 +152,9 @@ namespace TimberDraw.Browser
                     else if (!string.IsNullOrEmpty(_selected.Wall))
                     { AsmKind = "Wall"; AsmOwner = _selected.Wall; AsmBay = _selected.Bay; }
                     else if (!string.IsNullOrEmpty(_selected.Floor))
-                    { AsmKind = "Floor"; AsmOwner = _selected.Floor; AsmBay = ""; }
+                    { AsmKind = "Floor"; AsmOwner = _selected.Floor; AsmBay = _selected.Bay; }
                     _loadingSel = false;
-                    _sectionDirty = false;   // the section fields now mirror the row
+                    _typeDirty = false;   // the Type field now mirrors the row
                 }
                 ApplyCommand.RaiseCanExecuteChanged();
             }
@@ -228,14 +228,17 @@ namespace TimberDraw.Browser
             {
                 if (!Set(ref _asmKind, value)) return;
                 if (!_loadingSel) _assignDirty = true;
-                Raise(nameof(AsmExtraEnabled));
+                Raise(nameof(AsmOwnerLabel));
                 Raise(nameof(AsmExtraLabel));
             }
         }
-        // The second grid coordinate: a Bent owner takes a COLUMN letter (intersection 2C), a Wall a
-        // Bay; a Floor is one number alone.
-        public bool AsmExtraEnabled => _asmKind != "Floor";
-        public string AsmExtraLabel => _asmKind == "Wall" ? "Bay" : "Col";
+        // The address rows NAME THEMSELVES from the Assign-to choice ('Kind'/'Owner'/'Col' read as
+        // jargon -- Robert's call, 2026-07-16): the owner row says which coordinate you type (Bent
+        // number / Wall letter / Floor level), and the second row is the OTHER grid coordinate --
+        // a Bent owner takes the intersection's wall letter (the C in 2C), a Wall its bay numeral,
+        // and a Floor its bay too (floor members carry a bay designation now).
+        public string AsmOwnerLabel => _asmKind == "Wall" ? "Wall" : _asmKind == "Floor" ? "Floor" : "Bent";
+        public string AsmExtraLabel => _asmKind == "Bent" ? "Wall" : "Bay";
 
         // Trailing 1-2 letter column of a bent timber's grid label ("2C" -> "C"); "" when none.
         private static string ColumnOf(FrameBrowserItem it)
@@ -270,50 +273,33 @@ namespace TimberDraw.Browser
             else if (_selected != null) ids.Add(_selected.Id);
             if (ids.Count == 0) return;
             ManagedView.Assign(ids, (_asmFrame ?? "").Trim(), _asmKind, (_asmOwner ?? "").Trim(),
-                               AsmExtraEnabled ? (_asmBay ?? "").Trim() : "");
+                               (_asmBay ?? "").Trim());
         }
 
-        // ---- property editor (write-back) ----
+        // ---- label editor (write-back; the browser never touches W x D) ----
         private string _editType = "";
         public string EditType
         {
             get => _editType;
-            set { if (Set(ref _editType, value) && !_loadingSel) _sectionDirty = true; }
+            set { if (Set(ref _editType, value) && !_loadingSel) _typeDirty = true; }
         }
 
-        private string _editW = "";
-        public string EditW
-        {
-            get => _editW;
-            set { if (Set(ref _editW, value) && !_loadingSel) _sectionDirty = true; }
-        }
-
-        private string _editD = "";
-        public string EditD
-        {
-            get => _editD;
-            set { if (Set(ref _editD, value) && !_loadingSel) _sectionDirty = true; }
-        }
-
-        // The ONE commit button: re-section if the section fields were edited; assign whenever the
+        // The ONE commit button: re-type if the Type field was edited (the timber's CURRENT section
+        // rides along unchanged -- sizing belongs to the Assembly + Frame tabs); assign whenever the
         // address fields point somewhere the selection isn't already (NOT just when they were edited
         // this time -- the dirty-only gate made the SECOND batch a silent no-op, and reviewing a row
         // that loaded the right target then selecting fresh timbers did nothing on Apply).
         private void Apply()
         {
-            if (_sectionDirty && _selected != null)
+            string type = (_editType ?? "").Trim();
+            if (_typeDirty && _selected != null && type.Length > 0)
             {
-                var ci = System.Globalization.CultureInfo.InvariantCulture;
-                if (double.TryParse(_editW, System.Globalization.NumberStyles.Any, ci, out double w) && w > 0
-                    && double.TryParse(_editD, System.Globalization.NumberStyles.Any, ci, out double d) && d > 0)
-                {
-                    ObjectId newId = ManagedView.ApplySection(_selected.Id, w, d, (_editType ?? "").Trim());
-                    _sectionDirty = false;
-                    Refresh();
-                    if (!newId.IsNull)
-                        foreach (FrameBrowserItem it in Timbers)
-                            if (it.Id == newId) { SelectedItem = it; break; }
-                }
+                ObjectId newId = ManagedView.ApplySection(_selected.Id, _selected.W, _selected.D, type);
+                _typeDirty = false;
+                Refresh();
+                if (!newId.IsNull)
+                    foreach (FrameBrowserItem it in Timbers)
+                        if (it.Id == newId) { SelectedItem = it; break; }
             }
             if (!string.IsNullOrWhiteSpace(_asmOwner) && (_assignDirty || TargetDiffers()))
             {
@@ -335,19 +321,19 @@ namespace TimberDraw.Browser
             var cmp = System.StringComparer.OrdinalIgnoreCase;
             string frame = string.IsNullOrWhiteSpace(_asmFrame) ? "A" : _asmFrame.Trim();
             string owner = (_asmOwner ?? "").Trim();
-            string bay = AsmExtraEnabled ? (_asmBay ?? "").Trim() : "";
+            string bay = (_asmBay ?? "").Trim();
             foreach (FrameBrowserItem it in sel)
             {
                 if (!cmp.Equals(it.Frame ?? "", frame)) return true;
                 switch (_asmKind)
                 {
                     case "Bent":
-                        // The Col box only refines the minted label; ownership is the bent number.
+                        // The Wall box only refines the minted label; ownership is the bent number.
                         if (!cmp.Equals(it.Bent ?? "", StripIntersection(owner))) return true; break;
                     case "Wall":
                         if (!cmp.Equals(it.Wall ?? "", owner) || !cmp.Equals(it.Bay ?? "", bay)) return true; break;
                     case "Floor":
-                        if (!cmp.Equals(it.Floor ?? "", owner)) return true; break;
+                        if (!cmp.Equals(it.Floor ?? "", owner) || !cmp.Equals(it.Bay ?? "", bay)) return true; break;
                 }
             }
             return false;
