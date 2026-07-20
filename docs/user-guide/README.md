@@ -1,9 +1,10 @@
 # TimberDraw User Guide
 
 Guide for timber framers using TimberDraw. Chapters follow the framer's workflow:
-design -> freeze -> edit -> joinery -> shop output -> laser. The plan and style rules
-live in [OUTLINE.md](OUTLINE.md); trade terms and parameter names come from
-[GLOSSARY.md](../../GLOSSARY.md) (the single source of truth).
+design -> generate -> edit -> joinery -> shop output -> laser. The original plan and
+style rules live in [OUTLINE.md](OUTLINE.md) (historical — the chapters supersede it);
+trade terms and parameter names come from [GLOSSARY.md](../../GLOSSARY.md) (the single
+source of truth).
 
 ## Chapters
 
@@ -32,10 +33,10 @@ live in [OUTLINE.md](OUTLINE.md); trade terms and parameter names come from
 
 - **The worked example** is the quick-start frame everywhere: two king-post bents,
   16' span, 12' eave height, 8:12 pitch, one bay.
-- **Figures** are placeholders until the batch capture pass. Each placeholder is a
-  blockquote starting `**Figure N-M**` with a `[capture: ...]` spec (view, commands
-  to run first, what to annotate). Image files go in `img/` named `fig-NN-MM.png`
-  (e.g. `img/fig-03-01.png`).
+- **Figures** live in `images/`, named `Figure N-M.png` (e.g.
+  `images/Figure 3-1.png`); the chapters reference them by that exact name. A
+  figure not yet captured keeps its capture note (view, commands to run first,
+  what to annotate) as an HTML comment beside the image tag.
 - Capture standard: light background, consistent SE isometric unless the spec says
   otherwise, annotations in blue/yellow only (never red-vs-green).
 - Dimensions in inches with framer's fractions (1/2", not 0.5").

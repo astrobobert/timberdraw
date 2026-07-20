@@ -1,5 +1,11 @@
 # TimberDraw User Guide -- Outline
 
+> **Historical planning document.** The drafted chapters supersede it wherever they
+> differ -- notably: the freeze is OPTIONAL since July 2026 (joinery replays and
+> shape-edited skeleton members pin, so regeneration is safe for hand work),
+> `TJointAll` is selection-scoped (no All), and figures live in
+> `images/Figure N-M.png`, not `img/`.
+
 Working outline for the end-user guide. Chapters follow the framer's workflow: design -> freeze ->
 edit -> joinery -> shop output -> laser. Sources of truth while writing: `GLOSSARY.md` (all trade
 terms and parameter names) and the command code itself -- never document from recollection.

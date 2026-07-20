@@ -10,7 +10,7 @@ palette** — Frame / Assembly / Joints / Browser / Output.
 |---|---|
 | `TDraw` | Open the Frame tab (tree + properties + Generate/Freeze/templates). Ch. 5 |
 | `TRoughIn` | Command-line alternate: emit one bent of the configured type at a picked point. Ch. 5 |
-| `TFreeze` | The break: lock the frame's generator, one-way. Ch. 6 |
+| `TFreeze` | Optional end-of-design lock: the generator refuses from then on (one-way). Ch. 6 |
 
 ## Grid + labels
 
@@ -37,7 +37,7 @@ palette** — Frame / Assembly / Joints / Browser / Output.
 | `TProfile` | Cut a closed drawn curve through a timber's width (the arched-timber verb). Ch. 8 |
 | `TCopy` | Copy timbers as NEW sticks: shape + joinery kept, joint ids re-keyed, address freed. Ch. 8 |
 | `TScan` | Rescan face coincidence; mark connection nodes. Ch. 8 |
-| `TBrowse` | Open the Browser tab: filter, highlight, zoom, re-section, assign. Ch. 8 |
+| `TBrowse` | Open the Browser tab: filter, highlight, zoom, re-type, assign (labels only — sizing lives on the Assembly and Frame tabs). Ch. 8 |
 | `TUcsPlan` / `TUcsBent` / `TUcsWall` | UCS presets for comfortable placement. Ch. 8 |
 
 ## Joinery

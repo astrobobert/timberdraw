@@ -36,8 +36,9 @@ pane:
 visible; annotate the three panes (tree / properties / action bar)
 in blue. -->
 
-The tree opens empty every time (and on every drawing switch) — saving named
-templates and everything else the editor can do is Chapter 5.
+A blank drawing starts with an empty tree; a drawing that already carries a
+frame refills the tree with *that* frame when you open or switch to it.
+Templates and everything else the editor can do is Chapter 5.
 
 ## Step 2 — Generate
 
@@ -56,24 +57,17 @@ about two dozen timbers, each one already carrying its address (`P-1A`,
 <!-- capture: SE isometric of the full frame with grid bubbles visible; yellow
 highlight on one post, blue callout showing its label. -->
 
-While the spec is live you can change a value and Generate again — the
-skeleton is *replaced* each time. That stops being true after the next step.
+Change a value and Generate again — the skeleton is *replaced* each time, and
+that stays your workflow for as long as the design moves: hand-placed timbers
+survive a re-Generate, and so does the joinery you cut next (Chapter 5.4).
 
-## Step 3 — Freeze: `TFreeze`
+## Step 3 — Cut the joinery: `TJointAll`
 
-Click **Freeze** on the palette (or run `TFreeze`; frame tag `A` is the
-default). The generator locks — Generate now refuses — and from here on the timbers
-are edited directly, never regenerated. This is one-way (Chapter 6 explains why
-that's a feature).
-
-## Step 4 — Cut the joinery: `TJointAll`
-
-Type `TJointAll`. First it asks the scope — press Enter for **All** (later,
-when you only want joinery on some timbers, **Select** cuts just those). Then
-it walks you through the joint recipe (tenon size, pegs — the defaults are
-sensible; press Enter through them), finds every girt-end-to-post contact in
-the frame, and cuts the whole batch: tenon on the girt, matching mortise and
-peg bores in the post.
+Type `TJointAll` and select the whole frame — window everything; the selected
+timbers are the ones that *get* joints. It walks you through the joint recipe
+(tenon size, pegs — the defaults are sensible; press Enter through them),
+finds every girt-end-to-post contact in the selection, and cuts the whole
+batch: tenon on the girt, matching mortise and peg bores in the post.
 
 The command line reports how many joints were cut and how many contacts were
 skipped (already jointed — safe to re-run).
@@ -89,7 +83,7 @@ bores; blue callouts naming each. -->
 The full connection catalog — braces, struts, rafter feet, ridge, purlins — is
 Chapter 10.
 
-## Step 5 — The cut list: `TBom`
+## Step 4 — The cut list: `TBom`
 
 Type `TBom` (or just click the palette's **Output** tab — the BOM loads itself
 the first time you look). One row per timber: label, size, length, joinery
@@ -103,7 +97,7 @@ tally. Click a row and the matching solid highlights in the model.
 <!-- capture: Output tab beside the model; selected row + highlighted solid
 both visible. -->
 
-## Step 6 — Shop drawings: `TShop`
+## Step 5 — Shop drawings: `TShop`
 
 Type `TShop`. TimberDraw generates an assembly map for each bent and each wall
 (plus floor plans, once the frame has floors) and lays them onto a paper-space
@@ -118,7 +112,7 @@ in the context of its neighbors.
 
 `TShopClear` removes it all; `TShop` re-runs regenerate cleanly.
 
-## Step 7 — Scribe files: `TScribeAll`
+## Step 6 — Scribe files: `TScribeAll`
 
 Type `TScribeAll` and pick an output folder (it is cleared first). TimberDraw
 writes one `.tsj` file per timber face — the burn paths the TimberScribe laser
@@ -139,9 +133,14 @@ Upload the files to the Pi and burn — Chapter 14.
 
 ## What just happened
 
-Design (recipe) -> Draw (skeleton) -> Freeze (the break) -> joinery -> cut list
--> shop drawings -> laser files. Every downstream product was read straight off
-the timbers — nothing was re-entered, nothing can drift.
+Design (recipe) -> Generate (skeleton) -> joinery -> cut list -> shop drawings
+-> laser files. Every downstream product was read straight off the timbers —
+nothing was re-entered, nothing can drift.
 
-*Deeper on each step: Chapters 5 (frame editor), 6 (freeze), 10 (joinery),
-11–13 (output).*
+Notice there was no freeze step: regeneration is safe for your hand work —
+joinery replays onto a fresh skeleton, and a skeleton member you shape by hand
+is pinned (Chapter 5.4). `TFreeze` remains as an optional end-of-design lock
+(Chapter 6).
+
+*Deeper on each step: Chapters 5 (frame editor), 6 (the optional freeze),
+10 (joinery), 11–13 (output).*

@@ -3,7 +3,7 @@
 The frame editor is where the **recipe** lives (Chapter 3.2): the structure of
 the frame as bents, walls, and bays, with member sizes and toggles. Press
 **Generate Frame** and the generator emits the skeleton; change anything and
-Generate again — until the freeze.
+Generate again — your hand work and joinery survive it (5.4).
 
 ---
 

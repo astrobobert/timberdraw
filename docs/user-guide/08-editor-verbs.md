@@ -1,8 +1,8 @@
 # 8. The Assembly Palette and the Editor Verbs
 
-After the freeze, this is how you build: place timbers, connect them, fit
-them, and give them addresses. Every verb works on any managed timber —
-generator-made or hand-placed.
+Once the skeleton stands, this is how you build: place timbers, connect them,
+fit them, and give them addresses. Every verb works on any managed timber —
+generator-made or hand-placed, frozen or not.
 
 ---
 
